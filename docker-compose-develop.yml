@@ -4,7 +4,7 @@ develop:
     service: base
   ports:
     - "35733:35730"
-  container_name: ms-python
+  container_name: python-skeleton-develop
   environment:
     ENVIRONMENT: dev
     DEBUG: "True"
@@ -13,5 +13,5 @@ develop:
     LOCAL_URL: http://mymachine:5700
   command: develop
   volumes:
-    - ./ms:/opt/ms-python/ms
+    - ./ps:/opt/ps/ps
   restart: always

@@ -1,12 +1,12 @@
-FROM python:2.7-alpine
+FROM python:3.6-alpine
 MAINTAINER Sergio Gordillo sergio.gordillo@vizzuality.com
 
-ENV NAME ms-python
-ENV USER microservice
+ENV NAME ps
+ENV USER ps
 
 RUN apk update && apk upgrade && \
    apk add --no-cache --update bash git openssl-dev build-base alpine-sdk \
-   libffi-dev
+   libffi-dev postgresql-dev gcc python3-dev musl-dev
 
 RUN addgroup $USER && adduser -s /bin/bash -D -G $USER $USER
 
@@ -25,7 +25,7 @@ COPY gunicorn.py /opt/$NAME/gunicorn.py
 # Copy the application folder inside the container
 WORKDIR /opt/$NAME
 
-COPY ./ms /opt/$NAME/ms
+COPY ./$NAME /opt/$NAME/$NAME
 COPY ./microservice /opt/$NAME/microservice
 COPY ./tests /opt/$NAME/tests
 RUN chown $USER:$USER /opt/$NAME

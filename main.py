@@ -1,13 +1,15 @@
-import os
-from ms import create_application
+"""Main Script"""
 
-application = create_application()
+import os
+from ps import app
+
 
 # This is only used when running locally. When running live, Gunicorn runs
 # the application.
 if __name__ == '__main__':
-    application.run(
-        host = '0.0.0.0',
-        port = int(os.getenv('PORT')),
-        debug = os.getenv('DEBUG') == 'True'
+    app.run(
+        host='0.0.0.0',
+        port=int(os.getenv('PORT')),
+        debug=os.getenv('DEBUG') == 'True',
+        threaded=True
     )

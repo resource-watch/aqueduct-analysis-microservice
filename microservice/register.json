@@ -6,7 +6,7 @@
 		"binary": true,
 		"redirect": {
 			"method": "GET",
-			"path": "/api/v1/ms/hello"
+			"path": "/api/v1/ps/hello"
 		}
 	}]
 }

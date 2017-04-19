@@ -4,4 +4,4 @@ base:
     - "5700:5700"
   environment:
     PORT: 5700
-  container_name: ms-python
+  container_name: python-skeleton

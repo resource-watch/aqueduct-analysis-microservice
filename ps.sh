@@ -10,7 +10,7 @@ case "$1" in
         docker-compose -f docker-compose-test.yml run test
         ;;
     *)
-        echo "Usage: ms.sh {develop|test}" >&2
+        echo "Usage: ps.sh {develop|test}" >&2
         exit 1
         ;;
 esac
