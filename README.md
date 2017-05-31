@@ -13,8 +13,8 @@ Follow the next steps to set up the development environment in your machine.
 1. Clone the repo and go to the folder
 
 ```ssh
-git clone https://github.com/ResourceWatch/aqueduct-analysis
-cd aqueduct-analysis
+git clone https://github.com/ResourceWatch/aqueduct-analysis-microservice
+cd aqueduct-analysis-microservice
 ```
 
 2. Run the ms.sh shell script in development mode.
