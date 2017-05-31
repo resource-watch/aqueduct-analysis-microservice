@@ -1,12 +1,12 @@
 {
 	"name": "#(service.name)",
 	"endpoints": [{
-		"path": "/hello",
+		"path": "/v1/aqueduct/analysis",
 		"method": "GET",
 		"binary": true,
 		"redirect": {
 			"method": "GET",
-			"path": "/api/v1/ps/hello"
+			"path": "/api/v1/aqueduct/analysis"
 		}
 	}]
 }

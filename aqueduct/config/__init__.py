@@ -5,7 +5,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from ps.config import base, staging, prod
+from aqueduct.config import base, staging, prod
 
 SETTINGS = base.SETTINGS
 

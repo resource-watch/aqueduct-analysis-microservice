@@ -2,7 +2,7 @@ test:
   extends:
     file: base.yml
     service: base
-  container_name: python-skeleton-test
+  container_name: aqueduct_analysis-test
   environment:
     DEBUG: "True"
   command: test

@@ -1,5 +1,4 @@
 """The API MODULE"""
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -10,9 +9,10 @@ import logging
 
 
 from flask import Flask
-from ps.config import SETTINGS
-from ps.routes.api.v1 import endpoints, error
-from ps.utils.files import load_config_json
+from aqueduct.config import SETTINGS
+from aqueduct.routes.api import error
+from aqueduct.routes.api.v1 import aqueduct_analysis_endpoints_v1
+from aqueduct.utils.files import load_config_json
 import CTRegisterMicroserviceFlask
 
 logging.basicConfig(
@@ -25,14 +25,14 @@ logging.basicConfig(
 app = Flask(__name__)
 
 # Routing
-app.register_blueprint(endpoints, url_prefix='/api/v1/ps')
+app.register_blueprint(aqueduct_analysis_endpoints_v1, url_prefix='/api/v1/aqueduct/analysis')
 
 # CT
 info = load_config_json('register')
 swagger = load_config_json('swagger')
 CTRegisterMicroserviceFlask.register(
     app=app,
-    name='ps',
+    name='aqueduct',
     info=info,
     swagger=swagger,
     mode=CTRegisterMicroserviceFlask.AUTOREGISTER_MODE if os.getenv('ENVIRONMENT') == 'dev' else CTRegisterMicroserviceFlask.NORMAL_MODE,

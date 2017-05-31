@@ -11,3 +11,9 @@ class Error(Exception):
         return {
             'message': self.message
         }
+
+class CartoError(Error):
+    pass
+
+class GeostoreNotFound(Error):
+    pass

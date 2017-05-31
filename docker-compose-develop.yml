@@ -4,7 +4,9 @@ develop:
     service: base
   ports:
     - "35733:35730"
-  container_name: python-skeleton-develop
+  env_file:
+     - prod.env
+  container_name: aqueduct_analysis-develop
   environment:
     ENVIRONMENT: dev
     DEBUG: "True"
@@ -13,5 +15,5 @@ develop:
     LOCAL_URL: http://mymachine:5700
   command: develop
   volumes:
-    - ./ps:/opt/ps/ps
+    - ./aqueduct:/opt/aqueduct/aqueduct
   restart: always

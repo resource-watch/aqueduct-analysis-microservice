@@ -1,8 +1,8 @@
 FROM python:3.6-alpine
 MAINTAINER Sergio Gordillo sergio.gordillo@vizzuality.com
 
-ENV NAME ps
-ENV USER ps
+ENV NAME aqueduct
+ENV USER aqueduct
 
 RUN apk update && apk upgrade && \
    apk add --no-cache --update bash git openssl-dev build-base alpine-sdk \
