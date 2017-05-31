@@ -1,4 +1,4 @@
-# Python Skeleton for Micorservices
+# Aqueduct point analysis microservice
 
 ## Getting started
 
@@ -13,7 +13,7 @@ Follow the next steps to set up the development environment in your machine.
 1. Clone the repo and go to the folder
 
 ```ssh
-git clone https://github.com/ResourceWatch/aqueduct-analysis-microservice
+git clone https://github.com/resource-watch/aqueduct-analysis-microservice
 cd aqueduct-analysis-microservice
 ```
 

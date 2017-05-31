@@ -1,5 +1,5 @@
 {
-	"name": "#(service.name)",
+	"name": "aqueduct-analysis-microservice",
 	"endpoints": [{
 		"path": "/v1/aqueduct/analysis",
 		"method": "GET",
