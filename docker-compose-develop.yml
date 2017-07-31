@@ -8,6 +8,7 @@ develop:
      - prod.env
   container_name: aqueduct_analysis-develop
   environment:
+    CT_REGISTER_MODE: auto
     ENVIRONMENT: dev
     DEBUG: "True"
     CT_URL: http://mymachine:9000
