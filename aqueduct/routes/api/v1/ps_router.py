@@ -10,6 +10,7 @@ from ast import literal_eval
 from flask import jsonify, request, Blueprint
 from aqueduct.routes.api import error
 from aqueduct.services.analysis_service import AnalysisService
+from aqueduct.services.cba_service import CBAEndService
 from aqueduct.validators import validate_geostore, validate_weights
 from aqueduct.serializers import serialize_response
 from aqueduct.middleware import get_geo_by_hash
@@ -51,3 +52,15 @@ def get_by_geostore(geojson):
     """By Geostore Endpoint"""
     logging.info('[ROUTER]: Getting water risk analysis by geostore')
     return analyze(geojson)
+
+@aqueduct_analysis_endpoints_v1.route('/cba/widget/<widget>', strict_slashes=False, methods=['GET'])
+@vvalidate_params_cba
+def get_cba_widget(widget):
+    """By Geostore Endpoint"""
+    logging.info('[ROUTER]: Get cba widget')
+    logging.info(map_object)
+    try:
+        USER_INPUTS = literal_eval(request.args)
+        output = CBAEndService(USER_INPUTS)
+
+    return CBAEndService(USER_INPUTS).widget_mainteinance

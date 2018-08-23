@@ -6,7 +6,7 @@ ENV USER aqueduct
 
 RUN apk update && apk upgrade && \
    apk add --no-cache --update bash git openssl-dev build-base alpine-sdk \
-   libffi-dev postgresql-dev gcc python3-dev musl-dev
+   libffi-dev gcc postgresql-libs python3-dev musl-dev 
 
 RUN addgroup $USER && adduser -s /bin/bash -D -G $USER $USER
 
