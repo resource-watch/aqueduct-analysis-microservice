@@ -17,3 +17,6 @@ class CartoError(Error):
 
 class GeostoreNotFound(Error):
     pass
+
+class DBError(Error):
+    pass
