@@ -566,14 +566,15 @@ class CBAEndService(object):
 
     #@cached_property
     def widget_table(self):
-        fOutput = self.data['df'][['urb_benefits_avg','gdp_costs_avg']]
+        fOutput = self.data['df'][['urb_benefits_avg','gdp_costs_avg','pop_benefits_avg','gdp_benefits_avg']]
         cumOut = fOutput.sum()
         
         #npv = None
-        #irr = None
-        bcr =  cumOut['gdp_costs_avg'] / cumOut['urb_benefits_avg'] 
+        avoidedGdp = fOutput.loc[self.data['meta']['implementionEnd']:].gdp_benefits_avg.sum()
+        avoidedPop = fOutput.loc[self.data['meta']['implementionEnd']:].pop_benefits_avg.sum()
+        bcr =  round((cumOut['gdp_costs_avg'] / cumOut['urb_benefits_avg'])*100,2) 
         
-        return {'widgetId':'table','chart_type':'table','meta':self.data['meta'], 'data':[{'bcr':bcr}]}
+        return {'widgetId':'table','chart_type':'table','meta':self.data['meta'], 'data':[{'bcr':bcr, 'avoidedPop':avoidedPop, 'avoidedGdp':avoidedGdp}]}
     
     #@cached_property
     def widget_annual_costs(self):
