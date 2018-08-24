@@ -7,7 +7,7 @@ from __future__ import print_function
 import logging
 from ast import literal_eval
 
-from flask import jsonify, request, Blueprint
+from flask import jsonify, request, Blueprint, json
 from aqueduct.routes.api import error
 from aqueduct.services.analysis_service import AnalysisService
 from aqueduct.services.cba_service import CBAEndService
@@ -85,6 +85,6 @@ def get_cba_widget(widget_id):
         logging.error('[ROUTER]: '+e.message)
         return error(status=500, detail=e.message)
     
-    return jsonify(output.get_widget(widget_id)), 200
+    return jsonify(json.loads(json.dumps(output.get_widget(widget_id),ignore_nan=True))), 200
 
 

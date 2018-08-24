@@ -1,5 +1,6 @@
 numpy
 scipy
+simplejson
 Flask==0.12.0
 CTRegisterMicroserviceFlask==0.3.0
 requests==2.12.4
