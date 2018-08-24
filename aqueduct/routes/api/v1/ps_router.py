@@ -11,7 +11,7 @@ from flask import jsonify, request, Blueprint
 from aqueduct.routes.api import error
 from aqueduct.services.analysis_service import AnalysisService
 from aqueduct.services.cba_service import CBAEndService
-from aqueduct.validators import validate_geostore, validate_weights
+from aqueduct.validators import validate_geostore, validate_weights, validate_params_cba
 from aqueduct.serializers import serialize_response
 from aqueduct.middleware import get_geo_by_hash
 from aqueduct.errors import CartoError
@@ -54,13 +54,18 @@ def get_by_geostore(geojson):
     return analyze(geojson)
 
 @aqueduct_analysis_endpoints_v1.route('/cba/widget/<widget>', strict_slashes=False, methods=['GET'])
-@vvalidate_params_cba
+@validate_params_cba
 def get_cba_widget(widget):
     """By Geostore Endpoint"""
-    logging.info('[ROUTER]: Get cba widget')
+    logging.info('[ROUTER]: Getting cba widget')
     logging.info(map_object)
     try:
         USER_INPUTS = literal_eval(request.args)
         output = CBAEndService(USER_INPUTS)
+    except CartoError as e:
+        logging.error('[ROUTER]: '+e.message)
+        return error(status=500, detail=e.message)
+    
+    return jsonify(CBAEndService(USER_INPUTS).widget_mainteinance), 200
 
-    return CBAEndService(USER_INPUTS).widget_mainteinance
+

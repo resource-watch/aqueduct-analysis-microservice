@@ -11,7 +11,7 @@ from aqueduct.errors import DBError
 class CBAService(object):
     def __init__(self, user_selections):
         ### DBConexion
-        self.engine = sqlalchemy.create_engine(DB_CONNEXION_URL)
+        self.engine = sqlalchemy.create_engine(os.getenv(POSTGRES_URL))
         self.metadata = sqlalchemy.MetaData(bind=self.engine)
         self.metadata.reflect(self.engine)
         ### BACKGROUND INTO 
