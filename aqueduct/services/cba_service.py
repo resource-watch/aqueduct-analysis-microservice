@@ -491,12 +491,12 @@ class CBAService(object):
             if self.risk_analysis == "precalc":
                 annual_risk_pres, annual_pop_pres, annual_gdp_pres, annual_prot_pres = self.precalc_present_benefits(m)
             else:
-                annual_risk_pres, annual_pop_pres, annual_gdp_pres = self.calc_impact(m, prot_pres, 0)
+                annual_risk_pres, annual_pop_pres, annual_gdp_pres = self.calc_impact(m, self.prot_pres, 0)
                 prot_pres_list = []
-                for y in ys:
-                    prot_pres_list.append(average_prot(m, y, annual_risk_pres))
-                prot_func_pres = extrap1d(interp1d(years, prot_pres_list))
-                annual_prot_pres = prot_func_pres(time_series)  # Run timeseries through interpolation function
+                for y in self.ys:
+                    prot_pres_list.append(self.average_prot(m, y, annual_risk_pres))
+                prot_func_pres = self.extrap1d(interp1d(self.years, prot_pres_list))
+                annual_prot_pres = prot_func_pres(self.time_series)  # Run timeseries through interpolation function
             #logging.debug( m, "present done", time.time() - start_time)
             
             #start_time = time.time()
