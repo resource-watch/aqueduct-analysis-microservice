@@ -334,7 +334,7 @@ class CBAService(object):
         return cost
 
     def average_prot(self, m, year, risk_data_input):
-        idx = int(year) - 2010
+        idx = int(year) - self.implementation_start
         clm = "histor" if year == '2010' else self.clim
         sco = "base" if year =='2010' else self.socio
         mdl = "wt" if year == '2010' else m
@@ -578,7 +578,7 @@ class CBAEndService(object):
     #@cached_property
     def widget_annual_costs(self):
         """Urb_Benefits_avg / GDP_Costs_avg"""
-        return {'widgetId':'annual_costs','chart_type':'multi-line','meta':self.data['meta'], 'data':pd.melt(self.data['df'].reset_index()[['year','urb_benefits_avg','gdp_costs_avg']], id_vars=['year'], value_vars=['urb_benefits_avg','gdp_costs_avg'], var_name='c', value_name='y').to_dict('records')}
+        return {'widgetId':'annual_costs','chart_type':'multi-line','meta':self.data['meta'], 'data':pd.melt(self.data['df'].reset_index()[['year','urb_benefits_avg','gdp_costs_avg']], id_vars=['year'], value_vars=['urb_benefits_avg','gdp_costs_avg'], var_name='c', value_name='value').to_dict('records')}
     
     #@cached_property
     def widget_net_benefits(self):
@@ -594,6 +594,7 @@ class CBAEndService(object):
         fOutput = self.data['df'].reset_index()[['year','gdp_costs_avg']]
         minY=fOutput['year'].min() - 1
         fOutput['value'] = (fOutput['gdp_costs_avg'] * (1+0.025)**(fOutput['year'] - minY )) / 10.1
+        fOutput.loc[fOutput['year'] > self.data['meta']['implementionEnd'], 'value'] = 0
 
         return {'widgetId':'impl_cost','chart_type':'bar','meta':self.data['meta'], 'data':fOutput[['year','value']].to_dict('records')}
     
