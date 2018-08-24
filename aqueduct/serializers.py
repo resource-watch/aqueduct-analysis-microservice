@@ -12,7 +12,13 @@ def serialize_response(analysis):
 
 def serialize_response_cba(data):
     """."""
-    return data
+    return {
+        'id':data.get("widgetId", None),
+        'type': 'water-risk-analysis',
+        'chart_type':data.get('chart_type', None),
+        'meta': data.get("meta", None),
+        'data': data.get('data', None)
+    }
 
 def serialize_response_risk(data):
     """."""

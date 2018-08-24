@@ -14,7 +14,7 @@ from aqueduct.services.cba_service import CBAEndService
 from aqueduct.validators import validate_geostore, validate_weights, validate_params_cba
 from aqueduct.serializers import serialize_response
 from aqueduct.middleware import get_geo_by_hash
-from aqueduct.errors import CartoError
+from aqueduct.errors import CartoError, DBError
 
 aqueduct_analysis_endpoints_v1 = Blueprint('aqueduct_analysis_endpoints_v1', __name__)
 
@@ -53,19 +53,38 @@ def get_by_geostore(geojson):
     logging.info('[ROUTER]: Getting water risk analysis by geostore')
     return analyze(geojson)
 
-@aqueduct_analysis_endpoints_v1.route('/cba/widget/<widget>', strict_slashes=False, methods=['GET'])
+@aqueduct_analysis_endpoints_v1.route('/cba/widget/<widget_id>', strict_slashes=False, methods=['GET'])
 @validate_params_cba
-def get_cba_widget(widget):
+def get_cba_widget(widget_id):
     """By Geostore Endpoint"""
     logging.info('[ROUTER]: Getting cba widget')
-    logging.info(map_object)
+    logging.info(widget_id)
     try:
-        USER_INPUTS = literal_eval(request.args)
+        USER_INPUTS = {
+    "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
+    "existing_prot" : None,
+    "scenario" : request.args.get("scenario"),
+    "prot_fut" : int(request.args.get("prot_fut")),
+    "implementation_start" : int(request.args.get("implementation_start")),
+    "implementation_end" : int(request.args.get("implementation_end")),
+    "infrastructure_life" : int(request.args.get("infrastructure_life")),
+    "benefits_start" :int(request.args.get("benefits_start")),
+    "ref_year" : int(request.args.get("ref_year")),
+    "estimated_costs" :None,
+    "discount_rate" : float(request.args.get("discount_rate")),
+    "om_costs" : float(request.args.get("om_costs")),
+    "user_urb_cost" : None,
+    "user_rur_cost" : None
+    }
         output = CBAEndService(USER_INPUTS)
-    except CartoError as e:
+
+        #widgets = {
+        #"cba1":
+        #}
+    except DBError as e:
         logging.error('[ROUTER]: '+e.message)
         return error(status=500, detail=e.message)
     
-    return jsonify(CBAEndService(USER_INPUTS).widget_mainteinance), 200
+    return jsonify(output.get_widget(widget_id)), 200
 
 

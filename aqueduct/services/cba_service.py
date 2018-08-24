@@ -11,7 +11,7 @@ from aqueduct.errors import DBError
 class CBAService(object):
     def __init__(self, user_selections):
         ### DBConexion
-        self.engine = sqlalchemy.create_engine(os.getenv(POSTGRES_URL))
+        self.engine = sqlalchemy.create_engine(os.getenv('POSTGRES_URL'))
         self.metadata = sqlalchemy.MetaData(bind=self.engine)
         self.metadata.reflect(self.engine)
         ### BACKGROUND INTO 
@@ -485,7 +485,7 @@ class CBAService(object):
         # IMPACT DATA BY MODEL
         
         for m in self.mods:
-            start_time = time.time()
+            #start_time = time.time()
             #logging.debug( "--------------------------------   Model %s starting...  --------------------------------------" %m)
             
             if self.risk_analysis == "precalc":
@@ -499,8 +499,8 @@ class CBAService(object):
                 annual_prot_pres = prot_func_pres(time_series)  # Run timeseries through interpolation function
             #logging.debug( m, "present done", time.time() - start_time)
             
-            start_time = time.time()
-            sTimetl = time.time()
+            #start_time = time.time()
+            #sTimetl = time.time()
             annual_risk_fut, annual_pop_fut, annual_gdp_fut = self.calc_impact(m, self.prot_fut, self.prot_idx_fut)
             
             prot_fut_list = []
@@ -513,12 +513,12 @@ class CBAService(object):
 
             #logging.debug( m, "future  done", time.time() - start_time)
             
-            start_time = time.time()
+            #start_time = time.time()
             df = self.compute_benefits(m, annual_risk_pres, annual_risk_fut, annual_pop_pres, annual_pop_fut, annual_gdp_pres, annual_gdp_fut, annual_prot_pres, annual_prot_fut)
             model_benefits = model_benefits.join(df)
-            logging.debug( m, "benefits done", time.time()-start_time )
+            #logging.debug( m, "benefits done", time.time()-start_time )
 
-            start_time = time.time()
+            #start_time = time.time()
             pop_costs = self.find_construction(m, "POPexp", self.user_rur_cost, self.user_urb_cost)
             gdp_costs = self.find_construction(m, "Urban_Damage_v2", self.user_rur_cost, self.user_urb_cost)
             
@@ -526,10 +526,10 @@ class CBAService(object):
             model_benefits = model_benefits.join(df_pc)
             df_gc = self.compute_costs(m, gdp_costs, "GDP")
             model_benefits = model_benefits.join(df_gc)
-            logging.debug(m, "costs done", time.time()-start_time)
-            logging.debug("Model %s done..." % m)
+            #logging.debug(m, "costs done", time.time()-start_time)
+            #logging.debug("Model %s done..." % m)
 
-        start_time = time.time()
+        #start_time = time.time()
         df_final = self.run_stats(model_benefits)
         #df_final = model_benefits
         #print( "All done! Total computation time:", time.time() - allStartTime)
@@ -557,9 +557,14 @@ class CBAService(object):
 
 class CBAEndService(object):
     def __init__(self, user_selections):
-        self.data = CBAService(USER_INPUTS).analyze()
+        self.data = CBAService(user_selections).analyze()
     
-    @cached_property
+    def get_widget(self, argument):
+        method_name = 'widget_' + str(argument)
+        method = getattr(self, method_name, lambda: "Widget not found")
+        return method()
+
+    #@cached_property
     def widget_table(self):
         fOutput = self.data['df'][['urb_benefits_avg','gdp_costs_avg']]
         cumOut = fOutput.sum()
@@ -568,31 +573,31 @@ class CBAEndService(object):
         #irr = None
         bcr =  cumOut['gdp_costs_avg'] / cumOut['urb_benefits_avg'] 
         
-        return {'widgetId':'','meta':self.data['meta'], 'data':[{'bcr':bcr}]}
+        return {'widgetId':'table','chart_type':'table','meta':self.data['meta'], 'data':[{'bcr':bcr}]}
     
-    @cached_property
+    #@cached_property
     def widget_annual_costs(self):
         """Urb_Benefits_avg / GDP_Costs_avg"""
-        return {'widgetId':'','meta':self.data['meta'], 'data':pd.melt(self.data['df'].reset_index()[['year','urb_benefits_avg','gdp_costs_avg']], id_vars=['year'], value_vars=['urb_benefits_avg','gdp_costs_avg'], var_name='c', value_name='y').to_dict('records')}
+        return {'widgetId':'annual_costs','chart_type':'multi-line','meta':self.data['meta'], 'data':pd.melt(self.data['df'].reset_index()[['year','urb_benefits_avg','gdp_costs_avg']], id_vars=['year'], value_vars=['urb_benefits_avg','gdp_costs_avg'], var_name='c', value_name='y').to_dict('records')}
     
-    @cached_property
+    #@cached_property
     def widget_net_benefits(self):
         """Urb_Benefits_avg / GDP_Costs_avg --> net cummulative costs"""
         fOutput = self.data['df'][['urb_benefits_avg','gdp_costs_avg']].cumsum()
         fOutput['value'] = fOutput['urb_benefits_avg'] - fOutput['gdp_costs_avg']
 
-        return {'widgetId':'','meta':self.data['meta'], 'data':fOutput.reset_index()[['year','value']].to_dict('records')}
+        return {'widgetId':'net_benefits','chart_type':'bar','meta':self.data['meta'], 'data':fOutput.reset_index()[['year','value']].to_dict('records')}
 
-    @cached_property
+    #@cached_property
     def widget_impl_cost(self):
         """GDP_Costs_avg"""
         fOutput = self.data['df'].reset_index()[['year','gdp_costs_avg']]
         minY=fOutput['year'].min() - 1
         fOutput['value'] = (fOutput['gdp_costs_avg'] * (1+0.025)**(fOutput['year'] - minY )) / 10.1
 
-        return {'widgetId':'','meta':self.data['meta'], 'data':fOutput[['year','value']].to_dict('records')}
+        return {'widgetId':'impl_cost','chart_type':'bar','meta':self.data['meta'], 'data':fOutput[['year','value']].to_dict('records')}
     
-    @cached_property
+    #@cached_property
     def widget_mainteinance(self):
         fOutput = self.data['df'][['gdp_costs_avg']]
         cost = fOutput.loc[self.data['meta']['implementionEnd']]['gdp_costs_avg']
@@ -609,16 +614,16 @@ class CBAEndService(object):
         result = fOutput.reset_index()
         result['value'] =result['costs']/ ((1 + 0.025) ** (result['year']-impS+1))
         
-        return {'widgetId':'','meta':self.data['meta'], 'data':result[['year','value']].to_dict('records')}
+        return {'widgetId':'mainteinance','chart_type':'bar','meta':self.data['meta'], 'data':result[['year','value']].to_dict('records')}
     
-    @cached_property
+    #@cached_property
     def widget_flood_prot(self):
         fOutput = self.data['df'].reset_index()[['year','gdp_costs_avg','prot_present_avg','prot_future_avg']]
         fn = lambda row: row.prot_present_avg if row.year <= self.data['meta']["benefitsStart"] else row.prot_future_avg if row.year >= self.data['meta']["implementionEnd"] else None 
         fOutput['value'] = fOutput.apply(fn, axis=1)
         
-        return {'widgetId':'','meta':self.data['meta'], 'data':fOutput[['year','value']].to_dict('records')}
+        return {'widgetId':'flood_prot','chart_type':'line', 'meta':self.data['meta'], 'data':fOutput[['year','value']].to_dict('records')}
     
-    @cached_property
+    #@cached_property
     def export(self):
         return {'widgetId':'','meta':self.data['meta'], 'data':self.table.to_dict('records')}

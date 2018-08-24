@@ -2,6 +2,7 @@
 from ast import literal_eval
 from functools import wraps
 from flask import request
+import logging
 
 from aqueduct.routes.api import error
 
@@ -37,10 +38,11 @@ def validate_params_cba(func):
     def wrapper(*args, **kwargs):
         if request.method == 'GET':
             userSelections = request.args
+            logging.info('[validator]: {0}'.format(list(userSelections.keys())))
             if not userSelections:
                 return error(status=400, detail='User Selections are required')
-            elif len(request.args) != 12:
-                return error(status=400, detail='please a valid wscheme array is needed: [1,1,1,1,1,1,1,1,1,1,1,1]')
+            elif len(list(userSelections.keys())) != 15:
+                return error(status=400, detail='please enter a valid user selection')
         return func(*args, **kwargs)
     return wrapper
 
