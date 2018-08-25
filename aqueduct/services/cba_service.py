@@ -303,7 +303,7 @@ class CBAService(object):
             for itl in np.arange(0, len(df.index), 1):
                 df_itl = df['df'].iloc[itl]
                 tgtCol_itl = df['tgtCol'].iloc[itl]
-                cost_itl = pd.read_sql_query("SELECT sum({0}) FROM {1} where id in ({2})".format(tgtCol_itl, df_cost , ", ".join(map(str, df_itl['FID'].values))), engine).values[0]
+                cost_itl = pd.read_sql_query("SELECT sum({0}) FROM {1} where id in ({2})".format(tgtCol_itl, df_cost , ", ".join(map(str, df_itl['FID'].values))), self.engine).values[0]
                 costList.append(cost_itl)
         totalCost = sum(costList)
         return totalCost

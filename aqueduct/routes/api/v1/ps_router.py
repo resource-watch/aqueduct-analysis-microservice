@@ -71,10 +71,10 @@ def get_cba_widget(widget_id):
     "infrastructure_life" : int(request.args.get("infrastructure_life")),
     "benefits_start" :int(request.args.get("benefits_start")),
     "ref_year" : int(request.args.get("ref_year")),
-    "estimated_costs" :None,
+    "estimated_costs" : None if request.args.get("estimated_costs") == 'null' else float(request.args.get("estimated_costs")) ,
     "discount_rate" : float(request.args.get("discount_rate")),
     "om_costs" : float(request.args.get("om_costs")),
-    "user_urb_cost" : None,
+    "user_urb_cost" :  None if request.args.get("user_urb_cost") == 'null' else float(request.args.get("user_urb_cost")) ,
     "user_rur_cost" : None
     }
         output = CBAEndService(USER_INPUTS)
