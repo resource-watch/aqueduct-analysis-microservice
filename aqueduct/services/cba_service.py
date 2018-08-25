@@ -62,6 +62,7 @@ class CBAService(object):
         self.df_gdp = self.inRAWFormat(self.geogunit, "gdpexp")
         self.df_urb = self.inRAWFormat(self.geogunit, "urban_damage_v2")
         self.filt_risk = pd.read_sql_query("SELECT * FROM Precalc_Riverine_geogunit_108_nosub where id in ({0})".format(', '.join(map(str, self.fids))), self.engine)
+        self.estimated_costs=None
     
     ##---------------------------------------------------
     ### FUNCTIONS FOR BOTH RISK AND CBA TABS          ###
@@ -398,11 +399,19 @@ class CBAService(object):
     def calc_impact(self, m, pt, ptid):
         """this can be improved with threads and is where the leak happens, a more ammount of fids, the runtime increases"""
         annual_risk, annual_pop, annual_gdp = 0, 0, 0
+        
+        #cba_raw = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(columns), inData, inName), self.engine)
+        #impact_present = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(cols), inData, inName), self.engine).values[0]
+        df_urb= pd.read_sql_query("SELECT * FROM {0} where id in ({1}) ".format( self.df_urb, ', '.join(map(str, self.fids))), self.engine)
+        df_pop= pd.read_sql_query("SELECT * FROM {1} where id in ({2}) ".format(', '.join([col for col in sqlalchemy.Table(self.df_pop, self.metadata).columns.keys() if (self.clim in col) and (self.socio in col) and (m in col)]), self.df_pop, ', '.join(map(str, self.fids))), self.engine)
+        df_gdp= pd.read_sql_query("SELECT * FROM {1} where id in ({2}) ".format(', '.join([col for col in sqlalchemy.Table(self.df_gdp, self.metadata).columns.keys() if (self.clim in col) and (self.socio in col) and (m in col)]), self.df_gdp, ', '.join(map(str, self.fids))), self.engine)
+        # Present data = 2010 data
+        #impact_present = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(cols), inData, inName), self.engine).values[0]
         for f in self.fids:
-            impact_cc = self.select_impact(m, self.df_urb, f, "base")
-            impact_urb = self.select_impact(m, self.df_urb, f, self.socio)
-            impact_pop = self.select_impact(m, self.df_pop, f, self.socio)
-            impact_gdp = self.select_impact(m, self.df_gdp, f, self.socio)
+            impact_cc =  self.select_impact(m,  df_urb, f, "base")
+            impact_urb = self.select_impact(m, df_urb, f, self.socio)
+            impact_pop = self.select_impact(m, df_pop, f, self.socio)
+            impact_gdp = self.select_impact(m, df_gdp, f, self.socio)
             f_risk, f_pop, f_gdp = self.risk_evolution(impact_cc, impact_urb, impact_pop, impact_gdp,  pt, ptid)
             annual_risk = annual_risk + f_risk
             annual_pop = annual_pop + f_pop
@@ -453,18 +462,13 @@ class CBAService(object):
         
         Time is being killed here on big selections
         """
-        
-        # Filter raw data by subunit
-        columns =[col for col in sqlalchemy.Table(inData, self.metadata).columns.keys() if (self.clim in col) and (socioecon in col) and (m in col)]
-        cols =[col for col in sqlalchemy.Table(inData, self.metadata).columns.keys() if("_2010_" in col)]
-        cba_raw = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(columns), inData, inName), self.engine)
-
+        cba_raw = inData.set_index('id').loc[inName]
         # Present data = 2010 data
-        impact_present = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(cols), inData, inName), self.engine).values[0]
+        impact_present = cba_raw.filter(like="_2010_", axis=0).values
         # For all years, pull the climate change only data (base signifies no socioeconomic pathway used)
-        i_2030 = cba_raw.filter(regex='2030').values[0]
-        i_2050 = cba_raw.filter(regex='2050').values[0]
-        i_2080 = cba_raw.filter(regex='2080').values[0]
+        i_2030 = cba_raw.filter(like='2030', axis=0).filter(like=self.clim, axis=0).filter(like=socioecon, axis=0).filter(like=m, axis=0).values
+        i_2050 = cba_raw.filter(like='2050', axis=0).filter(like=self.clim, axis=0).filter(like=socioecon, axis=0).filter(like=m, axis=0).values
+        i_2080 = cba_raw.filter(like='2080', axis=0).filter(like=self.clim, axis=0).filter(like=socioecon, axis=0).filter(like=m, axis=0).values
         impact = [impact_present,i_2030, i_2050, i_2080]
 
         return impact
@@ -546,6 +550,7 @@ class CBAService(object):
                    "implementionStart": self.implementation_start,
                    "implementionEnd": self.implementation_end,
                    "infrastructureLifespan": self.infrastructure_life,
+                   "estimatedCosts":self.estimated_costs,
                    "benefitsStart": self.benefits_start,
                    "discount": self.discount_rate,
                    "om": self.om_costs,
@@ -579,7 +584,7 @@ class CBAEndService(object):
     #@cached_property
     def widget_annual_costs(self):
         """Urb_Benefits_avg / GDP_Costs_avg"""
-        return {'widgetId':'annual_costs','chart_type':'multi-line','meta':self.data['meta'], 'data':pd.melt(self.data['df'].reset_index()[['year','urb_benefits_avg','gdp_costs_avg']], id_vars=['year'], value_vars=['urb_benefits_avg','gdp_costs_avg'], var_name='c', value_name='value').to_dict('records')}
+        return {'widgetId':'annual_costs','chart_type':'multi-line','meta':self.data['meta'], 'data':pd.melt(self.data['df'].reset_index()[['year','urb_benefits_avg','gdp_costs_avg']].rename(index=str, columns={"urb_benefits_avg": "Benefits", "gdp_costs_avg": "Costs"}), id_vars=['year'], value_vars=['Benefits','Costs'], var_name='c', value_name='value').to_dict('records')}
     
     #@cached_property
     def widget_net_benefits(self):
@@ -627,5 +632,5 @@ class CBAEndService(object):
         return {'widgetId':'flood_prot','chart_type':'line', 'meta':self.data['meta'], 'data':fOutput[['year','value']].to_dict('records')}
     
     #@cached_property
-    def export(self):
+    def widget_export(self):
         return {'widgetId':'','meta':self.data['meta'], 'data':self.table.to_dict('records')}
