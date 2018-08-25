@@ -57,10 +57,8 @@ def get_by_geostore(geojson):
 @validate_params_cba
 def get_cba_widget(widget_id):
     """By Geostore Endpoint"""
-    logging.info('[ROUTER]: Getting cba widget')
-    logging.info(widget_id)
+    logging.info('[ROUTER]: Getting cba widget', widget_id)
     try:
-        logging.info(request.args.get("existing_prot")) 
         USER_INPUTS = {
     "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
     "existing_prot" : None if request.args.get("existing_prot") == 'null' else int(request.args.get("existing_prot")) ,
@@ -79,9 +77,6 @@ def get_cba_widget(widget_id):
     }
         output = CBAEndService(USER_INPUTS)
 
-        #widgets = {
-        #"cba1":
-        #}
     except DBError as e:
         logging.error('[ROUTER]: '+e.message)
         return error(status=500, detail=e.message)
