@@ -81,7 +81,7 @@ class CBAService(object):
             risk_analysis - can we use precalculated risk data, or do we need to calculate on-the-fly?
         """
         # GEOGUNIT INFO
-        fids, geogunit_name, geogunit_type = pd.read_sql_query("SELECT FIDS, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name), self.engine).values[0]
+        fids, geogunit_name, geogunit_type = pd.read_sql_query("SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name), self.engine).values[0]
 
         # IMPACT DRIVER INFO (climate and socioeconomc scenarios
         clim, socio, scen_abb = self.scenarios.get(self.scenario)
@@ -113,7 +113,8 @@ class CBAService(object):
         # Define the desired protection standard
         rpend = "endrp" + str(self.prot_fut).zfill(5)
 
-        return geogunit_name, geogunit_type, fids, clim, socio, scen_abb, prot_pres,rpend, build_start_end, year_range,  benefit_increase, prot_idx_fut, risk_analysis, df_prot
+        return geogunit_name, geogunit_type, fids, clim, socio, scen_abb, prot_pres,rpend,\
+         build_start_end, year_range,  benefit_increase, prot_idx_fut, risk_analysis, df_prot
 
     
     def run_stats(self, dataframe):
@@ -260,7 +261,7 @@ class CBAService(object):
         p = 1. / np.atleast_1d(rps)
         # Find the target impact given user-defined protection standard (rp) by running the interp_values function
         if target_impact.sum() == 0:
-            new_prot = np.nan
+            new_prot = np.array([rp])
         else:
             prot_impact = self.interp_value(rps, ref_impact, rp)
             new_prot = self.interp_value(target_impact, rps, prot_impact)
@@ -290,22 +291,20 @@ class CBAService(object):
             targetColNameList.append(targetColName)
         df = pd.DataFrame(np.transpose([uniStartRPList, targetColNameList, uniSRPdfList]),
                           columns=['startrp', 'tgtCol', 'df'])
+        
         costList = []
-        if user_urb == None:
-            for itl in np.arange(0, len(df.index), 1):
-                df_itl = df['df'].iloc[itl]
-                tgtCol_itl = df['tgtCol'].iloc[itl]
-                cost_itl = pd.read_sql_query("SELECT sum({0}) FROM {1} where id in ({2})".format(tgtCol_itl, df_cost , ", ".join(map(str, df_itl['FID'].values))), self.engine).values[0]
-                costList.append(cost_itl)
+        for itl in np.arange(0, len(df.index), 1):
+            df_itl = df['df'].iloc[itl]
+            tgtCol_itl = df['tgtCol'].iloc[itl]
+            cost_itl = pd.read_sql_query("SELECT sum({0}) FROM {1} where id in ({2})".format(tgtCol_itl, df_cost , ", ".join(map(str, df_itl['FID'].values))), self.engine).values[0]
+     ####-------------------------
+            # NEW CODE
+            if user_urb == None:
                 ppp_itl, con_itl = pd.read_sql_query("SELECT avg(ppp_mer_rate_2005_index) mean_1, avg(construction_cost_index) mean_2 FROM lookup_construction_factors_geogunit_108 where fid in ({0}) ".format(', '.join(map(str, self.fids))), self.engine).values[0]
-
                 costList.append(cost_itl*ppp_itl*con_itl)
-        else:
-            for itl in np.arange(0, len(df.index), 1):
-                df_itl = df['df'].iloc[itl]
-                tgtCol_itl = df['tgtCol'].iloc[itl]
-                cost_itl = pd.read_sql_query("SELECT sum({0}) FROM {1} where id in ({2})".format(tgtCol_itl, df_cost , ", ".join(map(str, df_itl['FID'].values))), self.engine).values[0]
+            else:
                 costList.append(cost_itl)
+    ####-------------------------
         totalCost = sum(costList)
         return totalCost
 
@@ -599,7 +598,7 @@ class CBAEndService(object):
         """GDP_Costs_avg"""
         fOutput = self.data['df'].reset_index()[['year','gdp_costs_avg']]
         minY=fOutput['year'].min() - 1
-        fOutput['value'] = (fOutput['gdp_costs_avg'] * (1+0.025)**(fOutput['year'] - minY )) / 10.1
+        fOutput['value'] = (fOutput['gdp_costs_avg'] * (1+self.data['meta']['discount'])**(fOutput['year'] - minY )) / 10.1
         fOutput.loc[fOutput['year'] > self.data['meta']['implementionEnd'], 'value'] = 0
 
         return {'widgetId':'impl_cost','chart_type':'bar','meta':self.data['meta'], 'data':fOutput[['year','value']].to_dict('records')}
@@ -619,7 +618,7 @@ class CBAEndService(object):
         maintenance = pd.Series(np.concatenate((mains,[mains[-1]] * (impS + life - impE +1 ))), index=years)
         fOutput.insert(1,'costs', maintenance )
         result = fOutput.reset_index()
-        result['value'] =result['costs']/ ((1 + 0.025) ** (result['year']-impS+1))
+        result['value'] =result['costs']/ ((1 + self.data['meta']['discount']) ** (result['year']-impS+1))
         
         return {'widgetId':'mainteinance','chart_type':'bar','meta':self.data['meta'], 'data':result[['year','value']].to_dict('records')}
     
@@ -633,4 +632,4 @@ class CBAEndService(object):
     
     #@cached_property
     def widget_export(self):
-        return {'widgetId':'','meta':self.data['meta'], 'data':self.table.to_dict('records')}
+        return {'widgetId':'','meta':self.data['meta'], 'data':self.data['df'].reset_index().to_dict('records')}
