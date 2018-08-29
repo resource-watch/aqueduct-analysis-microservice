@@ -38,11 +38,25 @@ def validate_params_cba(func):
     def wrapper(*args, **kwargs):
         if request.method == 'GET':
             userSelections = request.args
-            logging.info('[validator]: {0}'.format(list(userSelections.keys())))
             if not userSelections:
                 return error(status=400, detail='User Selections are required')
             elif len(list(userSelections.keys())) != 15:
                 return error(status=400, detail='please enter a valid user selection')
+        return func(*args, **kwargs)
+    return wrapper
+
+def validate_params_cba_def(func):
+    """World Validation"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if request.method == 'GET':
+            userSelections = request.args
+            if not userSelections:
+                return error(status=400, detail='User Selections are required')
+            elif 'geogunit_unique_name' not in list(userSelections.keys()):
+                return error(status=400, detail='please enter a valid location')
+            elif 'scenario' not in list(userSelections.keys()):
+                return error(status=400, detail='please enter a valid scenario')
         return func(*args, **kwargs)
     return wrapper
 

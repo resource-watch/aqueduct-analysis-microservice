@@ -19,7 +19,12 @@ def serialize_response_cba(data):
         'meta': data.get("meta", None),
         'data': data.get('data', None)
     }
-
+def serialize_response_default(data):
+    """."""
+    return {
+        'type': 'water-risk-cba-default',
+        'data': data
+    }
 def serialize_response_risk(data):
     """."""
     return data

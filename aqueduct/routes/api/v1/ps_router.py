@@ -11,8 +11,9 @@ from flask import jsonify, request, Blueprint, json
 from aqueduct.routes.api import error
 from aqueduct.services.analysis_service import AnalysisService
 from aqueduct.services.cba_service import CBAEndService
-from aqueduct.validators import validate_geostore, validate_weights, validate_params_cba
-from aqueduct.serializers import serialize_response
+from aqueduct.services.cba_defaults_service import CBADefaultService
+from aqueduct.validators import validate_geostore, validate_weights, validate_params_cba, validate_params_cba_def
+from aqueduct.serializers import serialize_response, serialize_response_cba ,serialize_response_default
 from aqueduct.middleware import get_geo_by_hash
 from aqueduct.errors import CartoError, DBError
 
@@ -80,7 +81,30 @@ def get_cba_widget(widget_id):
     except DBError as e:
         logging.error('[ROUTER]: '+e.message)
         return error(status=500, detail=e.message)
+    except Exception as e:
+        logging.error('[ROUTER]: '+str(e))
+        return error(status=500, detail='Generic Error')
     
-    return jsonify(json.loads(json.dumps(output.get_widget(widget_id),ignore_nan=True))), 200
+    return jsonify(serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id),ignore_nan=True)))), 200
+
+
+@aqueduct_analysis_endpoints_v1.route('/cba/default', strict_slashes=False, methods=['GET'])
+@validate_params_cba_def
+def get_cba_default():
+    logging.info('[ROUTER]: Getting cba default')
+    try:
+        USER_INPUTS = request.args
+        output = CBADefaultService(USER_INPUTS)
+    except DBError as e:
+        logging.error('[ROUTER]: '+e.message)
+        return error(status=500, detail=e.message)
+    except Exception as e:
+        logging.error('[ROUTER]: '+str(e))
+        return error(status=500, detail='Generic Error')
+
+    return jsonify(serialize_response_default(output.default())), 200
+
+
+
 
 
