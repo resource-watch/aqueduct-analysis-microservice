@@ -31,11 +31,12 @@ class CBADefaultService(object):
         ##prot
         read_prot = 'precalc_agg_riverine_{0}_nosub'.format(geogunit_type).lower()
         col_prot = 'urban_damage_v2_2010_{0}_prot_avg'.format(scen_abb)
-        df_prot = pd.read_sql_query("SELECT {0} FROM {1} where id like '{2}'".format(col_prot, read_prot, self.geogunit_unique_name), self.engine).values[0]
+        df_prot = pd.read_sql_query("SELECT {0} FROM {1} where id like '{2}'".format(col_prot, read_prot, self.geogunit_unique_name), self.engine)
         
         ##costs
-        con_itl = pd.read_sql_query("SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid in ({0}) ".format(', '.join(map(str, fids))), self.engine).values[0]
+        con_itl = pd.read_sql_query("SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid in ({0}) ".format(', '.join(map(str, fids))), self.engine)
+
         return [{
-            "existing_prot": df_prot.tolist()[0],
-            "estimated_costs": con_itl.tolist()[0]
+            "existing_prot": 0 if df_prot.empty else df_prot.values[0].tolist()[0],
+            "estimated_costs": 0 if con_itl.empty else con_itl.values[0].tolist()[0]
         }]
