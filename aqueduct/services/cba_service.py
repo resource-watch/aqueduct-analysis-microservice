@@ -62,6 +62,7 @@ class CBAService(object):
         self.df_gdp = self.inRAWFormat(self.geogunit, "gdpexp")
         self.df_urb = self.inRAWFormat(self.geogunit, "urban_damage_v2")
         self.filt_risk = pd.read_sql_query("SELECT * FROM Precalc_Riverine_geogunit_108_nosub where id in ({0})".format(', '.join(map(str, self.fids))), self.engine)
+        self.estimated_costs=None
     
     ##---------------------------------------------------
     ### FUNCTIONS FOR BOTH RISK AND CBA TABS          ###
@@ -80,7 +81,7 @@ class CBAService(object):
             risk_analysis - can we use precalculated risk data, or do we need to calculate on-the-fly?
         """
         # GEOGUNIT INFO
-        fids, geogunit_name, geogunit_type = pd.read_sql_query("SELECT FIDS, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name), self.engine).values[0]
+        fids, geogunit_name, geogunit_type = pd.read_sql_query("SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name), self.engine).values[0]
 
         # IMPACT DRIVER INFO (climate and socioeconomc scenarios
         clim, socio, scen_abb = self.scenarios.get(self.scenario)
@@ -112,7 +113,8 @@ class CBAService(object):
         # Define the desired protection standard
         rpend = "endrp" + str(self.prot_fut).zfill(5)
 
-        return geogunit_name, geogunit_type, fids, clim, socio, scen_abb, prot_pres,rpend, build_start_end, year_range,  benefit_increase, prot_idx_fut, risk_analysis, df_prot
+        return geogunit_name, geogunit_type, fids, clim, socio, scen_abb, prot_pres,rpend,\
+         build_start_end, year_range,  benefit_increase, prot_idx_fut, risk_analysis, df_prot
 
     
     def run_stats(self, dataframe):
@@ -259,7 +261,7 @@ class CBAService(object):
         p = 1. / np.atleast_1d(rps)
         # Find the target impact given user-defined protection standard (rp) by running the interp_values function
         if target_impact.sum() == 0:
-            new_prot = np.nan
+            new_prot = np.array([rp])
         else:
             prot_impact = self.interp_value(rps, ref_impact, rp)
             new_prot = self.interp_value(target_impact, rps, prot_impact)
@@ -289,22 +291,20 @@ class CBAService(object):
             targetColNameList.append(targetColName)
         df = pd.DataFrame(np.transpose([uniStartRPList, targetColNameList, uniSRPdfList]),
                           columns=['startrp', 'tgtCol', 'df'])
+        
         costList = []
-        if user_urb == None:
-            for itl in np.arange(0, len(df.index), 1):
-                df_itl = df['df'].iloc[itl]
-                tgtCol_itl = df['tgtCol'].iloc[itl]
-                cost_itl = pd.read_sql_query("SELECT sum({0}) FROM {1} where id in ({2})".format(tgtCol_itl, df_cost , ", ".join(map(str, df_itl['FID'].values))), self.engine).values[0]
-                costList.append(cost_itl)
+        for itl in np.arange(0, len(df.index), 1):
+            df_itl = df['df'].iloc[itl]
+            tgtCol_itl = df['tgtCol'].iloc[itl]
+            cost_itl = pd.read_sql_query("SELECT sum({0}) FROM {1} where id in ({2})".format(tgtCol_itl, df_cost , ", ".join(map(str, df_itl['FID'].values))), self.engine).values[0]
+     ####-------------------------
+            # NEW CODE
+            if user_urb == None:
                 ppp_itl, con_itl = pd.read_sql_query("SELECT avg(ppp_mer_rate_2005_index) mean_1, avg(construction_cost_index) mean_2 FROM lookup_construction_factors_geogunit_108 where fid in ({0}) ".format(', '.join(map(str, self.fids))), self.engine).values[0]
-
                 costList.append(cost_itl*ppp_itl*con_itl)
-        else:
-            for itl in np.arange(0, len(df.index), 1):
-                df_itl = df['df'].iloc[itl]
-                tgtCol_itl = df['tgtCol'].iloc[itl]
-                cost_itl = pd.read_sql_query("SELECT sum({0}) FROM {1} where id in ({2})".format(tgtCol_itl, df_cost , ", ".join(map(str, df_itl['FID'].values))), engine).values[0]
+            else:
                 costList.append(cost_itl)
+    ####-------------------------
         totalCost = sum(costList)
         return totalCost
 
@@ -398,11 +398,19 @@ class CBAService(object):
     def calc_impact(self, m, pt, ptid):
         """this can be improved with threads and is where the leak happens, a more ammount of fids, the runtime increases"""
         annual_risk, annual_pop, annual_gdp = 0, 0, 0
+        
+        #cba_raw = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(columns), inData, inName), self.engine)
+        #impact_present = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(cols), inData, inName), self.engine).values[0]
+        df_urb= pd.read_sql_query("SELECT * FROM {0} where id in ({1}) ".format( self.df_urb, ', '.join(map(str, self.fids))), self.engine)
+        df_pop= pd.read_sql_query("SELECT * FROM {1} where id in ({2}) ".format(', '.join([col for col in sqlalchemy.Table(self.df_pop, self.metadata).columns.keys() if (self.clim in col) and (self.socio in col) and (m in col)]), self.df_pop, ', '.join(map(str, self.fids))), self.engine)
+        df_gdp= pd.read_sql_query("SELECT * FROM {1} where id in ({2}) ".format(', '.join([col for col in sqlalchemy.Table(self.df_gdp, self.metadata).columns.keys() if (self.clim in col) and (self.socio in col) and (m in col)]), self.df_gdp, ', '.join(map(str, self.fids))), self.engine)
+        # Present data = 2010 data
+        #impact_present = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(cols), inData, inName), self.engine).values[0]
         for f in self.fids:
-            impact_cc = self.select_impact(m, self.df_urb, f, "base")
-            impact_urb = self.select_impact(m, self.df_urb, f, self.socio)
-            impact_pop = self.select_impact(m, self.df_pop, f, self.socio)
-            impact_gdp = self.select_impact(m, self.df_gdp, f, self.socio)
+            impact_cc =  self.select_impact(m,  df_urb, f, "base")
+            impact_urb = self.select_impact(m, df_urb, f, self.socio)
+            impact_pop = self.select_impact(m, df_pop, f, self.socio)
+            impact_gdp = self.select_impact(m, df_gdp, f, self.socio)
             f_risk, f_pop, f_gdp = self.risk_evolution(impact_cc, impact_urb, impact_pop, impact_gdp,  pt, ptid)
             annual_risk = annual_risk + f_risk
             annual_pop = annual_pop + f_pop
@@ -453,18 +461,13 @@ class CBAService(object):
         
         Time is being killed here on big selections
         """
-        
-        # Filter raw data by subunit
-        columns =[col for col in sqlalchemy.Table(inData, self.metadata).columns.keys() if (self.clim in col) and (socioecon in col) and (m in col)]
-        cols =[col for col in sqlalchemy.Table(inData, self.metadata).columns.keys() if("_2010_" in col)]
-        cba_raw = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(columns), inData, inName), self.engine)
-
+        cba_raw = inData.set_index('id').loc[inName]
         # Present data = 2010 data
-        impact_present = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(cols), inData, inName), self.engine).values[0]
+        impact_present = cba_raw.filter(like="_2010_", axis=0).values
         # For all years, pull the climate change only data (base signifies no socioeconomic pathway used)
-        i_2030 = cba_raw.filter(regex='2030').values[0]
-        i_2050 = cba_raw.filter(regex='2050').values[0]
-        i_2080 = cba_raw.filter(regex='2080').values[0]
+        i_2030 = cba_raw.filter(like='2030', axis=0).filter(like=self.clim, axis=0).filter(like=socioecon, axis=0).filter(like=m, axis=0).values
+        i_2050 = cba_raw.filter(like='2050', axis=0).filter(like=self.clim, axis=0).filter(like=socioecon, axis=0).filter(like=m, axis=0).values
+        i_2080 = cba_raw.filter(like='2080', axis=0).filter(like=self.clim, axis=0).filter(like=socioecon, axis=0).filter(like=m, axis=0).values
         impact = [impact_present,i_2030, i_2050, i_2080]
 
         return impact
@@ -491,12 +494,12 @@ class CBAService(object):
             if self.risk_analysis == "precalc":
                 annual_risk_pres, annual_pop_pres, annual_gdp_pres, annual_prot_pres = self.precalc_present_benefits(m)
             else:
-                annual_risk_pres, annual_pop_pres, annual_gdp_pres = self.calc_impact(m, prot_pres, 0)
+                annual_risk_pres, annual_pop_pres, annual_gdp_pres = self.calc_impact(m, self.prot_pres, 0)
                 prot_pres_list = []
-                for y in ys:
-                    prot_pres_list.append(average_prot(m, y, annual_risk_pres))
-                prot_func_pres = extrap1d(interp1d(years, prot_pres_list))
-                annual_prot_pres = prot_func_pres(time_series)  # Run timeseries through interpolation function
+                for y in self.ys:
+                    prot_pres_list.append(self.average_prot(m, y, annual_risk_pres))
+                prot_func_pres = self.extrap1d(interp1d(self.years, prot_pres_list))
+                annual_prot_pres = prot_func_pres(self.time_series)  # Run timeseries through interpolation function
             #logging.debug( m, "present done", time.time() - start_time)
             
             #start_time = time.time()
@@ -546,6 +549,7 @@ class CBAService(object):
                    "implementionStart": self.implementation_start,
                    "implementionEnd": self.implementation_end,
                    "infrastructureLifespan": self.infrastructure_life,
+                   "estimatedCosts":self.estimated_costs,
                    "benefitsStart": self.benefits_start,
                    "discount": self.discount_rate,
                    "om": self.om_costs,
@@ -566,19 +570,20 @@ class CBAEndService(object):
 
     #@cached_property
     def widget_table(self):
-        fOutput = self.data['df'][['urb_benefits_avg','gdp_costs_avg']]
+        fOutput = self.data['df'][['urb_benefits_avg','gdp_costs_avg','pop_benefits_avg','gdp_benefits_avg']]
         cumOut = fOutput.sum()
         
         #npv = None
-        #irr = None
-        bcr =  cumOut['gdp_costs_avg'] / cumOut['urb_benefits_avg'] 
+        avoidedGdp = fOutput.loc[self.data['meta']['implementionEnd']:].gdp_benefits_avg.sum()
+        avoidedPop = fOutput.loc[self.data['meta']['implementionEnd']:].pop_benefits_avg.sum()
+        bcr =  round((cumOut['gdp_costs_avg'] / cumOut['urb_benefits_avg'])*100,2) 
         
-        return {'widgetId':'table','chart_type':'table','meta':self.data['meta'], 'data':[{'bcr':bcr}]}
+        return {'widgetId':'table','chart_type':'table','meta':self.data['meta'], 'data':[{'bcr':bcr, 'avoidedPop':avoidedPop, 'avoidedGdp':avoidedGdp}]}
     
     #@cached_property
     def widget_annual_costs(self):
         """Urb_Benefits_avg / GDP_Costs_avg"""
-        return {'widgetId':'annual_costs','chart_type':'multi-line','meta':self.data['meta'], 'data':pd.melt(self.data['df'].reset_index()[['year','urb_benefits_avg','gdp_costs_avg']], id_vars=['year'], value_vars=['urb_benefits_avg','gdp_costs_avg'], var_name='c', value_name='value').to_dict('records')}
+        return {'widgetId':'annual_costs','chart_type':'multi-line','meta':self.data['meta'], 'data':pd.melt(self.data['df'].reset_index()[['year','urb_benefits_avg','gdp_costs_avg']].rename(index=str, columns={"urb_benefits_avg": "Benefits", "gdp_costs_avg": "Costs"}), id_vars=['year'], value_vars=['Benefits','Costs'], var_name='c', value_name='value').to_dict('records')}
     
     #@cached_property
     def widget_net_benefits(self):
@@ -593,7 +598,7 @@ class CBAEndService(object):
         """GDP_Costs_avg"""
         fOutput = self.data['df'].reset_index()[['year','gdp_costs_avg']]
         minY=fOutput['year'].min() - 1
-        fOutput['value'] = (fOutput['gdp_costs_avg'] * (1+0.025)**(fOutput['year'] - minY )) / 10.1
+        fOutput['value'] = (fOutput['gdp_costs_avg'] * (1+self.data['meta']['discount'])**(fOutput['year'] - minY )) / 10.1
         fOutput.loc[fOutput['year'] > self.data['meta']['implementionEnd'], 'value'] = 0
 
         return {'widgetId':'impl_cost','chart_type':'bar','meta':self.data['meta'], 'data':fOutput[['year','value']].to_dict('records')}
@@ -613,7 +618,7 @@ class CBAEndService(object):
         maintenance = pd.Series(np.concatenate((mains,[mains[-1]] * (impS + life - impE +1 ))), index=years)
         fOutput.insert(1,'costs', maintenance )
         result = fOutput.reset_index()
-        result['value'] =result['costs']/ ((1 + 0.025) ** (result['year']-impS+1))
+        result['value'] =result['costs']/ ((1 + self.data['meta']['discount']) ** (result['year']-impS+1))
         
         return {'widgetId':'mainteinance','chart_type':'bar','meta':self.data['meta'], 'data':result[['year','value']].to_dict('records')}
     
@@ -626,5 +631,5 @@ class CBAEndService(object):
         return {'widgetId':'flood_prot','chart_type':'line', 'meta':self.data['meta'], 'data':fOutput[['year','value']].to_dict('records')}
     
     #@cached_property
-    def export(self):
-        return {'widgetId':'','meta':self.data['meta'], 'data':self.table.to_dict('records')}
+    def widget_export(self):
+        return {'widgetId':'','meta':self.data['meta'], 'data':self.data['df'].reset_index().to_dict('records')}

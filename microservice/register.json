@@ -17,5 +17,15 @@
 			"method": "GET",
 			"path": "/api/v1/aqueduct/analysis/cba/widget/:widget_id"
 		}
-	}]
+	},
+	{
+		"path": "/v1/aqueduct/analysis/cba/default",
+		"method": "GET",
+		"binary": true,
+		"redirect": {
+			"method": "GET",
+			"path": "/api/v1/aqueduct/analysis/cba/default"
+		}
+	}
+	]
 }
