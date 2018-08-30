@@ -583,11 +583,13 @@ class CBAEndService(object):
     #@cached_property
     def widget_annual_costs(self):
         """Urb_Benefits_avg / GDP_Costs_avg"""
+        self.data['meta']["yAxisTitle"] = 'Cost and Benefits ($)'
         return {'widgetId':'annual_costs','chart_type':'multi-line','meta':self.data['meta'], 'data':pd.melt(self.data['df'].reset_index()[['year','urb_benefits_avg','gdp_costs_avg']].rename(index=str, columns={"urb_benefits_avg": "Benefits", "gdp_costs_avg": "Costs"}), id_vars=['year'], value_vars=['Benefits','Costs'], var_name='c', value_name='value').to_dict('records')}
     
     #@cached_property
     def widget_net_benefits(self):
         """Urb_Benefits_avg / GDP_Costs_avg --> net cummulative costs"""
+        self.data['meta']["yAxisTitle"] = 'Cumulative Net Benefits ($)'
         fOutput = self.data['df'][['urb_benefits_avg','gdp_costs_avg']].cumsum()
         fOutput['value'] = fOutput['urb_benefits_avg'] - fOutput['gdp_costs_avg']
 
@@ -596,6 +598,7 @@ class CBAEndService(object):
     #@cached_property
     def widget_impl_cost(self):
         """GDP_Costs_avg"""
+        self.data['meta']["yAxisTitle"] = 'Implementation Cost ($)'
         fOutput = self.data['df'].reset_index()[['year','gdp_costs_avg']]
         minY=fOutput['year'].min() - 1
         fOutput['value'] = (fOutput['gdp_costs_avg'] * (1+self.data['meta']['discount'])**(fOutput['year'] - minY )) / 10.1
@@ -605,11 +608,14 @@ class CBAEndService(object):
     
     #@cached_property
     def widget_mainteinance(self):
+        self.data['meta']["yAxisTitle"] = 'Operation & Mainteinance Cost($)'
+
         fOutput = self.data['df'][['gdp_costs_avg']]
         cost = fOutput.loc[self.data['meta']['implementionEnd']]['gdp_costs_avg']
         impE =self.data['meta']['implementionEnd']
         impS =self.data['meta']['implementionStart']
         life = self.data['meta']['infrastructureLifespan']
+        
         build_years =  impE - impS
         years = list(range(impS, impS + life +1))
         mp = [1/build_years*cost for i in range(build_years)]
@@ -624,6 +630,8 @@ class CBAEndService(object):
     
     #@cached_property
     def widget_flood_prot(self):
+        self.data['meta']["yAxisTitle"] = 'Protection level (Return period)'
+
         fOutput = self.data['df'].reset_index()[['year','gdp_costs_avg','prot_present_avg','prot_future_avg']]
         fn = lambda row: row.prot_present_avg if row.year <= self.data['meta']["benefitsStart"] else row.prot_future_avg if row.year >= self.data['meta']["implementionEnd"] else None 
         fOutput['value'] = fOutput.apply(fn, axis=1)
