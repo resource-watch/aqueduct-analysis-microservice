@@ -38,5 +38,7 @@ class CBADefaultService(object):
 
         return [{
             "existing_prot": 0 if df_prot.empty else df_prot.values[0].tolist()[0],
+            "future_prot": 0 if con_itl.empty else con_itl.values[0].tolist()[0],
             "estimated_costs": 0 if con_itl.empty else con_itl.values[0].tolist()[0]
+
         }]
