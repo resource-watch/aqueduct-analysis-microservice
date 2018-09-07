@@ -85,7 +85,7 @@ def get_cba_widget(widget_id):
         logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail='Generic Error')
     
-    return jsonify(serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id),ignore_nan=True)))), 200
+    return jsonify(serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
 
 
 @aqueduct_analysis_endpoints_v1.route('/cba/default', strict_slashes=False, methods=['GET'])
