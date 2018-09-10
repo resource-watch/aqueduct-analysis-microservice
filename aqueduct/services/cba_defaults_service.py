@@ -40,7 +40,7 @@ class CBADefaultService(object):
 
         return [{
             "existing_prot": prot_val,
-            "future_prot": int(rps[np.where(rps > prot_val)][0]),
+            "prot_fut": int(rps[np.where(rps > prot_val)][0]),
             "estimated_costs": 0 if con_itl.empty else con_itl.values[0].tolist()[0]
 
         }]
