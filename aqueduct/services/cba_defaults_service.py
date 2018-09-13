@@ -36,11 +36,11 @@ class CBADefaultService(object):
         prot_val = 0 if df_prot.empty else df_prot.values[0].tolist()[0]
         
         ##costs
-        con_itl = pd.read_sql_query("SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid in ({0}) ".format(', '.join(map(str, fids))), self.engine)
+        con_itl = pd.read_sql_query("SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(', '.join(map(str, fids))), self.engine)
 
         return [{
             "existing_prot": prot_val,
-            "future_prot": int(rps[np.where(rps > prot_val)][0]),
+            "prot_fut": int(rps[np.where(rps > prot_val)][0]),
             "estimated_costs": 0 if con_itl.empty else con_itl.values[0].tolist()[0]
 
         }]

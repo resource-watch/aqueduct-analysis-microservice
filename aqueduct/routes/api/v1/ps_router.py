@@ -12,7 +12,7 @@ from aqueduct.routes.api import error
 from aqueduct.services.analysis_service import AnalysisService
 from aqueduct.services.cba_service import CBAEndService
 from aqueduct.services.cba_defaults_service import CBADefaultService
-from aqueduct.validators import validate_geostore, validate_weights, validate_params_cba, validate_params_cba_def
+from aqueduct.validators import validate_geostore, validate_weights, validate_params_cba, validate_params_cba_def, validate_params_risk
 from aqueduct.serializers import serialize_response, serialize_response_cba ,serialize_response_default
 from aqueduct.middleware import get_geo_by_hash
 from aqueduct.errors import CartoError, DBError
@@ -58,7 +58,7 @@ def get_by_geostore(geojson):
 @validate_params_cba
 def get_cba_widget(widget_id):
     """By Geostore Endpoint"""
-    logging.info('[ROUTER]: Getting cba widget', widget_id)
+    logging.info('[ROUTER]: Getting cba widget ', +widget_id)
     try:
         USER_INPUTS = {
     "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
@@ -85,7 +85,7 @@ def get_cba_widget(widget_id):
         logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail='Generic Error')
     
-    return jsonify(serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id),ignore_nan=True)))), 200
+    return jsonify(serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
 
 
 @aqueduct_analysis_endpoints_v1.route('/cba/default', strict_slashes=False, methods=['GET'])
@@ -104,6 +104,21 @@ def get_cba_default():
 
     return jsonify(serialize_response_default(output.default())), 200
 
+@aqueduct_analysis_endpoints_v1.route('/risk/widget/<widget_id>', strict_slashes=False, methods=['GET'])
+@validate_params_risk
+def get_risk_widget():
+    logging.info('[ROUTER]: Getting risk widget ', +widget_id)
+    try:
+        USER_INPUTS = request.args
+
+    except DBError as e:
+        logging.error('[ROUTER]: '+e.message)
+        return error(status=500, detail=e.message)
+    except Exception as e:
+        logging.error('[ROUTER]: '+str(e))
+        return error(status=500, detail='Generic Error')
+
+    return jsonify({'status': 'well done, thanks for using the service :d'}), 200
 
 
 
