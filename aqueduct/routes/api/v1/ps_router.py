@@ -58,7 +58,7 @@ def get_by_geostore(geojson):
 @validate_params_cba
 def get_cba_widget(widget_id):
     """By Geostore Endpoint"""
-    logging.info('[ROUTER]: Getting cba widget ', widget_id)
+    logging.info('[ROUTER]: Getting cba widget ', +widget_id)
     try:
         USER_INPUTS = {
     "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
@@ -107,7 +107,7 @@ def get_cba_default():
 @aqueduct_analysis_endpoints_v1.route('/risk/widget/<widget_id>', strict_slashes=False, methods=['GET'])
 @validate_params_risk
 def get_risk_widget():
-    logging.info('[ROUTER]: Getting risk widget ', widget_id)
+    logging.info('[ROUTER]: Getting risk widget ', +widget_id)
     try:
         USER_INPUTS = request.args
 
