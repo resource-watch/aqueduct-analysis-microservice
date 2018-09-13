@@ -130,7 +130,7 @@ class CBAService(object):
         return df_stats
     
     def compute_costs(self,m, input_total_cost, exposure):
-        stime1 = time.time()
+        
         """
            Output:
             time series of costs without any discount rate included
@@ -300,7 +300,7 @@ class CBAService(object):
      ####-------------------------
             # NEW CODE
             if user_urb == None:
-                ppp_itl, con_itl = pd.read_sql_query("SELECT avg(ppp_mer_rate_2005_index) mean_1, avg(construction_cost_index) mean_2 FROM lookup_construction_factors_geogunit_108 where fid in ({0}) ".format(', '.join(map(str, self.fids))), self.engine).values[0]
+                ppp_itl, con_itl = pd.read_sql_query("SELECT avg(ppp_mer_rate_2005_index) mean_1, avg(construction_cost_index) mean_2 FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(', '.join(map(str, self.fids))), self.engine).values[0]
                 costList.append(cost_itl*ppp_itl*con_itl)
             else:
                 costList.append(cost_itl)
@@ -317,7 +317,7 @@ class CBAService(object):
         Output:
             cost = total cost of dike
         """
-        lookup_c = pd.read_sql_query("SELECT * FROM lookup_{0} where {1} = '{2}' ".format(self.cost_option, self.geogunit_type, self.geogunit_name), self.engine)
+        lookup_c = pd.read_sql_query("SELECT * FROM lookup_geogunit_108 where {0} = '{1}' ".format(self.geogunit_type, self.geogunit_name), self.engine, 'id')
         lookup_c["FID"] = lookup_c.index
         lookup_c["startrp"] = lookup_c["riverine"].apply(lambda x: self.find_startrp(x))
         urb_dimensions = self.find_dimension_v2(m, lookup_c, self.df_urb_all, user_urb)
@@ -574,9 +574,9 @@ class CBAEndService(object):
         cumOut = fOutput.sum()
         
         #npv = None
-        avoidedGdp = fOutput.loc[self.data['meta']['implementionEnd']:].gdp_benefits_avg.sum()
-        avoidedPop = fOutput.loc[self.data['meta']['implementionEnd']:].pop_benefits_avg.sum()
-        bcr =  round((cumOut['gdp_costs_avg'] / cumOut['urb_benefits_avg'])*100,2) 
+        avoidedGdp = round(fOutput.loc[self.data['meta']['implementionEnd']:].gdp_benefits_avg.sum())
+        avoidedPop = round(fOutput.loc[self.data['meta']['implementionEnd']:].pop_benefits_avg.sum())
+        bcr =  round((cumOut['gdp_costs_avg'] / cumOut['urb_benefits_avg']),2) 
         
         return {'widgetId':'table','chart_type':'table','meta':self.data['meta'], 'data':[{'bcr':bcr, 'avoidedPop':avoidedPop, 'avoidedGdp':avoidedGdp}]}
     

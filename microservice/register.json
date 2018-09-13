@@ -26,6 +26,15 @@
 			"method": "GET",
 			"path": "/api/v1/aqueduct/analysis/cba/default"
 		}
+	},
+	{
+		"path": "/v1/aqueduct/analysis/risk/widget/:widget_id",
+		"method": "GET",
+		"binary": true,
+		"redirect": {
+			"method": "GET",
+			"path": "/api/v1/aqueduct/analysis/risk/widget/:widget_id"
+		}
 	}
 	]
 }
