@@ -522,7 +522,14 @@ class RiskService(object):
         return {'widgetId':'flood_drivers','chart_type':'flood_drivers','meta':self.meta, 'data': self.getRisk().reset_index()[['index','Annual_Damage_Avg', 'Annual_Damage_Min', 'Annual_Damage_Max', 'Percent_Damage_Avg', 'Percent_Damage_Min', 'Percent_Damage_Max', 'CC_Driver_Avg', 'CC_Driver_Min', 'CC_Driver_Max', 'Soc_Driver', 'Sub_Driver']].to_dict('records')}
 
     def widget_benchmark(self):
-        return {'widgetId': "benchmark", "chart_type": "benchmark", "meta": self.meta, "data": self.bench().reset_index().to_dict('records')}
+        benchData = self.bench().reset_index()
+        per =   pd.melt(benchData[['id', 'bench_2010_prot_avg','bench_2030_prot_avg','bench_2050_prot_avg','bench_2080_prot_avg']], id_vars=['id'], value_vars=['bench_2010_prot_avg','bench_2030_prot_avg','bench_2050_prot_avg','bench_2080_prot_avg'], var_name='c', value_name='prot')
+        per['year']=per.c.str.split('_').str.get(1)
+        tot =   pd.melt(benchData[['id','bench_2010_tot_avg','bench_2030_tot_avg','bench_2050_tot_avg','bench_2080_tot_avg','bench_2010_per_avg','bench_2030_per_avg','bench_2050_per_avg','bench_2080_per_avg']], id_vars=['id'], value_vars=['bench_2010_per_avg','bench_2030_per_avg','bench_2050_per_avg','bench_2080_per_avg','bench_2010_tot_avg','bench_2030_tot_avg','bench_2050_tot_avg','bench_2080_tot_avg'], var_name='c1', value_name='value')
+        tot['year'] = tot['c1'].str.split('_').str.get(1)
+        tot['type'] = tot['c1'].str.split('_').str.get(2)
+        fData = per.merge(tot, how='right', left_on = ['id','year'], right_on = ['id','year'])
+        return {'widgetId': "benchmark", "chart_type": "benchmark", "meta": self.meta, "data": fData.reset_index()[['id', 'year','type','value', 'prot']].to_dict('records')}
 
     def widget_lp_curve(self):
         return {'widgetId': "lp_curve", "chart_type": "lp_curve", "meta": self.meta, "data": self.lp_data().to_dict('records')}
