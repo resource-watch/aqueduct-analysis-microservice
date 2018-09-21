@@ -12,8 +12,9 @@ from aqueduct.routes.api import error
 from aqueduct.services.analysis_service import AnalysisService
 from aqueduct.services.cba_service import CBAEndService
 from aqueduct.services.cba_defaults_service import CBADefaultService
+from aqueduct.services.risk_service import RiskService
 from aqueduct.validators import validate_geostore, validate_weights, validate_params_cba, validate_params_cba_def, validate_params_risk
-from aqueduct.serializers import serialize_response, serialize_response_cba ,serialize_response_default
+from aqueduct.serializers import serialize_response, serialize_response_cba ,serialize_response_default, serialize_response_risk
 from aqueduct.middleware import get_geo_by_hash
 from aqueduct.errors import CartoError, DBError
 
@@ -106,10 +107,19 @@ def get_cba_default():
 
 @aqueduct_analysis_endpoints_v1.route('/risk/widget/<widget_id>', strict_slashes=False, methods=['GET'])
 @validate_params_risk
-def get_risk_widget():
+def get_risk_widget(widget_id):
     logging.info('[ROUTER]: Getting risk widget ' + widget_id)
     try:
-        USER_INPUTS = request.args
+        USER_INPUTS = {
+                "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
+                "existing_prot" : None if request.args.get("existing_prot") == 'null' else int(request.args.get("existing_prot")) ,
+                "scenario" : request.args.get("scenario").lower(),
+                "sub_scenario" : True if request.args.get("sub_scenario") == 'true' else False,
+                "exposure" : request.args.get("exposure").lower(),
+                "flood" : request.args.get("flood").lower()
+            }
+
+        output = RiskService(USER_INPUTS)
 
     except DBError as e:
         logging.error('[ROUTER]: '+e.message)
@@ -118,7 +128,7 @@ def get_risk_widget():
         logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail='Generic Error')
 
-    return jsonify({'status': 'well done, thanks for using the service :d'}), 200
+    return jsonify(serialize_response_risk(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
 
 
 
