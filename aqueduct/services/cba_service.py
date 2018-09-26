@@ -18,9 +18,9 @@ class CBAService(object):
         #self.flood = "Riverine"
         self.exposures = ["gdpexp", "popexp", "urban_damage_v2"]
         self.geogunit = "geogunit_108"
-        self.scenarios = {"Business as usual": ['rcp8p5', 'ssp2', "bau"],
-                     "Pessimistic": ['rcp8p5', 'ssp3', "pes"],
-                     "Optimistic": ['rcp4p5', 'ssp2', "opt"]}
+        self.scenarios = {"business as usual": ['rcp8p5', 'ssp2', "bau"],
+                     "pessimistic": ['rcp8p5', 'ssp3', "pes"],
+                     "optimistic": ['rcp4p5', 'ssp2', "opt"]}
         self.sub_abb = "nosub"
         self.mods = ["gf", "ha", "ip", "mi", "nr"]
         self.years = [2010., 2030., 2050., 2080.]

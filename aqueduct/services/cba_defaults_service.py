@@ -14,9 +14,9 @@ class CBADefaultService(object):
         self.metadata.reflect(self.engine)
         ### BACKGROUND INTO 
         #self.flood = "Riverine"
-        self.scenarios = {"Business as usual": ['rcp8p5', 'ssp2', "bau"],
-                     "Pessimistic": ['rcp8p5', 'ssp3', "pes"],
-                     "Optimistic": ['rcp4p5', 'ssp2', "opt"]}
+        self.scenarios = {"business as usual": ['rcp8p5', 'ssp2', "bau"],
+                     "pessimistic": ['rcp8p5', 'ssp3', "pes"],
+                     "optimistic": ['rcp4p5', 'ssp2', "opt"]}
         ###  USER INPUTS 
         self.geogunit_unique_name = user_selections.get("geogunit_unique_name")
         self.scenario = self.scenarios.get(user_selections.get("scenario"))
