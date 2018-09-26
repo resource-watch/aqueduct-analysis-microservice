@@ -63,7 +63,7 @@ def get_cba_widget(widget_id):
     try:
         USER_INPUTS = {
     "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
-    "existing_prot" : None if request.args.get("existing_prot") == 'null' else int(request.args.get("existing_prot")) ,
+    "existing_prot" : None if request.args.get("existing_prot") == 'null' else round(float(request.args.get("existing_prot"))) ,
     "scenario" : request.args.get("scenario"),
     "prot_fut" : int(request.args.get("prot_fut")),
     "implementation_start" : int(request.args.get("implementation_start")),
@@ -84,7 +84,7 @@ def get_cba_widget(widget_id):
         return error(status=500, detail=e.message)
     except Exception as e:
         logging.error('[ROUTER]: '+str(e))
-        return error(status=500, detail='Generic Error')
+        return error(status=500, detail=e.message)
     
     return jsonify(serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
 
@@ -101,7 +101,7 @@ def get_cba_default():
         return error(status=500, detail=e.message)
     except Exception as e:
         logging.error('[ROUTER]: '+str(e))
-        return error(status=500, detail='Generic Error')
+        return error(status=500, detail=e.message)
 
     return jsonify(serialize_response_default(output.default())), 200
 
@@ -126,7 +126,7 @@ def get_risk_widget(widget_id):
         return error(status=500, detail=e.message)
     except Exception as e:
         logging.error('[ROUTER]: '+str(e))
-        return error(status=500, detail='Generic Error')
+        return error(status=500, detail=e.message)
 
     return jsonify(serialize_response_risk(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
 
