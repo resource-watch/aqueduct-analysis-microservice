@@ -109,7 +109,8 @@ class RiskService(object):
     def bench(self):
         defaultfn = "precalc_agg_{0}_{1}_{2}".format(self.flood, self.geogunit_type, self.sub_abb)
         print(defaultfn)
-        cols = ['{0} as {1}'.format(col, col.replace(self.exposure, 'bench').replace("_"+ self.scen_abb, '')) for col in sqlalchemy.Table(defaultfn, self.metadata).columns.keys() if (self.exposure in col) and (self.scen_abb in col) and ("cc" not in col) and ("soc" not in col) and ("sub" not in col) and ("avg" in col)]
+
+        cols = ['{0} as {1}'.format(col, col.replace(self.exposure, 'bench').replace('urban_damage_v2', 'bench').replace("_"+ self.scen_abb, '')) for col in sqlalchemy.Table(defaultfn, self.metadata).columns.keys() if ((self.exposure in col) or ('urban_damage_v2' in col)) and (self.scen_abb in col) and ("cc" not in col) and ("soc" not in col) and ("sub" not in col) and ("avg" in col)]
         benchData = pd.read_sql_query("SELECT id, {0} FROM {1}".format(', '.join(cols), defaultfn), self.engine, index_col='id')
 
         return benchData
