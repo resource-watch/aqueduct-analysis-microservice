@@ -55,6 +55,22 @@ def get_by_geostore(geojson):
     logging.info('[ROUTER]: Getting water risk analysis by geostore')
     return analyze(geojson)
 
+@aqueduct_analysis_endpoints_v1.route('/cba', strict_slashes=False, methods=['GET'])
+@validate_params_cba
+def precalc_cba():
+    logging.info('[ROUTER]: Getting cba default')
+    try:
+        USER_INPUTS = request.args
+        output = CBADefaultService(USER_INPUTS)
+    except DBError as e:
+        logging.error('[ROUTER]: '+str(e))
+        return error(status=500, detail=e.message)
+    except Exception as e:
+        logging.error('[ROUTER]: '+str(e))
+        return error(status=500, detail=e.message)
+
+    return jsonify(serialize_response_default(output.default())), 200
+
 @aqueduct_analysis_endpoints_v1.route('/cba/widget/<widget_id>', strict_slashes=False, methods=['GET'])
 @validate_params_cba
 def get_cba_widget(widget_id):
@@ -97,7 +113,7 @@ def get_cba_default():
         USER_INPUTS = request.args
         output = CBADefaultService(USER_INPUTS)
     except DBError as e:
-        logging.error('[ROUTER]: '+e.message)
+        logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail=e.message)
     except Exception as e:
         logging.error('[ROUTER]: '+str(e))
