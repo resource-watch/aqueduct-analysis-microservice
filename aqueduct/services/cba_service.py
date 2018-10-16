@@ -593,10 +593,10 @@ class CBAICache(object):
         """
         try:
             myCache = sqlalchemy.Table("cache_cba", self.metadata,
-                    Column('id', Integer, primary_key=True),
-                    Column('key', Text),
+                    Column('id', Integer, primary_key=True, unique=True),
+                    Column('key', Text, unique=True, index=True),
                     Column('value', JSON),
-                    Column('last_updated', DateTime, onupdate=datetime.datetime.now)
+                    Column('last_updated', DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now)
                )
             myCache.create()
         except Exception as e:
