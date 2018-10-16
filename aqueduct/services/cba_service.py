@@ -6,7 +6,8 @@ import datetime
 from scipy.interpolate import interp1d, interp2d
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSON, JSONB
-from sqlalchemy import Column, Integer, Text, DateTime 
+from sqlalchemy import Column, Integer, Text, DateTime
+from flask import jsonify, json 
 from cached_property import cached_property
 import logging
 from aqueduct.errors import DBError
@@ -581,26 +582,17 @@ class CBAICache(object):
         #self.metadata.reflect(self.engine)
         self.params = params
 
+    @property
+    def _generateKey(self):
+        return '_'.join( [str(value) for (key, value) in sorted(self.params.items())] ) 
+
     def _createTable(self):
         """
         where key is a composition of the user selected params: 
-        "geogunit_unique_name"
-        "existing_prot" 
-        "scenario" 
-        "prot_fut" 
-        "implementation_start"
-        "implementation_end" 
-        "infrastructure_life" 
-        "benefits_start" 
-        "ref_year" 
-        "estimated_costs" 
-        "discount_rate" 
-        "om_costs" 
-        "user_urb_cost" 
-        "user_rur_cost" 
+        "geogunit_unique_name"_"existing_prot"_"scenario"_"prot_fut"_"implementation_start_"implementation_end"_"infrastructure_life"_"benefits_start"_"ref_year"_"estimated_costs"_"discount_rate"_"om_costs"_"user_urb_cost"_"user_rur_cost"
         """
         try:
-            myCache = Table("cache_cba", self.metadata,
+            myCache = sqlalchemy.Table("cache_cba", self.metadata,
                     Column('id', Integer, primary_key=True),
                     Column('key', Text),
                     Column('value', JSON),
@@ -609,51 +601,79 @@ class CBAICache(object):
             myCache.create()
         except Exception as e:
             logging.error('[CBAICache, _createTable]: '+str(e))
-            return error(status=500, detail='Generic Error')
+            return error(status=500, detail='cache table creation failed')
         return myCache
 
     def checkParams(self):
         try:
-            x=1
+            table = self.metadata.tables['cache_cba']
+
+            logging.info('[CBAICache, checkParams]: check params...')
+            #logging.info(self._generateKey)
+            select_st = table.select().where(table.c.key == self._generateKey)
+            res = self.engine.connect().execute(select_st).fetchone()
+            logging.info(res)
+            return res
         except Exception as e:         
-            logging.error('[CBAICache, _createTable]: '+str(e))
+            logging.error('[CBAICache, checkParams]: '+str(e))
             return error(status=500, detail='Generic Error')
 
-    def insertRecord(self):
-        return 0
+    def insertRecord(self,key, data):
+        # insert data via insert() construct
+        try:
+            table = self.metadata.tables['cache_cba']
+            ins = table.insert().values(
+                  key=key,
+                  value=data)
+            conn = self.engine.connect()
+            conn.execute(ins)
+
+            return 200
+
+        except Exception as e:         
+            logging.error('[CBAICache, insertRecord]: '+str(e))
+            return error(status=500, detail='insert table failed')
 
     def updateRecord(self):
         return 0
 
     def cleanCache(self):
-        #return .delete()
+        table = self.metadata.tables['cache_cba']
+        table.delete()
         return 0
 
     def execute(self):
         try:
-            inspector = inspect(self.engine)
+            inspector = sqlalchemy.inspect(self.engine)
+            logging.info('[CBAICache]: Getting cba default...')
             if 'cache_cba' in inspector.get_table_names():
                 # It means we have the cache table, we will need to check the params
                 checks = self.checkParams() 
-                if checks:
-                    
-                    return 0# we will give back the data in a way CBAEndService can use it
+                if checks != None:
+                    logging.info('[CBAICache]: table available; extracting data')
+                    data = json.loads(checks[2])
+                    logging.info(data.keys())
+                    return {'meta':data['meta'],'df': pd.DataFrame(data['data'])}# we will give back the data in a way CBAEndService can use it
                 
                 else: # we will execute the whole process and we will generate the output in a way  CBAEndService can use it
-                    self.insertRecord()
-                    return 0# we will give back the data in a way CBAEndService can use it
+                    logging.info('[CBAICache]: data not available; generating data')
+                    data_output = CBAService(self.params).analyze()
+                    data = json.dumps({'meta':data_output['meta'], 'data':data_output['df'].reset_index().to_dict('records')}, ignore_nan=True)
+                    key = self._generateKey
+                    self.insertRecord(key, data)
+                    return data_output # we will give back the data in a way CBAEndService can use it
             else:
                 self._createTable()
                 self.execute()
                 # executes the cba code to get the table, inserts it into the database and we should be ready to go
         except Exception as e:
             logging.error('[CBAICache, _createTable]: '+str(e))
-            return error(status=500, detail='Generic Error')
 
 
 class CBAEndService(object):
     def __init__(self, user_selections):
-        self.data = CBAService(user_selections).analyze()
+        #self.data = CBAService(user_selections).analyze()
+        self.data = CBAICache(user_selections).execute()
     
     def get_widget(self, argument):
         method_name = 'widget_' + str(argument)
