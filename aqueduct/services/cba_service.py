@@ -653,7 +653,7 @@ class CBAICache(object):
                     logging.info('[CBAICache]: table available; extracting data')
                     data = json.loads(checks[2])
                     logging.info(data.keys())
-                    return {'meta':data['meta'],'df': pd.DataFrame(data['data'])}# we will give back the data in a way CBAEndService can use it
+                    return {'meta':data['meta'],'df': pd.DataFrame(data['data']).set_index('year')}# we will give back the data in a way CBAEndService can use it
                 
                 else: # we will execute the whole process and we will generate the output in a way  CBAEndService can use it
                     logging.info('[CBAICache]: data not available; generating data')
