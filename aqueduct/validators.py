@@ -40,7 +40,7 @@ def validate_params_cba(func):
             userSelections = request.args
             if not userSelections:
                 return error(status=400, detail='User Selections are required')
-            elif len(list(userSelections.keys())) != 15:
+            elif (len(list(userSelections.keys())) < 15) or (len(list(userSelections.keys())) > 16):
                 return error(status=400, detail='please enter a valid user selection')
         return func(*args, **kwargs)
     return wrapper
@@ -68,7 +68,7 @@ def validate_params_risk(func):
             userSelections = request.args
             if not userSelections:
                 return error(status=400, detail='User selections are required')
-            elif len(userSelections) != 7:
+            elif (len(userSelections) < 7) or (len(userSelections) > 8):
                 return error(status=400, detail='please a valid selection')
         return func(*args, **kwargs)
     return wrapper
