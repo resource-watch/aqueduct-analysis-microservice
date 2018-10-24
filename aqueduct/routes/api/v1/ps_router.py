@@ -6,7 +6,7 @@ from __future__ import print_function
 
 import logging
 from ast import literal_eval
-
+import pandas as pd
 from flask import jsonify, request, Blueprint, json
 from aqueduct.routes.api import error
 from aqueduct.services.analysis_service import AnalysisService
@@ -118,8 +118,12 @@ def get_cba_widget(widget_id):
         logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail=e.message)
     
-    return jsonify(serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
-
+    if 'format' in request.args and request.args.get("format")=='json':
+        return jsonify(serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200, {'Content-Disposition': 'attachment', 'filename': '{0}.json'.format(widget_id)}
+    elif 'format' in request.args and request.args.get("format")=='csv':
+        return pd.DataFrame(output.get_widget(widget_id)['data']).to_csv() , 200, {'Content-Type':'text/csv', 'Content-Disposition': 'attachment', 'filename': '{0}.csv'.format(widget_id)}
+    else:
+        return jsonify(serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
 
 @aqueduct_analysis_endpoints_v1.route('/cba/default', strict_slashes=False, methods=['GET'])
 @validate_params_cba_def
@@ -144,7 +148,7 @@ def get_risk_widget(widget_id):
     try:
         USER_INPUTS = {
                 "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
-                "existing_prot" : None if request.args.get("existing_prot") == 'null' else int(request.args.get("existing_prot")) ,
+                "existing_prot" : None if request.args.get("existing_prot") == 'null' else int(request.args.get("existing_prot")),
                 "scenario" : request.args.get("scenario").lower(),
                 "sub_scenario" : True if request.args.get("sub_scenario") == 'true' else False,
                 "exposure" : request.args.get("exposure").lower(),
@@ -159,8 +163,12 @@ def get_risk_widget(widget_id):
     except Exception as e:
         logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail=e.message)
-
-    return jsonify(serialize_response_risk(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
+    if 'format' in request.args and request.args.get("format")=='json':
+        return jsonify(serialize_response_risk(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200, {'Content-Disposition': 'attachment', 'filename': '{0}.json'.format(widget_id)}
+    elif 'format' in request.args and request.args.get("format")=='csv':
+        return pd.DataFrame(output.get_widget(widget_id)['data']).to_csv() , 200, {'Content-Type':'text/csv', 'Content-Disposition': 'attachment', 'filename': '{0}.csv'.format(widget_id)}
+    else:
+        return jsonify(serialize_response_risk(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
 
 
 
