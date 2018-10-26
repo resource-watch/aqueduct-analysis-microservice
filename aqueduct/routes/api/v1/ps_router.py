@@ -148,7 +148,7 @@ def get_risk_widget(widget_id):
     try:
         USER_INPUTS = {
                 "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
-                "existing_prot" : None if request.args.get("existing_prot") == 'null' else round(float(request.args.get("existing_prot"))),
+                "existing_prot" : None if request.args.get("existing_prot") == 'null' else int(request.args.get("existing_prot")),
                 "scenario" : request.args.get("scenario").lower(),
                 "sub_scenario" : True if request.args.get("sub_scenario") == 'true' else False,
                 "exposure" : request.args.get("exposure").lower(),
