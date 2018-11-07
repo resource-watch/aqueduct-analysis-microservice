@@ -139,7 +139,7 @@ def get_cba_default():
         logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail=e.message)
 
-    return jsonify(serialize_response_default(output.default())), 200
+    return jsonify(serialize_response_default(output.execute())), 200
 
 @aqueduct_analysis_endpoints_v1.route('/risk/widget/<widget_id>', strict_slashes=False, methods=['GET'])
 @validate_params_risk
