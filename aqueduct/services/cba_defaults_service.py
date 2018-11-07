@@ -42,10 +42,11 @@ class CBADef(object):
         
         ##costs
         con_itl = pd.read_sql_query("SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(', '.join(map(str, fids))), self.engine)
-
+        prot_round = int(rps[np.where(rps > prot_val)][0])
         return [{
             "existing_prot": prot_val,
-            "prot_fut": int(rps[np.where(rps > prot_val)][0]),
+            "existing_prot_r": prot_round,
+            "prot_fut": prot_round,
             "estimated_costs": 0 if con_itl.empty else con_itl.values[0].tolist()[0]
 
         }]
