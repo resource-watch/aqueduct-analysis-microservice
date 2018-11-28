@@ -24,7 +24,8 @@ class RiskService(object):
                      "pessimistic": ['rcp8p5', 'ssp3', "pes"],
                      "optimistic": ['rcp4p5', 'ssp2', "opt"]}
         self.models = {"riverine": ["gf", "ha", "ip", "mi", "nr"],
-                       "coastal": ["wt"]}
+                       #"coastal": ["wt"]}
+                       "coastal": ["95","50","05"]}
         self.years = [2010., 2030., 2050., 2080.]
         self.ys = [str(x)[0:4] for x in self.years]
         self.rps = [2, 5, 10, 25, 50, 100, 250, 500, 1000]
@@ -74,23 +75,17 @@ class RiskService(object):
 
         # DEFAULT DATA
         defaultfn = "precalc_agg_{0}_{1}_{2}".format(self.flood, geogunit_type.lower(), sub_abb)
+        #logging.info('[SSSS]: '+str(defaultfn))
         df_precalc = pd.read_sql_query("SELECT * FROM {0} where id like '{1}'".format(defaultfn, geogunit_name), self.engine, index_col='id')
-
         # PROTECTION STANDARDS and RISK ANALYSIS TYPE
-        if self.existing_prot == None:
+        if not self.existing_prot:
             risk_analysis = "precalc"
-            # Hardwire in the protection standards for the Netherlands
-            if geogunit_name == "Netherlands":
-                prot_pres = 1000
-            else:
-                # Average prot standard for a whole unit (i.e. country)
-                prot_name = "_".join([self.exposure, '2010', scen_abb, "prot_avg"])
-                
-                prot_pres = df_precalc[[prot_name]]
+            # Hardwire in the protection standards for the Netherlands or Average prot standard for a whole unit (i.e. country)
+            prot_pres = (1000 if geogunit_name == "Netherlands" else df_precalc[["_".join([self.exposure, '2010', scen_abb, "prot_avg"])]])  
         else:
             risk_analysis = "calc"
             prot_pres = self.existing_prot
-
+        
         return geogunit, geogunit_name, geogunit_type.lower(), clim, socio, scen_abb, sub_abb, df_precalc, prot_pres, risk_analysis
 
         
@@ -370,6 +365,7 @@ class RiskService(object):
         model_imps = pd.DataFrame(index = [self.geogunit_name], columns=col)
         #print(impact_cc)
         # Perform for each year we have impact data
+
         for y, imp_cc, imp_soc, imp_sub, imp_cc_soc, imp_urb in zip(self.ys, impact_cc, impact_soc, impact_sub, impact_cc_soc, impact_urb):
             # No transformation needed in 2010
             if y == '2010':
@@ -379,6 +375,7 @@ class RiskService(object):
                 
                 prot_trans = self.compute_rp_change(impact_urb[0], imp_urb.values[0], self.prot_pres, min_rp=min(self.rps), max_rp=max(self.rps))  # i.e. RP_zero
             # Find the annual expected damage with the new protection standard
+
             model_imps.loc[self.geogunit_name, [model +"_cc_" +y]] = self.expected_value(imp_cc.values[0], self.rps, prot_trans, 1e5)
             model_imps.loc[self.geogunit_name, [model + "_soc_" + y]] = self.expected_value(imp_soc.values[0], self.rps, prot_trans, 1e5)
             model_imps.loc[self.geogunit_name, [model + "_sub_" + y]] = self.expected_value(imp_sub, self.rps, prot_trans, 1e5)
@@ -401,8 +398,10 @@ class RiskService(object):
             Dataframe with raw ir
         """
         # Select data using year, subsidence type, climate scen, socioecon scen, model
+        
         #CHANGEDIT
         selCol = climate +"_"+ model +"_"+ socioecon +"_"+ self.sub_abb +"_"+ year
+        
         # selData = dataframe[[col for col in dataframe.index.tolist() if selCol in col]]
         selData = dataframe[[col for col in dataframe.columns if (selCol in col) and ("rp00001" not in col)]]
         #selData = dataframe[[col for col in dataframe.columns if (model in col) and (socioecon in col) and (climate in col)  and (year in col) and ("rp00001" not in col)]]
@@ -427,27 +426,30 @@ class RiskService(object):
         #Filter by geographic name
         df_raw = pd.read_sql_query("SELECT * FROM {0} where id = '{1}' ".format(fn, self.geogunit_name), self.engine, index_col='id')
         df_urb =pd.read_sql_query("SELECT * FROM {0} where id = '{1}' ".format(urbfn, self.geogunit_name), self.engine, index_col='id')
+
+        logging.info('[TESTING - 430]: ' + str(df_raw.columns.tolist()))
         # Find impact for each model
         model_impact = pd.DataFrame(index=[self.geogunit_name])
         # Find model options associated with flood type
+        modsT = '95' if self.flood == 'coastal' else 'wt' 
         for m in self.mods:
             cc_raw, soc_raw, sub_raw, cc_soc_raw, urb_raw= [], [], [], [], []
             for y in self.ys:
                 # 2010 DATA
                 if y == '2010':
                     # Pull historical raw data
-                    histData = self.select_projection_data(df_raw, "histor", "wt", "base", y)
+                    histData = self.select_projection_data(df_raw, "histor", modsT, "base", y)
                     cc_raw.append(histData)
                     soc_raw.append(histData)
                     sub_raw.append(histData)
                     cc_soc_raw.append(histData)
-                    urb_raw.append(self.select_projection_data(df_urb, "histor", "wt", "base", y))
+                    urb_raw.append(self.select_projection_data(df_urb, "histor", modsT, "base", y))
 
                 # 2030, 2050, 2080 DATA
                 else:
                     cc_raw.append(self.select_projection_data(df_urb, self.clim, m, "base", y))  # Add to climate change only list
-                    soc_raw.append(self.select_projection_data(df_raw, "histor", "wt", self.socio, y)) # Add to socieco change only list
-                    sub_raw.append(self.select_projection_data(df_raw, "histor", "wt", "base", y)) # Add to socieco change only list
+                    soc_raw.append(self.select_projection_data(df_raw, "histor", modsT, self.socio, y)) # Add to socieco change only list
+                    sub_raw.append(self.select_projection_data(df_raw, "histor", modsT, "base", y)) # Add to socieco change only list
                     cc_soc_raw.append(self.select_projection_data(df_raw, self.clim, m, self.socio, y)) # Add to subsid change only list
                     urb_raw.append(self.select_projection_data(df_urb, self.clim, m, "base", y)) #Add data using urban data
             if self.sub_scenario == False:
@@ -499,9 +501,7 @@ class RiskService(object):
 
     def getRisk(self):
         #Run risk data analysis based on user-inputs
-        
         if self.risk_analysis == "precalc":
-            
             risk_data = self.precalc_risk()
         else:
             risk_data = self.calc_risk()

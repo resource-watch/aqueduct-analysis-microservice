@@ -132,9 +132,9 @@ def get_cba_default():
     try:
         USER_INPUTS = request.args
         output = CBADefaultService(USER_INPUTS)
-    except DBError as e:
+    except AttributeError as e:
         logging.error('[ROUTER]: '+str(e))
-        return error(status=500, detail=e.message)
+        return error(status=500, detail=e)
     except Exception as e:
         logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail=e.message)
@@ -157,12 +157,12 @@ def get_risk_widget(widget_id):
 
         output = RiskService(USER_INPUTS)
 
-    except DBError as e:
-        logging.error('[ROUTER]: '+e.message)
-        return error(status=500, detail=e.message)
+    except AttributeError as e:
+        logging.error('[ROUTER]: '+ str(e))
+        return error(status=500, detail=str(e))
     except Exception as e:
         logging.error('[ROUTER]: '+str(e))
-        return error(status=500, detail=e.message)
+        return error(status=500, detail=str(e))
     if 'format' in request.args and request.args.get("format")=='json':
         return jsonify(serialize_response_risk(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200, {'Content-Disposition': 'attachment', 'filename': '{0}.json'.format(widget_id)}
     elif 'format' in request.args and request.args.get("format")=='csv':
