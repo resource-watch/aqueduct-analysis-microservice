@@ -81,7 +81,8 @@ class RiskService(object):
         if not self.existing_prot:
             risk_analysis = "precalc"
             # Hardwire in the protection standards for the Netherlands or Average prot standard for a whole unit (i.e. country)
-            prot_pres = (1000 if geogunit_name == "Netherlands" else df_precalc[["_".join([self.exposure, '2010', scen_abb, "prot_avg"])]])  
+            # here self.exposure should be allways urban_damage_v2
+            prot_pres = (1000 if geogunit_name == "Netherlands" else df_precalc[["_".join(['urban_damage_v2', '2010', scen_abb, "prot_avg"])]])  
         else:
             risk_analysis = "calc"
             prot_pres = self.existing_prot
@@ -427,7 +428,6 @@ class RiskService(object):
         df_raw = pd.read_sql_query("SELECT * FROM {0} where id = '{1}' ".format(fn, self.geogunit_name), self.engine, index_col='id')
         df_urb =pd.read_sql_query("SELECT * FROM {0} where id = '{1}' ".format(urbfn, self.geogunit_name), self.engine, index_col='id')
 
-        logging.info('[TESTING - 430]: ' + str(df_raw.columns.tolist()))
         # Find impact for each model
         model_impact = pd.DataFrame(index=[self.geogunit_name])
         # Find model options associated with flood type
@@ -486,7 +486,14 @@ class RiskService(object):
     def precalc_risk(self):
 
         # Filter by
+        # we have set  self.exposure as urban Damage
         df_risk = self.df_precalc[[col for col in self.df_precalc.columns.tolist() if (self.exposure in col) and (self.scen_abb in col)]]
+        if self.exposure != 'urban_damage_v2':
+            df_prot = self.df_precalc[[col for col in self.df_precalc.columns.tolist() if ("prot" in col) and (self.scen_abb in col)]]
+            columnsD = [col for col in self.df_precalc.columns.tolist() if ("urban_damage_v2" in col)]
+            df_prot.rename(columns=dict(zip(columnsD,[cols.replace("urban_damage_v2", self.exposure) for cols in columnsD])),inplace=True)
+            df_risk = df_risk.append(df_prot)
+
         return df_risk
 
     @cached_property    
