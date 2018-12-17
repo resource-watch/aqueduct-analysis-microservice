@@ -104,7 +104,7 @@ class CBAService(object):
             prot_pres = self.existing_prot
 
         if not self.prot_fut:
-            self.prot_fut = min([x for x in self.rps if  x > prot_pres])
+            self.prot_fut = min([x for x in self.rps if  x >= prot_pres])
 
         # prot_start_unit = min(rps, key=lambda x:abs(x-prot_pres))
         build_start_end = (self.implementation_start, self.implementation_end)
