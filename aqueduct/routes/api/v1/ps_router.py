@@ -64,7 +64,7 @@ def get_cba_widget(widget_id):
     "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
     "existing_prot" : None if request.args.get("existing_prot") == 'null' else int(request.args.get("existing_prot")) ,
     "scenario" : request.args.get("scenario"),
-    "prot_fut" : int(request.args.get("prot_fut")),
+    "prot_fut" :  None if request.args.get("prot_fut") == 'null' else int(request.args.get("prot_fut")) ,
     "implementation_start" : int(request.args.get("implementation_start")),
     "implementation_end" : int(request.args.get("implementation_end")),
     "infrastructure_life" : int(request.args.get("infrastructure_life")),
