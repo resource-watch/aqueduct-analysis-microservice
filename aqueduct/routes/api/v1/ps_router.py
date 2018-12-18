@@ -58,24 +58,26 @@ def get_by_geostore(geojson):
 @validate_params_cba
 def get_cba_widget(widget_id):
     """By Geostore Endpoint"""
-    logging.info('[ROUTER]: Getting cba widget', widget_id)
+    logging.info(f'[ROUTER]: Getting cba widget: {widget_id}')
+
     try:
         USER_INPUTS = {
-    "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
-    "existing_prot" : None if request.args.get("existing_prot") == 'null' else int(request.args.get("existing_prot")) ,
-    "scenario" : request.args.get("scenario"),
-    "prot_fut" :  None if request.args.get("prot_fut") == 'null' else int(request.args.get("prot_fut")) ,
-    "implementation_start" : int(request.args.get("implementation_start")),
-    "implementation_end" : int(request.args.get("implementation_end")),
-    "infrastructure_life" : int(request.args.get("infrastructure_life")),
-    "benefits_start" :int(request.args.get("benefits_start")),
-    "ref_year" : int(request.args.get("ref_year")),
-    "estimated_costs" : None if request.args.get("estimated_costs") == 'null' else float(request.args.get("estimated_costs")) ,
-    "discount_rate" : float(request.args.get("discount_rate")),
-    "om_costs" : float(request.args.get("om_costs")),
-    "user_urb_cost" :  None if request.args.get("user_urb_cost") == 'null' else float(request.args.get("user_urb_cost")) ,
-    "user_rur_cost" : None
-    }
+        "geogunit_unique_name" : request.args.get("geogunit_unique_name"),
+        "existing_prot" : None if request.args.get("existing_prot") == 'null' else int(request.args.get("existing_prot")) ,
+        "scenario" : request.args.get("scenario"),
+        "prot_fut" : None if request.args.get("prot_fut") == 'null' else int(request.args.get("prot_fut")),
+        "implementation_start" : int(request.args.get("implementation_start")),
+        "implementation_end" : int(request.args.get("implementation_end")),
+        "infrastructure_life" : int(request.args.get("infrastructure_life")),
+        "benefits_start" :int(request.args.get("benefits_start")),
+        "ref_year" : int(request.args.get("ref_year")),
+        "estimated_costs" : None if request.args.get("estimated_costs") == 'null' else float(request.args.get("estimated_costs")) ,
+        "discount_rate" : float(request.args.get("discount_rate")),
+        "om_costs" : float(request.args.get("om_costs")),
+        "user_urb_cost" :  None if request.args.get("user_urb_cost") == 'null' else float(request.args.get("user_urb_cost")) ,
+        "user_rur_cost" : None 
+        }
+
         output = CBAEndService(USER_INPUTS)
 
     except DBError as e:

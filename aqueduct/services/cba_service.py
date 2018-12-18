@@ -18,9 +18,9 @@ class CBAService(object):
         #self.flood = "Riverine"
         self.exposures = ["gdpexp", "popexp", "urban_damage_v2"]
         self.geogunit = "geogunit_108"
-        self.scenarios = {"Business as usual": ['rcp8p5', 'ssp2', "bau"],
-                     "Pessimistic": ['rcp8p5', 'ssp3', "pes"],
-                     "Optimistic": ['rcp4p5', 'ssp2', "opt"]}
+        self.scenarios = {"business as usual": ['rcp8p5', 'ssp2', "bau"],
+                     "pessimistic": ['rcp8p5', 'ssp3', "pes"],
+                     "optimistic": ['rcp4p5', 'ssp2', "opt"]}
         self.sub_abb = "nosub"
         self.mods = ["gf", "ha", "ip", "mi", "nr"]
         self.years = [2010., 2030., 2050., 2080.]
@@ -34,7 +34,7 @@ class CBAService(object):
         self.geogunit_unique_name = user_selections.get("geogunit_unique_name")
         self.existing_prot = user_selections.get("existing_prot")
         self.scenario = user_selections.get("scenario")
-        self.prot_fut = user_selections.get("prot_fut")
+        self.prot_futu = user_selections.get("prot_fut")
         self.implementation_start = user_selections.get("implementation_start")
         self.implementation_end = user_selections.get("implementation_end")
         self.infrastructure_life = user_selections.get("infrastructure_life")
@@ -46,9 +46,11 @@ class CBAService(object):
         self.user_urb_cost = user_selections.get("user_urb_cost")
         self.user_rur_cost = user_selections.get("user_rur_cost")
         self.cost_option = "geogunit_108"
+
         # DEFAULT VARIABLES
         self.geogunit_name, self.geogunit_type, self.fids, self.clim, self.socio, self.scen_abb, self.prot_pres,rpend,\
-        self.build_start_end, self.year_range, self.benefit_increase, self.prot_idx_fut, self.risk_analysis, self.df_prot = self.user_selections()
+        self.build_start_end, self.year_range, self.benefit_increase, self.prot_idx_fut, self.risk_analysis, self.df_prot, self.prot_fut = self.user_selections()
+
         # Define the time series of the analysis
         self.time_series = np.arange(self.year_range[0], self.year_range[1] + 1)
         self.year_array = np.arange(len(self.time_series)) + 1.
@@ -58,11 +60,14 @@ class CBAService(object):
         # Raw data aggregated to unit type
         self.df_urb_agg = self.inAGGFormat(self.geogunit_type.lower(), "urban_damage_v2")
         # Raw
+        logging.info('[CBA SERVICE]: OUR sssT')
         self.df_pop = self.inRAWFormat(self.geogunit, "popexp")
         self.df_gdp = self.inRAWFormat(self.geogunit, "gdpexp")
         self.df_urb = self.inRAWFormat(self.geogunit, "urban_damage_v2")
         self.filt_risk = pd.read_sql_query("SELECT * FROM Precalc_Riverine_geogunit_108_nosub where id in ({0})".format(', '.join(map(str, self.fids))), self.engine)
         self.estimated_costs=None
+
+
     
     ##---------------------------------------------------
     ### FUNCTIONS FOR BOTH RISK AND CBA TABS          ###
@@ -81,13 +86,20 @@ class CBAService(object):
             risk_analysis - can we use precalculated risk data, or do we need to calculate on-the-fly?
         """
         # GEOGUNIT INFO
+        
         fids, geogunit_name, geogunit_type = pd.read_sql_query("SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name), self.engine).values[0]
 
+        logging.debug(f'[CBA SERVICE]: OUR OUT,  {self.scenario}')
         # IMPACT DRIVER INFO (climate and socioeconomc scenarios
         clim, socio, scen_abb = self.scenarios.get(self.scenario)
+        logging.debug(f'[CBA SERVICE]: OUR OUT,  {clim}, {socio}, {scen_abb}')
 
         read_prot = 'precalc_agg_riverine_{0}_nosub'.format(geogunit_type).lower()
+        
+        
+        
         df_prot = pd.read_sql_query("SELECT id, {0} FROM {1}".format(', '.join([col for col in sqlalchemy.Table(read_prot, self.metadata).columns.keys() if ("prot" in col)]), read_prot), self.engine, index_col='id')
+
 
         # PROTECTION STANDARDS and RISK ANALYSIS TYPE
         if self.existing_prot == None:
@@ -103,8 +115,15 @@ class CBAService(object):
             risk_analysis = "calc"
             prot_pres = self.existing_prot
 
-        if not self.prot_fut:
-            self.prot_fut = min([x for x in self.rps if  x >= prot_pres])
+
+        
+        
+        if self.prot_futu==None:
+            prot_fut = min([x for x in self.rps if  x >= prot_pres])
+            logging.debug(f'[CBA SERVICE]: OUR OUT {prot_fut}')
+        else:
+            prot_fut = self.prot_futu
+            logging.debug(f'[CBA SERVICE]: OUR OUT {prot_fut}')
 
         # prot_start_unit = min(rps, key=lambda x:abs(x-prot_pres))
         build_start_end = (self.implementation_start, self.implementation_end)
@@ -114,10 +133,10 @@ class CBAService(object):
         prot_idx_fut = self.years.index(self.ref_year)
 
         # Define the desired protection standard
-        rpend = "endrp" + str(self.prot_fut).zfill(5)
+        rpend = "endrp" + str(prot_fut).zfill(5)
 
-        return geogunit_name, geogunit_type, fids, clim, socio, scen_abb, prot_pres,rpend,\
-         build_start_end, year_range,  benefit_increase, prot_idx_fut, risk_analysis, df_prot
+        return geogunit_name, geogunit_type, fids, clim, socio, scen_abb, prot_pres, rpend,\
+         build_start_end, year_range,  benefit_increase, prot_idx_fut, risk_analysis, df_prot, prot_fut
 
     
     def run_stats(self, dataframe):
@@ -303,7 +322,7 @@ class CBAService(object):
      ####-------------------------
             # NEW CODE
             if user_urb == None:
-                ppp_itl, con_itl = pd.read_sql_query("SELECT avg(ppp_mer_rate_2005_index) mean_1, avg(construction_cost_index) mean_2 FROM lookup_construction_factors_geogunit_108 where fid in ({0}) ".format(', '.join(map(str, self.fids))), self.engine).values[0]
+                ppp_itl, con_itl = pd.read_sql_query("SELECT avg(ppp_mer_rate_2005_index) mean_1, avg(construction_cost_index) mean_2 FROM lookup_construction_factors_geogunit_108 where id in ({0}) ".format(', '.join(map(str, self.fids))), self.engine).values[0]
                 costList.append(cost_itl*ppp_itl*con_itl)
             else:
                 costList.append(cost_itl)

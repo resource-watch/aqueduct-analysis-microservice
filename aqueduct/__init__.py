@@ -17,7 +17,7 @@ import CTRegisterMicroserviceFlask
 
 logging.basicConfig(
     level=SETTINGS.get('logging', {}).get('level'),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y%m%d-%H:%M%p',
 )
 
