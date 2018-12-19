@@ -60,7 +60,6 @@ class CBAService(object):
         # Raw data aggregated to unit type
         self.df_urb_agg = self.inAGGFormat(self.geogunit_type.lower(), "urban_damage_v2")
         # Raw
-        logging.info('[CBA SERVICE]: OUR sssT')
         self.df_pop = self.inRAWFormat(self.geogunit, "popexp")
         self.df_gdp = self.inRAWFormat(self.geogunit, "gdpexp")
         self.df_urb = self.inRAWFormat(self.geogunit, "urban_damage_v2")
@@ -89,11 +88,9 @@ class CBAService(object):
         
         fids, geogunit_name, geogunit_type = pd.read_sql_query("SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name), self.engine).values[0]
 
-        logging.debug(f'[CBA SERVICE]: OUR OUT,  {self.scenario}')
         # IMPACT DRIVER INFO (climate and socioeconomc scenarios
         clim, socio, scen_abb = self.scenarios.get(self.scenario)
-        logging.debug(f'[CBA SERVICE]: OUR OUT,  {clim}, {socio}, {scen_abb}')
-
+        
         read_prot = 'precalc_agg_riverine_{0}_nosub'.format(geogunit_type).lower()
         
         
@@ -120,10 +117,8 @@ class CBAService(object):
         
         if self.prot_futu==None:
             prot_fut = min([x for x in self.rps if  x >= prot_pres])
-            logging.debug(f'[CBA SERVICE]: OUR OUT {prot_fut}')
         else:
             prot_fut = self.prot_futu
-            logging.debug(f'[CBA SERVICE]: OUR OUT {prot_fut}')
 
         # prot_start_unit = min(rps, key=lambda x:abs(x-prot_pres))
         build_start_end = (self.implementation_start, self.implementation_end)

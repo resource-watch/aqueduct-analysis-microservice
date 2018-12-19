@@ -14,9 +14,9 @@ class CBADefaultService(object):
         self.metadata.reflect(self.engine)
         ### BACKGROUND INTO 
         #self.flood = "Riverine"
-        self.scenarios = {"Business as usual": ['rcp8p5', 'ssp2', "bau"],
-                     "Pessimistic": ['rcp8p5', 'ssp3', "pes"],
-                     "Optimistic": ['rcp4p5', 'ssp2', "opt"]}
+        self.scenarios = {"business as usual": ['rcp8p5', 'ssp2', "bau"],
+                     "pessimistic": ['rcp8p5', 'ssp3', "pes"],
+                     "optimistic": ['rcp4p5', 'ssp2', "opt"]}
         ###  USER INPUTS 
         self.geogunit_unique_name = user_selections.get("geogunit_unique_name")
         self.scenario = self.scenarios.get(user_selections.get("scenario"))
@@ -34,7 +34,7 @@ class CBADefaultService(object):
         df_prot = pd.read_sql_query("SELECT {0} FROM {1} where id like '{2}'".format(col_prot, read_prot, self.geogunit_unique_name), self.engine).values[0]
         
         ##costs
-        con_itl = pd.read_sql_query("SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid in ({0}) ".format(', '.join(map(str, fids))), self.engine).values[0]
+        con_itl = pd.read_sql_query("SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where id in ({0}) ".format(', '.join(map(str, fids))), self.engine).values[0]
         return [{
             "existing_prot": df_prot.tolist()[0],
             "estimated_costs": con_itl.tolist()[0]
