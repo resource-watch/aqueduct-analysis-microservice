@@ -127,12 +127,14 @@ class RiskService(object):
                     "Soc_Driver","Sub_Driver"]
 
         df_final = pd.DataFrame(index=self.ys, columns=colNames)
+
         for d in range(0, len(datalist)):
             selData = dataframe[[col for col in dataframe.columns.tolist() if (datalist[d] in col)]]
             if len(selData.values[0]) == 3:
                 df_final[colNames[d]][1:] = selData.values[0]
             else:
                 df_final[colNames[d]] = selData.values[0]
+        
         return  df_final
 
     def find_assets(self):
@@ -487,12 +489,14 @@ class RiskService(object):
 
         # Filter by
         # we have set  self.exposure as urban Damage
+
         df_risk = self.df_precalc[[col for col in self.df_precalc.columns.tolist() if (self.exposure in col) and (self.scen_abb in col)]]
+        
         if self.exposure != 'urban_damage_v2':
             df_prot = self.df_precalc[[col for col in self.df_precalc.columns.tolist() if ("prot" in col) and (self.scen_abb in col)]]
             columnsD = [col for col in self.df_precalc.columns.tolist() if ("urban_damage_v2" in col)]
-            df_prot.rename(columns=dict(zip(columnsD,[cols.replace("urban_damage_v2", self.exposure) for cols in columnsD])),inplace=True)
-            df_risk = df_risk.append(df_prot)
+            df_prot.rename(columns=dict(zip(columnsD,[cols.replace("urban_damage_v2", self.exposure) for cols in columnsD])), inplace=True)
+            df_risk = pd.concat([df_risk, df_prot], axis=1, sort=False)
 
         return df_risk
 
