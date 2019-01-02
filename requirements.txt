@@ -1,6 +1,6 @@
 numpy
 scipy
-simplejson
+simplejson==3.16.0
 Flask==0.12.0
 CTRegisterMicroserviceFlask==0.4.0
 requests==2.12.4
@@ -10,4 +10,5 @@ python-dateutil
 pandas==0.23.4
 psycopg2===2.7.1
 sqlalchemy== 1.2.11
-cached_property
+cached_property==1.5.1
+cerberus==1.2

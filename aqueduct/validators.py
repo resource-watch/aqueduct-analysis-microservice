@@ -4,7 +4,22 @@ from functools import wraps
 from flask import request
 import logging
 
+from cerberus import Validator
+from cerberus.errors import ValidationError
 from aqueduct.routes.api import error
+
+def myCoerc(n):
+    try:
+        return lambda v: None if v in ('null') else n(v)
+    except Exception:
+        return None
+    
+null2int = myCoerc(int)
+null2float = myCoerc(float)
+
+to_bool = lambda v: v.lower() in ('true', '1')
+to_lower = lambda v: v.lower()
+
 
 def validate_geostore(func):
     """World Validation"""
@@ -36,12 +51,113 @@ def validate_params_cba(func):
     """World Validation"""
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if request.method == 'GET':
-            userSelections = request.args
-            if not userSelections:
-                return error(status=400, detail='User Selections are required')
-            elif (len(list(userSelections.keys())) < 15) or (len(list(userSelections.keys())) > 16):
-                return error(status=400, detail='please enter a valid user selection')
+        validation_schema = {
+            'geogunit_unique_name':{'type': 'string', 'required': True },
+            'existing_prot': {
+                'type': 'integer',
+                'required': False,
+                'coerce': null2int,
+                'default': None,
+                'nullable': True,
+                'min': 0,
+                'max': 1000
+            },
+            'scenario':{
+                'type': 'string',
+                'required': True,
+                'allowed':["business as usual","pessimistic","optimistic"]
+            },
+            'prot_fut': {
+                'type': 'integer',
+                'required': False,
+                'coerce': null2int,
+                'default': None,
+                'nullable': True,
+                'min': 0,
+                'max': 1000
+            },
+            'implementation_start': {
+                'type': 'integer',
+                'required': True,
+                'coerce': int,
+                'min': 2020,
+                'max': 2079
+            },
+            'implementation_end': {
+                'type': 'integer',
+                'required': True,
+                'coerce': int,
+                'min': 2021,
+                'max': 2080
+            },
+            'infrastructure_life': {
+                'type': 'integer',
+                'required': True,
+                'coerce': int,
+                'min': 1,
+                'max': 100
+            },
+            'benefits_start': {
+                'type': 'integer',
+                'required': True,
+                'coerce': int,
+                'min': 2020,
+                'max': 2080
+            },
+            'ref_year': {
+                'type': 'integer',
+                'required': True,
+                'coerce': int,
+                'allowed':[2030,2050,2080]
+            },
+            'estimated_costs': {
+                'type': 'float',
+                'required': False,
+                'coerce': null2float,
+                'default': None,
+                'nullable': True,
+                'min': 0,
+                'max': 2
+            },
+            'discount_rate': {
+                'type': 'float',
+                'required': True,
+                'coerce': float,
+                'min': 0,
+                'max': 1
+            },
+            'om_costs': {
+                'type': 'float',
+                'required': True,
+                'coerce': float,
+                'min': 0,
+                'max': 1
+            },
+            'user_urb_cost': {
+                'type': 'float',
+                'required': False,
+                'coerce': null2float,
+                'default': None,
+                'nullable': True,
+                'min': 0,
+                'max': 1000
+            },
+            'user_rur_cost': {
+                'type': 'float',
+                'required': False,
+                'coerce': null2float,
+                'default': None,
+                'nullable': True,
+                'min': 0,
+                'max': 1000
+            }
+        }
+        logging.debug(f"[VALIDATOR - cba_params]: {kwargs}")
+        validator = Validator(validation_schema, allow_unknown = True)
+        if not validator.validate(kwargs['params']):
+            return error(status=400, detail=validator.errors)
+        
+        kwargs['sanitized_params'] = validator.normalized(kwargs['params'])
         return func(*args, **kwargs)
     return wrapper
 
@@ -49,14 +165,20 @@ def validate_params_cba_def(func):
     """World Validation"""
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if request.method == 'GET':
-            userSelections = request.args
-            if not userSelections:
-                return error(status=400, detail='User Selections are required')
-            elif 'geogunit_unique_name' not in list(userSelections.keys()):
-                return error(status=400, detail='please enter a valid location')
-            elif 'scenario' not in list(userSelections.keys()):
-                return error(status=400, detail='please enter a valid scenario')
+        validation_schema = {
+            'geogunit_unique_name':{'type': 'string', 'required': True },
+            'scenario':{
+                'type': 'string',
+                'required': True,
+                'allowed':["business as usual","pessimistic","optimistic"]
+            }
+        }
+        logging.debug(f"[VALIDATOR - cba_def_params]: {kwargs}")
+        validator = Validator(validation_schema, allow_unknown = True)
+        if not validator.validate(kwargs['params']):
+            return error(status=400, detail=validator.errors)
+        
+        kwargs['sanitized_params'] = validator.normalized(kwargs['params'])
         return func(*args, **kwargs)
     return wrapper
 
@@ -64,11 +186,44 @@ def validate_params_risk(func):
     """World Validation"""
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if request.method == 'GET':
-            userSelections = request.args
-            if not userSelections:
-                return error(status=400, detail='User selections are required')
-            elif (len(userSelections) < 7) or (len(userSelections) > 8):
-                return error(status=400, detail='please a valid selection')
+        validation_schema = {
+            'geogunit_unique_name':{'type': 'string', 'required': True},
+            'existing_prot': {
+                'type': 'integer',
+                'required': False,
+                'coerce': null2int,
+                'default': None,
+                'nullable': True,
+                'min': 0,
+                'max': 1000
+            },
+            'scenario':{
+                'type': 'string',
+                'required': True,
+                'allowed':["business as usual","pessimistic","optimistic"]
+            },
+            'sub_scenario':{
+                'type': 'boolean',
+                'required': True,
+                'coerce': (str, to_bool)
+            },
+            'exposure':{
+                'type': 'string',
+                'required': True,
+                'coerce': to_lower
+            },
+            'flood':{
+                'type': 'string',
+                'required': True,
+                'coerce': to_lower
+            }
+            
+        }
+        logging.debug(f"[VALIDATOR - risk_params]: {kwargs}")
+        validator = Validator(validation_schema, allow_unknown = True)
+        if not validator.validate(kwargs['params']):
+            return error(status=400, detail=validator.errors)
+        
+        kwargs['sanitized_params'] = validator.normalized(kwargs['params'])
         return func(*args, **kwargs)
     return wrapper
