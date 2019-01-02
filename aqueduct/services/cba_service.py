@@ -742,18 +742,21 @@ class CBAEndService(object):
         self.data['meta']["yAxisTitle"] = 'Operation & Mainteinance Cost($)'
 
         fOutput = self.data['df'][['gdp_costs_avg']]
-        cost = fOutput.loc[self.data['meta']['implementionEnd']]['gdp_costs_avg']
+        
         impE =self.data['meta']['implementionEnd']
         impS =self.data['meta']['implementionStart']
         life = self.data['meta']['infrastructureLifespan']
+        ## Review this to make it work
+        cost = fOutput.loc[self.data['meta']['implementionEnd']]['gdp_costs_avg'] *((1 + self.data['meta']['discount']) ** (impE -impS))
         
         build_years =  impE - impS
         years = list(range(impS, impS + life +1))
-        mp = [1/build_years*cost for i in range(build_years)]
+        mp = [1.0/build_years*cost for i in range(build_years)]
         cum_costs_present = np.cumsum(mp)
         mains=cum_costs_present*0.01
         maintenance = pd.Series(np.concatenate((mains,[mains[-1]] * (impS + life - impE +1 ))), index=years)
-        fOutput.insert(1,'costs', maintenance )
+        fOutput.insert(1,'costs', maintenance)
+        
         result = fOutput.reset_index()
         result['value'] =result['costs']/ ((1 + self.data['meta']['discount']) ** (result['year']-impS+1))
         
