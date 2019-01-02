@@ -173,6 +173,19 @@ def validate_params_cba_def(func):
                 'required': True,
                 'allowed':["business as usual","pessimistic","optimistic"],
                 'coerce': to_lower
+            },
+            'flood':{
+                'type': 'string', 
+                'required': False,
+                'coerce': to_lower,
+                'default': 'riverine',
+                'allowed':["riverine", "coastal"],
+                },
+            'sub_scenario':{
+                'type': 'boolean',
+                'required': False,
+                'default': False,
+                'coerce': (str, to_bool)
             }
         }
         logging.debug(f"[VALIDATOR - cba_def_params]: {kwargs}")
@@ -181,6 +194,7 @@ def validate_params_cba_def(func):
             return error(status=400, detail=validator.errors)
         
         kwargs['sanitized_params'] = validator.normalized(kwargs['params'])
+        logging.debug(f"[VALIDATOR - cba_def_params]: {kwargs['sanitized_params']}")
         return func(*args, **kwargs)
     return wrapper
 

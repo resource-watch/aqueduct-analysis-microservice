@@ -24,7 +24,6 @@ def sanitize_parameters(func):
             logging.info(args)
 
             myargs = dict(request.args)
-            logging.info(myargs)
             # Exclude params like loggedUser here
             sanitized_args = remove_keys(['loggedUser'], myargs)
             kwargs['params'] = sanitized_args

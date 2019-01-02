@@ -68,8 +68,10 @@ class CBAService(object):
         self.df_pop = self.inRAWFormat(self.geogunit, "popexp")
         self.df_gdp = self.inRAWFormat(self.geogunit, "gdpexp")
         self.df_urb = self.inRAWFormat(self.geogunit, "urban_damage_v2")
-        self.filt_risk = pd.read_sql_query("SELECT * FROM Precalc_Riverine_geogunit_108_nosub where id in ({0})".format(', '.join(map(str, self.fids))), self.engine)
+        self.geogunit = "geogunit_103" if self.geogunit_type.lower() == "city" else "geogunit_108"
+        self.filt_risk = pd.read_sql_query("SELECT * FROM Precalc_Riverine_{0}_nosub where id in ({1})".format(self.geogunit, ', '.join(map(str, self.fids))), self.engine)
         self.estimated_costs=None
+
 
 
     
@@ -342,7 +344,8 @@ class CBAService(object):
         Output:
             cost = total cost of dike
         """
-        lookup_c = pd.read_sql_query("SELECT * FROM lookup_geogunit_108 where {0} = '{1}' ".format(self.geogunit_type, self.geogunit_name), self.engine, 'id')
+        
+        lookup_c = pd.read_sql_query("SELECT * FROM lookup_{0} where {1} = '{2}' ".format(self.geogunit , self.geogunit_type, self.geogunit_name), self.engine, 'id')
         lookup_c["FID"] = lookup_c.index
         lookup_c["startrp"] = lookup_c["riverine"].apply(lambda x: self.find_startrp(x))
         urb_dimensions = self.find_dimension_v2(m, lookup_c, self.df_urb_all, user_urb)

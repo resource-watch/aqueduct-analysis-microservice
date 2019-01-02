@@ -65,7 +65,8 @@ class RiskService(object):
 
         # GEOGUNIT INFO
         fids, geogunit_name, geogunit_type = pd.read_sql_query("SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name), self.engine).values[0]
-        geogunit = "geogunit_103" if geogunit_type == "City" else "geogunit_108"
+        logging.debug(f'[RISK SERVICE - user_selections]: {geogunit_type}')
+        geogunit = "geogunit_103" if geogunit_type.lower() == "city" else "geogunit_108"
 
         # IMPACT DRIVER INFO (climate and socioeconomc scenarios
         clim, socio, scen_abb = self.scenarios.get(self.scenario)
