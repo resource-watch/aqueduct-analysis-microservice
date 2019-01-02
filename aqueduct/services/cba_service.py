@@ -68,8 +68,10 @@ class CBAService(object):
         self.df_pop = self.inRAWFormat(self.geogunit, "popexp")
         self.df_gdp = self.inRAWFormat(self.geogunit, "gdpexp")
         self.df_urb = self.inRAWFormat(self.geogunit, "urban_damage_v2")
-        self.filt_risk = pd.read_sql_query("SELECT * FROM Precalc_Riverine_geogunit_108_nosub where id in ({0})".format(', '.join(map(str, self.fids))), self.engine)
+        self.geogunit = "geogunit_103" if self.geogunit_type.lower() == "city" else "geogunit_108"
+        self.filt_risk = pd.read_sql_query("SELECT * FROM Precalc_Riverine_{0}_nosub where id in ({1})".format(self.geogunit, ', '.join(map(str, self.fids))), self.engine)
         self.estimated_costs=None
+
 
 
     
@@ -107,7 +109,8 @@ class CBAService(object):
         if self.existing_prot == None:
             risk_analysis = "precalc"
             # Hardwire in the protection standards for the Netherlands
-            if geogunit_name == "Netherlands":
+            if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 
+'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
                 prot_pres = 1000
             else:
                 # Average prot standard for a whole unit (i.e. country)
@@ -341,7 +344,8 @@ class CBAService(object):
         Output:
             cost = total cost of dike
         """
-        lookup_c = pd.read_sql_query("SELECT * FROM lookup_geogunit_108 where {0} = '{1}' ".format(self.geogunit_type, self.geogunit_name), self.engine, 'id')
+        
+        lookup_c = pd.read_sql_query("SELECT * FROM lookup_{0} where {1} = '{2}' ".format(self.geogunit , self.geogunit_type, self.geogunit_name), self.engine, 'id')
         lookup_c["FID"] = lookup_c.index
         lookup_c["startrp"] = lookup_c["riverine"].apply(lambda x: self.find_startrp(x))
         urb_dimensions = self.find_dimension_v2(m, lookup_c, self.df_urb_all, user_urb)
@@ -742,18 +746,21 @@ class CBAEndService(object):
         self.data['meta']["yAxisTitle"] = 'Operation & Mainteinance Cost($)'
 
         fOutput = self.data['df'][['gdp_costs_avg']]
-        cost = fOutput.loc[self.data['meta']['implementionEnd']]['gdp_costs_avg']
+        
         impE =self.data['meta']['implementionEnd']
         impS =self.data['meta']['implementionStart']
         life = self.data['meta']['infrastructureLifespan']
+        ## Review this to make it work
+        cost = fOutput.loc[self.data['meta']['implementionEnd']]['gdp_costs_avg'] *((1 + self.data['meta']['discount']) ** (impE -impS))
         
         build_years =  impE - impS
         years = list(range(impS, impS + life +1))
-        mp = [1/build_years*cost for i in range(build_years)]
+        mp = [1.0/build_years*cost for i in range(build_years)]
         cum_costs_present = np.cumsum(mp)
         mains=cum_costs_present*0.01
         maintenance = pd.Series(np.concatenate((mains,[mains[-1]] * (impS + life - impE +1 ))), index=years)
-        fOutput.insert(1,'costs', maintenance )
+        fOutput.insert(1,'costs', maintenance)
+        
         result = fOutput.reset_index()
         result['value'] =result['costs']/ ((1 + self.data['meta']['discount']) ** (result['year']-impS+1))
         

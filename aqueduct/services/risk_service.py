@@ -65,7 +65,8 @@ class RiskService(object):
 
         # GEOGUNIT INFO
         fids, geogunit_name, geogunit_type = pd.read_sql_query("SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name), self.engine).values[0]
-        geogunit = "geogunit_103" if geogunit_type == "City" else "geogunit_108"
+        logging.debug(f'[RISK SERVICE - user_selections]: {geogunit_type}')
+        geogunit = "geogunit_103" if geogunit_type.lower() == "city" else "geogunit_108"
 
         # IMPACT DRIVER INFO (climate and socioeconomc scenarios
         clim, socio, scen_abb = self.scenarios.get(self.scenario)
@@ -82,7 +83,8 @@ class RiskService(object):
             risk_analysis = "precalc"
             # Hardwire in the protection standards for the Netherlands or Average prot standard for a whole unit (i.e. country)
             # here self.exposure should be allways urban_damage_v2
-            prot_pres = (1000 if geogunit_name == "Netherlands" else df_precalc[["_".join(['urban_damage_v2', '2010', scen_abb, "prot_avg"])]])  
+            prot_pres = (1000 if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 
+'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"] else df_precalc[["_".join(['urban_damage_v2', '2010', scen_abb, "prot_avg"])]])  
         else:
             risk_analysis = "calc"
             prot_pres = self.existing_prot
