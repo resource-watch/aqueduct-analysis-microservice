@@ -65,7 +65,8 @@ def validate_params_cba(func):
             'scenario':{
                 'type': 'string',
                 'required': True,
-                'allowed':["business as usual","pessimistic","optimistic"]
+                'allowed':["business as usual","pessimistic","optimistic"],
+                'coerce': to_lower
             },
             'prot_fut': {
                 'type': 'integer',
@@ -170,7 +171,8 @@ def validate_params_cba_def(func):
             'scenario':{
                 'type': 'string',
                 'required': True,
-                'allowed':["business as usual","pessimistic","optimistic"]
+                'allowed':["business as usual","pessimistic","optimistic"],
+                'coerce': to_lower
             }
         }
         logging.debug(f"[VALIDATOR - cba_def_params]: {kwargs}")
@@ -200,7 +202,9 @@ def validate_params_risk(func):
             'scenario':{
                 'type': 'string',
                 'required': True,
-                'allowed':["business as usual","pessimistic","optimistic"]
+                'allowed':["business as usual","pessimistic","optimistic"],
+                'coerce': to_lower
+
             },
             'sub_scenario':{
                 'type': 'boolean',
