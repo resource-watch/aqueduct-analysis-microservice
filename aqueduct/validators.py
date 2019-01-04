@@ -237,11 +237,13 @@ def validate_params_risk(func):
             }
             
         }
-        logging.debug(f"[VALIDATOR - risk_params]: {kwargs}")
+        
         validator = Validator(validation_schema, allow_unknown = True)
         if not validator.validate(kwargs['params']):
+            logging.debug(f"[VALIDATOR - risk_params]: {kwargs}")
             return error(status=400, detail=validator.errors)
         
         kwargs['sanitized_params'] = validator.normalized(kwargs['params'])
+
         return func(*args, **kwargs)
     return wrapper

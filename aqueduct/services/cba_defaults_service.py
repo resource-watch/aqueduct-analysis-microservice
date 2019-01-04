@@ -43,11 +43,11 @@ class CBADef(object):
         read_prot = 'precalc_agg_{0}_{1}_{2}'.format(self.flood, geogunit_type.lower(), sub_abb)
         col_prot = 'urban_damage_v2_2010_{0}_prot_avg'.format(scen_abb)
         df_prot = pd.read_sql_query("SELECT {0} FROM {1} where id like '{2}'".format(col_prot, read_prot, self.geogunit_unique_name), self.engine)
+
         prot_val = 0 if df_prot.empty else df_prot.values[0].tolist()[0]
-        
         ##costs
         con_itl = pd.read_sql_query("SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(', '.join(map(str, fids))), self.engine)
-        prot_round = int(rps[np.where(rps > prot_val)][0])
+        prot_round = int(rps[np.where(rps >= prot_val)][0])
         return [{
             "existing_prot": prot_val,
             "existing_prot_r": prot_round,

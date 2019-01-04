@@ -80,15 +80,17 @@ class RiskService(object):
         df_precalc = pd.read_sql_query("SELECT * FROM {0} where id like '{1}'".format(defaultfn, geogunit_name), self.engine, index_col='id')
         # PROTECTION STANDARDS and RISK ANALYSIS TYPE
         if not self.existing_prot:
+
             risk_analysis = "precalc"
             # Hardwire in the protection standards for the Netherlands or Average prot standard for a whole unit (i.e. country)
             # here self.exposure should be allways urban_damage_v2
-            prot_pres = (1000 if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 
-'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"] else df_precalc[["_".join(['urban_damage_v2', '2010', scen_abb, "prot_avg"])]])  
+            prot_pres = (1000 if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', 'Netherlands'] else df_precalc[["_".join(['urban_damage_v2', '2010', scen_abb, "prot_avg"])]])  
+            logging.debug(f'[RISK - user_selections]: {prot_pres}')
         else:
             risk_analysis = "calc"
             prot_pres = self.existing_prot
         
+
         return geogunit, geogunit_name, geogunit_type.lower(), clim, socio, scen_abb, sub_abb, df_precalc, prot_pres, risk_analysis
 
         
@@ -266,7 +268,6 @@ class RiskService(object):
         # append the return period at which maximum impact occurs, normally this is set to 1e6 years
         
         RPs = np.append(np.array(RPs), RP_infinite)
-        
        # derive the probabilities associated with return periods
         prob = 1. / RPs
         values = np.array(values)
@@ -504,12 +505,13 @@ class RiskService(object):
 
     @cached_property    
     def meta(self):
+        logging.debug(f'[Risk Service meta]: {self.prot_pres}')
         return {"flood": self.flood,
                 "geogunit_name":self.geogunit_name,
                 "geogunit_type":self.geogunit_type,
                 "Scenario": self.scenario,
                 "Exposure": self.exposure,
-                "Average Protection":self.prot_pres if self.risk_analysis != "precalc" else self.prot_pres.values[0][0],
+                "Average Protection": self.prot_pres if isinstance(self.prot_pres, int) else self.prot_pres.values[0][0]
                   }
 
     def getRisk(self):
