@@ -109,8 +109,7 @@ class CBAService(object):
         if self.existing_prot == None:
             risk_analysis = "precalc"
             # Hardwire in the protection standards for the Netherlands
-            if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 
-'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
+            if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
                 prot_pres = 1000
             else:
                 # Average prot standard for a whole unit (i.e. country)

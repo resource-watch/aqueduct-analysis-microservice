@@ -65,7 +65,7 @@ class RiskService(object):
 
         # GEOGUNIT INFO
         fids, geogunit_name, geogunit_type = pd.read_sql_query("SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name), self.engine).values[0]
-        logging.debug(f'[RISK SERVICE - user_selections]: {geogunit_type}')
+        
         geogunit = "geogunit_103" if geogunit_type.lower() == "city" else "geogunit_108"
 
         # IMPACT DRIVER INFO (climate and socioeconomc scenarios
@@ -85,7 +85,7 @@ class RiskService(object):
             # Hardwire in the protection standards for the Netherlands or Average prot standard for a whole unit (i.e. country)
             # here self.exposure should be allways urban_damage_v2
             prot_pres = (1000 if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', 'Netherlands'] else df_precalc[["_".join(['urban_damage_v2', '2010', scen_abb, "prot_avg"])]])  
-            logging.debug(f'[RISK - user_selections]: {prot_pres}')
+            
         else:
             risk_analysis = "calc"
             prot_pres = self.existing_prot
@@ -408,10 +408,11 @@ class RiskService(object):
         #CHANGEDIT
         selCol = climate +"_"+ model +"_"+ socioecon +"_"+ self.sub_abb +"_"+ year
         
+        
         # selData = dataframe[[col for col in dataframe.index.tolist() if selCol in col]]
         selData = dataframe[[col for col in dataframe.columns if (selCol in col) and ("rp00001" not in col)]]
         #selData = dataframe[[col for col in dataframe.columns if (model in col) and (socioecon in col) and (climate in col)  and (year in col) and ("rp00001" not in col)]]
-
+        #logging.debug(f'[RISK SERVICE - select_projection_data]: {selData}')
         return selData
 
     def calc_risk(self):
@@ -440,27 +441,42 @@ class RiskService(object):
         for m in self.mods:
             cc_raw, soc_raw, sub_raw, cc_soc_raw, urb_raw= [], [], [], [], []
             for y in self.ys:
+                dfsub_a = []
                 # 2010 DATA
                 if y == '2010':
                     # Pull historical raw data
                     histData = self.select_projection_data(df_raw, "histor", modsT, "base", y)
                     cc_raw.append(histData)
                     soc_raw.append(histData)
-                    sub_raw.append(histData)
                     cc_soc_raw.append(histData)
                     urb_raw.append(self.select_projection_data(df_urb, "histor", modsT, "base", y))
+
+                    dfsub = histData
+                    
 
                 # 2030, 2050, 2080 DATA
                 else:
                     cc_raw.append(self.select_projection_data(df_urb, self.clim, m, "base", y))  # Add to climate change only list
                     soc_raw.append(self.select_projection_data(df_raw, "histor", modsT, self.socio, y)) # Add to socieco change only list
-                    sub_raw.append(self.select_projection_data(df_raw, "histor", modsT, "base", y)) # Add to socieco change only list
                     cc_soc_raw.append(self.select_projection_data(df_raw, self.clim, m, self.socio, y)) # Add to subsid change only list
                     urb_raw.append(self.select_projection_data(df_urb, self.clim, m, "base", y)) #Add data using urban data
+
+                    dfsub = self.select_projection_data(df_raw, "histor", modsT, "base", y) # Add to socieco change only list
+                
+                #logging.debug(f'[RISK SERVICE - calc_risk]: {dfsub.columns}')
+                dfsub_a = pd.melt(dfsub, value_vars=dfsub.columns)
+                logging.debug(f'[RISK SERVICE - calc_risk]: {dfsub_a}')
+                sub_raw.append(pd.Series(name=self.geogunit_name, index=self.rps, data = dfsub_a["value"].tolist()))
+                
+                logging.debug(f'[RISK SERVICE - calc_risk]: {sub_raw}')
+
             if self.sub_scenario == False:
                 sub_raw = []
                 dfsub = pd.Series(name=self.geogunit_name, index=self.rps, data = 0)
                 sub_raw.extend([dfsub for i in range(4)])
+            
+            logging.debug(f'[RISK SERVICE - calc_risk]: {len(sub_raw)}, {len(sub_raw[0])}')
+            logging.debug(f'[RISK SERVICE - calc_risk]: {type(sub_raw[0])}')
             
             outData= self.find_impact(cc_raw, soc_raw, sub_raw, cc_soc_raw, urb_raw, m)
             model_impact = model_impact.join(outData)
@@ -505,7 +521,6 @@ class RiskService(object):
 
     @cached_property    
     def meta(self):
-        logging.debug(f'[Risk Service meta]: {self.prot_pres}')
         return {"flood": self.flood,
                 "geogunit_name":self.geogunit_name,
                 "geogunit_type":self.geogunit_type,
