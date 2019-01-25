@@ -13,7 +13,7 @@ from aqueduct.services.analysis_service import AnalysisService
 from aqueduct.services.cba_service import CBAEndService, CBAICache
 from aqueduct.services.cba_defaults_service import CBADefaultService
 from aqueduct.services.risk_service import RiskService
-from aqueduct.validators import validate_geostore, validate_weights, validate_params_cba, validate_params_cba_def, validate_params_risk
+from aqueduct.validators import validate_wra_params, validate_params_cba, validate_params_cba_def, validate_params_risk
 from aqueduct.serializers import serialize_response, serialize_response_cba ,serialize_response_default, serialize_response_risk
 from aqueduct.middleware import get_geo_by_hash, sanitize_parameters
 from aqueduct.errors import CartoError, DBError
@@ -50,8 +50,8 @@ def analyze(geojson):
 
 
 @aqueduct_analysis_endpoints_v1.route('/', strict_slashes=False, methods=['GET'])
-@validate_geostore
-@validate_weights
+@sanitize_parameters
+@validate_wra_params
 @get_geo_by_hash
 def get_by_geostore(geojson):
     """By Geostore Endpoint"""

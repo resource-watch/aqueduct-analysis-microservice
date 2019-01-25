@@ -1,5 +1,5 @@
 """Geostore SERVICE"""
-
+import logging
 from aqueduct.errors import GeostoreNotFound
 from CTRegisterMicroserviceFlask import request_to_microservice
 
@@ -14,6 +14,7 @@ class GeostoreService(object):
             if not response or response.get('errors'):
                 raise GeostoreNotFound
             geostore = response.get('data', None).get('attributes', None)
+            logging.debug(f'[GeostoreService]:  {geostore}')
             geojson = geostore.get('geojson', None)
         except Exception as e:
             raise GeostoreNotFound(message=str(e))
