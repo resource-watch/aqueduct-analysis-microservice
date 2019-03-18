@@ -7,15 +7,17 @@ from __future__ import print_function
 import logging
 from ast import literal_eval
 import pandas as pd
+import geojson as geoj
 from flask import jsonify, request, Blueprint, json
 from aqueduct.routes.api import error
 from aqueduct.services.analysis_service import AnalysisService
+from aqueduct.services.carto_service import CartoService
 from aqueduct.services.cba_service import CBAEndService, CBAICache
 from aqueduct.services.cba_defaults_service import CBADefaultService
 from aqueduct.services.risk_service import RiskService
 from aqueduct.validators import validate_wra_params, validate_params_cba, validate_params_cba_def, validate_params_risk
 from aqueduct.serializers import serialize_response, serialize_response_cba ,serialize_response_default, serialize_response_risk
-from aqueduct.middleware import get_geo_by_hash, sanitize_parameters
+from aqueduct.middleware import get_geo_by_hash, sanitize_parameters, get_wscheme
 from aqueduct.errors import CartoError, DBError
 
 aqueduct_analysis_endpoints_v1 = Blueprint('aqueduct_analysis_endpoints_v1', __name__)
@@ -23,41 +25,34 @@ aqueduct_analysis_endpoints_v1 = Blueprint('aqueduct_analysis_endpoints_v1', __n
 """
 WATER RISK ATLAS ENDPOINTS
 """
-def analyze(geojson):
+def analyze(wscheme, geojson):
     """Analyze water risk"""
-    geojson = geojson or None
-    wscheme = literal_eval(request.args.get('wscheme')) or [1] * 12
-
-    if not geojson:
-        return error(status=400, detail='Geojson is required')
-
     try:
-        data = {
-        'rows': AnalysisService.analyze(
-            geojson=geojson,
-            wscheme=wscheme
-            )}
-        logging.info('[ROUTER]: Carto query load', str(data['rows']))
+        geometry = geoj.loads(geoj.dumps(geojson))
+        if geometry["geometry"]["type"] != 'MultiPoint':
+            return error(status=500, detail=f'Error: geostore must be of multipoint type, not {geometry["geometry"]["type"]}.')
+        point_list = [f"\'\'Point({point[0]} {point[1]})\'\'" for point in geometry["geometry"]["coordinates"]]
+        tmp = ", ".join(point_list)
+        points = f"[{tmp}]"
+        logging.info(f'[ROUTER] [ps_router.analyze]: points {points}')
+        data = CartoService.get_table(wscheme, points)
     except CartoError as e:
         logging.error('[ROUTER]: '+e.message)
         return error(status=500, detail=e.message)
     except Exception as e:
         logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail='Generic Error')
-
     data['wscheme'] = wscheme
     return jsonify(serialize_response(data)), 200
 
 
 @aqueduct_analysis_endpoints_v1.route('/', strict_slashes=False, methods=['GET'])
-@sanitize_parameters
-@validate_wra_params
+@get_wscheme
 @get_geo_by_hash
-def get_by_geostore(geojson):
+def get_by_geostore(wscheme, geojson):
     """By Geostore Endpoint"""
-    logging.info('[ROUTER]: Getting water risk analysis by geostore')
-    return analyze(geojson)
-
+    logging.info(f'[ROUTER] [get_by_geostore]: Getting water risk analysis by geostore {wscheme} \n {geojson}')
+    return analyze(wscheme, geojson)
 
 """
 FLOOD ENDPOINTS

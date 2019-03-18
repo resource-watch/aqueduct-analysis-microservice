@@ -28,25 +28,22 @@ def validate_wra_params(func):
     def wrapper(*args, **kwargs):
         validation_schema = {
             'wscheme':{
-                'type': 'list',
-                'coerce': to_list,
-                'maxlength':13,
-                'schema': {'type': 'integer', 
-                           'nullable': True,
-                           'coerce': null2int,
-                           'anyof':[{'min': 0, 'max': 4}]}, 
-                'required': True },
+                'type': 'string',
+                'required': False },
             'geostore':{
                 'type': 'string',
                 'required': True
              }
             }
         if request.method == 'GET':
+            #wscheme = request.args.get('wscheme', None)
+            #kwargs["wscheme"] = wscheme
             logging.debug(f"[VALIDATOR - wra_weights]: {kwargs}")
             validator = Validator(validation_schema, allow_unknown = True)
-            if not validator.validate(kwargs['params']):
+
+            if not validator.validate(kwargs):
                 return error(status=400, detail=validator.errors)
-            kwargs['sanitized_params'] = validator.normalized(kwargs['params'])
+            kwargs['sanitized_params'] = validator.normalized(kwargs)
         return func(*args, **kwargs)
     return wrapper
 

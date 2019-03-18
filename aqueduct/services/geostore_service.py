@@ -14,8 +14,8 @@ class GeostoreService(object):
             if not response or response.get('errors'):
                 raise GeostoreNotFound
             geostore = response.get('data', None).get('attributes', None)
-            logging.debug(f'[GeostoreService]:  {geostore}')
-            geojson = geostore.get('geojson', None)
+            geojson = geostore.get('geojson', None).get('features', None)[0]
+            
         except Exception as e:
             raise GeostoreNotFound(message=str(e))
         return geojson
@@ -23,7 +23,7 @@ class GeostoreService(object):
     @staticmethod
     def get(geostore):
         config = {
-            'uri': '/geostore/'+ geostore,
+            'uri': '/v1/geostore/'+ geostore,
             'method': 'GET'
         }
         return GeostoreService.execute(config)
