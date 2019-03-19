@@ -20,7 +20,8 @@ null2float = myCoerc(float)
 
 to_bool = lambda v: v.lower() in ('true', '1')
 to_lower = lambda v: v.lower()
-to_list = lambda v: json.loads(v.lower())
+#to_list = lambda v: json.loads(v.lower())
+to_list = lambda v: json.loads(v)
 
 def validate_wra_params(func):
     """Water Risk atlas parameters validation"""
@@ -29,15 +30,18 @@ def validate_wra_params(func):
         validation_schema = {
             'wscheme':{
                 'type': 'string',
-                'required': False },
+                'maxlength':13,
+                'schema': {'type': 'integer', 
+                           'nullable': True,
+                           'coerce': null2int,
+                           'anyof':[{'min': 0, 'max': 4}]}, 
+                'required': True },
             'geostore':{
                 'type': 'string',
                 'required': True
              }
             }
         if request.method == 'GET':
-            #wscheme = request.args.get('wscheme', None)
-            #kwargs["wscheme"] = wscheme
             logging.debug(f"[VALIDATOR - wra_weights]: {kwargs}")
             validator = Validator(validation_schema, allow_unknown = True)
 

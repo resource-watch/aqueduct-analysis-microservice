@@ -6,7 +6,13 @@ def serialize_response(analysis):
     return {
         'id': None,
         'type': 'water-risk-analysis',
+        'analysis_type': analysis.get('analysis_type', None),
         'wscheme': analysis.get('wscheme', None),
+        'month': analysis.get('month', None),
+        'year': analysis.get('year', None),
+        'change_type': analysis.get('change_type', None),
+        'indicator': analysis.get('indicator', None),
+        'scenario': analysis.get('scenario', None),
         'data': analysis.get('rows', None)
     }
 

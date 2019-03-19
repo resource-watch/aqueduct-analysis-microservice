@@ -17,7 +17,7 @@ from aqueduct.services.cba_defaults_service import CBADefaultService
 from aqueduct.services.risk_service import RiskService
 from aqueduct.validators import validate_wra_params, validate_params_cba, validate_params_cba_def, validate_params_risk
 from aqueduct.serializers import serialize_response, serialize_response_cba ,serialize_response_default, serialize_response_risk
-from aqueduct.middleware import get_geo_by_hash, sanitize_parameters, get_wscheme
+from aqueduct.middleware import get_geo_by_hash, sanitize_parameters, get_wra_params
 from aqueduct.errors import CartoError, DBError
 
 aqueduct_analysis_endpoints_v1 = Blueprint('aqueduct_analysis_endpoints_v1', __name__)
@@ -25,7 +25,7 @@ aqueduct_analysis_endpoints_v1 = Blueprint('aqueduct_analysis_endpoints_v1', __n
 """
 WATER RISK ATLAS ENDPOINTS
 """
-def analyze(wscheme, geojson):
+def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario):
     """Analyze water risk"""
     try:
         geometry = geoj.loads(geoj.dumps(geojson))
@@ -35,24 +35,30 @@ def analyze(wscheme, geojson):
         tmp = ", ".join(point_list)
         points = f"[{tmp}]"
         logging.info(f'[ROUTER] [ps_router.analyze]: points {points}')
-        data = CartoService.get_table(wscheme, points)
+        data = CartoService.get_table(points, analysis_type, wscheme, month, year, change_type, indicator, scenario)
     except CartoError as e:
         logging.error('[ROUTER]: '+e.message)
         return error(status=500, detail=e.message)
     except Exception as e:
         logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail='Generic Error')
+    data['analysis_type'] = analysis_type
     data['wscheme'] = wscheme
+    data['month'] = month
+    data['year'] = year
+    data['change_type'] = change_type
+    data['indicator'] = indicator
+    data['scenario'] = scenario
     return jsonify(serialize_response(data)), 200
 
 
 @aqueduct_analysis_endpoints_v1.route('/', strict_slashes=False, methods=['GET'])
-@get_wscheme
+@get_wra_params
 @get_geo_by_hash
-def get_by_geostore(wscheme, geojson):
+def get_by_geostore(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario):
     """By Geostore Endpoint"""
-    logging.info(f'[ROUTER] [get_by_geostore]: Getting water risk analysis by geostore {wscheme} \n {geojson}')
-    return analyze(wscheme, geojson)
+    logging.info(f'[ROUTER] [get_by_geostore]: Getting water risk analysis by geostore {wscheme} \n {geojson} \n {analysis_type}')
+    return analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario)
 
 """
 FLOOD ENDPOINTS
