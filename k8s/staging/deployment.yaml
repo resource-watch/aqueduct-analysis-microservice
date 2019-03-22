@@ -55,6 +55,11 @@ spec:
                 secretKeyRef:
                   name: mssecrets
                   key: CARTODB_USER
+          - name: POSTGRES_URL
+            valueFrom:
+                secretKeyRef:
+                  name: dbsecrets
+                  key: AQUEDUCT_POSTGRES_URL
 
         ports:
           - containerPort: 5700
