@@ -5,9 +5,6 @@ import requests
 from aqueduct.config import SETTINGS
 from aqueduct.errors import CartoError
 
-PAnalysis="Select * from get_aqpoints(\'{weights_scheme}\',\'{coords_array}\')"
-
-
 class CartoService(object):
     """."""
     @staticmethod
@@ -15,7 +12,6 @@ class CartoService(object):
         carto = SETTINGS.get('carto')
         url = "https://{serviceAcc}.{uri}".format(serviceAcc=carto.get('service_account'),uri=carto.get('uri'))
         payload = {'q': sql}
-        logging.info("[SERVICE] [carto_service]: carto url: {0}".format(url))
         try:
             r = requests.post(url, data=payload)
             data = r.json()
@@ -26,7 +22,13 @@ class CartoService(object):
         return data
 
     @staticmethod
-    def get_table(wscheme,points):
-        sql = PAnalysis.format(weights_scheme=str(wscheme), coords_array='[{0}]'.format(', '.join(points)))
-        logging.info("[SERVICE] [carto_service]: query to be performed: {0}".format(sql))
+    def get_table(points, analysis_type, wscheme, month, year, change_type, indicator, scenario):
+        sqltype = {'annual': f"SELECT * FROM get_aqpoints_annual('{points}')",
+                   'monthly': f"SELECT * FROM get_aqpoints_monthly('{month}', '{points}')",
+                   'projected': f"SELECT * FROM get_aqpoints_projected('{year}', '''{change_type}''', '''{indicator}''', '''{scenario}''', '{points}')",
+                   'custom': f"SELECT * FROM get_aqpoints_annual_custom({wscheme},'{points}')"
+                  }
+ 
+        sql = sqltype[analysis_type]
+        logging.info(f"[SERVICE] [carto_service] query: {sql}")
         return CartoService.query(sql)

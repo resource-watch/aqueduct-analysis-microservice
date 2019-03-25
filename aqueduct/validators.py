@@ -3,6 +3,7 @@ from ast import literal_eval
 from functools import wraps
 from flask import request
 import logging
+import json
 
 from cerberus import Validator
 from cerberus.errors import ValidationError
@@ -19,31 +20,34 @@ null2float = myCoerc(float)
 
 to_bool = lambda v: v.lower() in ('true', '1')
 to_lower = lambda v: v.lower()
+#to_list = lambda v: json.loads(v.lower())
+to_list = lambda v: json.loads(v)
 
-
-def validate_geostore(func):
-    """World Validation"""
+def validate_wra_params(func):
+    """Water Risk atlas parameters validation"""
     @wraps(func)
     def wrapper(*args, **kwargs):
+        validation_schema = {
+            'wscheme':{
+                'type': 'string',
+                'maxlength':13,
+                'schema': {'type': 'integer', 
+                           'nullable': True,
+                           'coerce': null2int,
+                           'anyof':[{'min': 0, 'max': 4}]}, 
+                'required': True },
+            'geostore':{
+                'type': 'string',
+                'required': True
+             }
+            }
         if request.method == 'GET':
-            geostore = request.args.get('geostore')
-            if not geostore:
-                return error(status=400, detail='Geostore is required')
-        return func(*args, **kwargs)
-    return wrapper
+            logging.debug(f"[VALIDATOR - wra_weights]: {kwargs}")
+            validator = Validator(validation_schema, allow_unknown = True)
 
-def validate_weights(func):
-    """World Validation"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if request.method == 'GET':
-            wscheme = literal_eval(request.args.get('wscheme'))
-            if not wscheme:
-                return error(status=400, detail='wscheme is required')
-            elif len(wscheme) != 12:
-            	return error(status=400, detail='please a valid weight scheme array is needed: [1,1,1,1,1,1,1,1,1,1,1,1]')
-            elif type(wscheme) != list:
-                return error(status=400, detail='this is not a valid weight scheme array, required something like: [1,1,1,1,1,1,1,1,1,1,1,1]')
+            if not validator.validate(kwargs):
+                return error(status=400, detail=validator.errors)
+            kwargs['sanitized_params'] = validator.normalized(kwargs)
         return func(*args, **kwargs)
     return wrapper
 
