@@ -23,7 +23,7 @@ class GeostoreService(object):
     @staticmethod
     def get(geostore):
         config = {
-            'uri': '/v1/geostore/'+ geostore,
+            'uri': '/geostore/'+ geostore,
             'method': 'GET'
         }
         return GeostoreService.execute(config)
