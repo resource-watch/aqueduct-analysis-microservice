@@ -38,7 +38,7 @@ def get_geo_by_hash(func):
     def wrapper(*args, **kwargs):
         if request.method == 'GET':
             geostore = request.args.get('geostore')
-            logging.info('[middleware]: ' + geostore)
+            logging.info('[middleware]: Getting geostore with ID ' + geostore)
             if not geostore:
                 return error(status=400, detail='Geostore is required')
             try:

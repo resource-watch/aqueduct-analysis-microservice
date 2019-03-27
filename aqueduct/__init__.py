@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import json
+import sys
 import logging
 
 
@@ -15,10 +15,19 @@ from aqueduct.routes.api.v1 import aqueduct_analysis_endpoints_v1
 from aqueduct.utils.files import load_config_json
 import CTRegisterMicroserviceFlask
 
+formatter = logging.Formatter('%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s', '%Y%m%d-%H:%M%p')
+
+error_handler = logging.StreamHandler(sys.stderr)
+error_handler.setLevel(logging.WARN)
+error_handler.setFormatter(formatter)
+
+output_handler = logging.StreamHandler(sys.stdout)
+output_handler.setLevel(SETTINGS.get('logging', {}).get('level'))
+output_handler.setFormatter(formatter)
+
+
 logging.basicConfig(
-    level=SETTINGS.get('logging', {}).get('level'),
-    format='%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y%m%d-%H:%M%p',
+    handlers=[error_handler, output_handler]
 )
 
 # Flask App
