@@ -5,7 +5,7 @@ services:
     ports:
       - "5700:5700"
     env_file:
-       - prod.env
+       - .env
     container_name: aqueduct_analysis-develop
     environment:
       PORT: 5700
@@ -25,4 +25,3 @@ services:
     container_name: aqueduct-postgres
     ports:
       - "5432"
-    restart: always
