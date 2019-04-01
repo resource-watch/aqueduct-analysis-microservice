@@ -17,18 +17,19 @@ import CTRegisterMicroserviceFlask
 
 formatter = logging.Formatter('%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s', '%Y%m%d-%H:%M%p')
 
+root = logging.getLogger()
+root.setLevel(logging.DEBUG)
+
 error_handler = logging.StreamHandler(sys.stderr)
 error_handler.setLevel(logging.WARN)
 error_handler.setFormatter(formatter)
+root.addHandler(error_handler)
 
 output_handler = logging.StreamHandler(sys.stdout)
 output_handler.setLevel(SETTINGS.get('logging', {}).get('level'))
 output_handler.setFormatter(formatter)
+root.addHandler(output_handler)
 
-
-logging.basicConfig(
-    handlers=[error_handler, output_handler]
-)
 
 # Flask App
 app = Flask(__name__)
