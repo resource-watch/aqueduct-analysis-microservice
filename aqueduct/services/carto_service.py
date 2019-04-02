@@ -12,6 +12,7 @@ class CartoService(object):
         carto = SETTINGS.get('carto')
         url = "https://{serviceAcc}.{uri}".format(serviceAcc=carto.get('service_account'),uri=carto.get('uri'))
         payload = {'q': sql}
+        downloadUrl = url+'?q='+sql
         try:
             r = requests.post(url, data=payload)
             data = r.json()
@@ -19,7 +20,7 @@ class CartoService(object):
                 raise CartoError(message='Carto Error')
         except Exception as e:
             raise e
-        return data
+        return data, downloadUrl 
 
     @staticmethod
     def get_table(points, analysis_type, wscheme, month, year, change_type, indicator, scenario):

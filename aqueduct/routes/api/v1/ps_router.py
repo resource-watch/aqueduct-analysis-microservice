@@ -35,13 +35,14 @@ def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator
         tmp = ", ".join(point_list)
         points = f"[{tmp}]"
         logging.info(f'[ROUTER] [ps_router.analyze]: points {points}')
-        data = CartoService.get_table(points, analysis_type, wscheme, month, year, change_type, indicator, scenario)
+        data, downloadUrl = CartoService.get_table(points, analysis_type, wscheme, month, year, change_type, indicator, scenario)
     except CartoError as e:
         logging.error('[ROUTER]: '+e.message)
         return error(status=500, detail=e.message)
     except Exception as e:
         logging.error('[ROUTER]: '+str(e))
         return error(status=500, detail='Generic Error')
+        
     data['analysis_type'] = analysis_type
     data['wscheme'] = wscheme
     data['month'] = month
@@ -49,6 +50,7 @@ def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator
     data['change_type'] = change_type
     data['indicator'] = indicator
     data['scenario'] = scenario
+    data['downloadUrl'] = downloadUrl
     return jsonify(serialize_response(data)), 200
 
 

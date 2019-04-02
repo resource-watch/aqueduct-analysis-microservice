@@ -13,6 +13,7 @@ def serialize_response(analysis):
         'change_type': analysis.get('change_type', None),
         'indicator': analysis.get('indicator', None),
         'scenario': analysis.get('scenario', None),
+        'downloadUrl': analysis.get('downloadUrl', None),
         'data': analysis.get('rows', None)
     }
 
