@@ -17,6 +17,10 @@ def serialize_response(analysis):
         'data': analysis.get('rows', None)
     }
 
+def serialize_response_geocoding(data):
+    """."""
+    return {'rows': data.to_dict(orient='record')}
+
 def serialize_response_cba(data):
     """."""
     return {

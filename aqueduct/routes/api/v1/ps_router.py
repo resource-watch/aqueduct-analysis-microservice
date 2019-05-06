@@ -12,13 +12,14 @@ from flask import jsonify, request, Blueprint, json
 from aqueduct.routes.api import error
 from aqueduct.services.analysis_service import AnalysisService
 from aqueduct.services.carto_service import CartoService
+from aqueduct.services.geocode_service import GeocodeService
 from aqueduct.services.cba_service import CBAEndService, CBAICache
 from aqueduct.services.cba_defaults_service import CBADefaultService
 from aqueduct.services.risk_service import RiskService
 from aqueduct.validators import validate_wra_params, validate_params_cba, validate_params_cba_def, validate_params_risk
-from aqueduct.serializers import serialize_response, serialize_response_cba ,serialize_response_default, serialize_response_risk
+from aqueduct.serializers import serialize_response, serialize_response_geocoding, serialize_response_cba ,serialize_response_default, serialize_response_risk
 from aqueduct.middleware import get_geo_by_hash, sanitize_parameters, get_wra_params
-from aqueduct.errors import CartoError, DBError
+from aqueduct.errors import CartoError, DBError, GeocodeError
 
 aqueduct_analysis_endpoints_v1 = Blueprint('aqueduct_analysis_endpoints_v1', __name__)
 
@@ -61,6 +62,24 @@ def get_by_geostore(geojson, analysis_type, wscheme, month, year, change_type, i
     """By Geostore Endpoint"""
     logging.info(f'[ROUTER] [get_by_geostore]: Getting water risk analysis by geostore {wscheme} \n {geojson} \n {analysis_type}')
     return analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario)
+
+"""
+GEOCODING ENDPOINTS
+"""
+@aqueduct_analysis_endpoints_v1.route('/geocoding', strict_slashes=False, methods=['POST'])
+def get_geocode():
+    """Geocode addresses"""
+    try:
+        data = GeocodeService.upload_file()        
+    except GeocodeError as e:
+        logging.error('[ROUTER]: '+str(e))
+        return error(status=500, detail=e.message)
+    except Exception as e:
+        logging.error('[ROUTER]: '+str(e))
+        return error(status=500, detail=e.message)
+    
+    return jsonify(serialize_response_geocoding(data)), 200
+
 
 """
 FLOOD ENDPOINTS
