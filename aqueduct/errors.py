@@ -20,3 +20,6 @@ class GeostoreNotFound(Error):
 
 class DBError(Error):
     pass
+
+class GeocodeError(Error):
+    pass
