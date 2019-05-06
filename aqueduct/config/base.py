@@ -15,6 +15,6 @@ SETTINGS = {
         'uri': 'carto.com/api/v2/sql'
     },
     'geopy': {
-        'places_api_key': os.getenv('GP_PRIVATE_KEY')
+        'places_api_key': os.getenv('AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY')
     }
 }
