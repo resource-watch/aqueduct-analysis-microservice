@@ -2,7 +2,6 @@
 
 import os
 
-
 SETTINGS = {
     'logging': {
         'level': 'DEBUG'

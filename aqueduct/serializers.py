@@ -17,25 +17,31 @@ def serialize_response(analysis):
         'data': analysis.get('rows', None)
     }
 
+
 def serialize_response_geocoding(data):
     """."""
     return {'rows': data.to_dict(orient='record')}
 
+
 def serialize_response_cba(data):
     """."""
     return {
-        'id':data.get("widgetId", None),
+        'id': data.get("widgetId", None),
         'type': 'water-risk-analysis',
-        'chart_type':data.get('chart_type', None),
+        'chart_type': data.get('chart_type', None),
         'meta': data.get("meta", None),
         'data': data.get('data', None)
     }
+
+
 def serialize_response_default(data):
     """."""
     return {
         'type': 'water-risk-cba-default',
         'data': data
     }
+
+
 def serialize_response_risk(data):
     """."""
     return data
