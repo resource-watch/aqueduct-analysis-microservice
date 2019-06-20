@@ -28,6 +28,8 @@ spec:
             value: "5700"
           - name: ENVIRONMENT
             value: staging
+          - name: LOGGER_LEVEL
+            value: DEBUG
           - name: LOCAL_URL
             value: http://{name}.default.svc.cluster.local:5700
           - name: CT_URL
