@@ -1,4 +1,5 @@
 """Geocode SERVICE"""
+import logging
 import time
 from multiprocessing import Pool
 
@@ -72,6 +73,9 @@ class GeocodeService(object):
     def upload_file():
         try:
             if request.method == 'POST':
+                logging.debug(f'[GeoCode Service] File keys detected: {list(request.files.keys())}')
+                if 'file' not in request.files:
+                    raise GeocodeError(message='No file provided')
                 file = request.files['file']
                 extension = file.filename.rsplit('.', 1)[1].lower()
                 if file and allowed_file(file.filename):
