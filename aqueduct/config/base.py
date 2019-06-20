@@ -4,7 +4,7 @@ import os
 
 SETTINGS = {
     'logging': {
-        'level': 'DEBUG'
+        'level': os.getenv('LOGGER_LEVEL') or 'DEBUG'
     },
     'service': {
         'port': os.getenv('PORT')
