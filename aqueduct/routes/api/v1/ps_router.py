@@ -81,7 +81,7 @@ def get_geocode():
     try:
         data = GeocodeService.upload_file()
     except GeocodeError as e:
-        logging.error('[ROUTER]: ' + str(e))
+        logging.error('[ROUTER]: ' + str(e.message))
         return error(status=500, detail=e.message)
     except Exception as e:
         logging.error('[ROUTER]: ' + str(e))
