@@ -3,7 +3,7 @@ import os
 bind = '0.0.0.0:5700'
 backlog = 2048
 
-worker_class = 'gevent'
+worker_class = 'eventlet'
 workers = 2
 threads = 1
 worker_connections = 1000
