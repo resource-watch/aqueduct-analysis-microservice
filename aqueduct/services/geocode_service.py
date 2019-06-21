@@ -40,9 +40,11 @@ g = GoogleV3(api_key=geopy.get('places_api_key'))
 
 
 def get_latlonraw(x):
+    logging.debug(f'[GeoCode Service] get_latlonraw init:')
     index, row = x
     time.sleep(0.001)
     address = g.geocode(row['address'])
+    logging.debug(f'[GeoCode Service] get_latlonraw address: {address}')
     try:
         return address.latitude, address.longitude, True
     except:
@@ -53,10 +55,12 @@ class GeocodeService(object):
 
     @staticmethod
     def geocoding(data):
-
+        logging.debug(f'[GeoCode Service] Geo-encoding data: {data}')
         try:
             data.columns = map(str.lower, data.columns)
+            logging.debug(f'[GeoCode Service] Geo-encoding columns: {data.columns}')
             if 'address' in data.columns:
+                logging.debug(f'[GeoCode Service] "address" present in "data.columns":')
                 data1 = pd.DataFrame(0.0, index=list(range(0, len(data))), columns=list(['lat', 'lon', 'match']))
                 data = pd.concat([data, data1], axis=1)
 
@@ -64,10 +68,10 @@ class GeocodeService(object):
                 data[['lat', 'lon', 'match']] = p.map(get_latlonraw, data.iterrows())
             else:
                 raise GeocodeError(message='Address column missing')
-
         except Exception as e:
             raise e
         return data
+
 
     @staticmethod
     def upload_file():
@@ -89,4 +93,5 @@ class GeocodeService(object):
                     raise GeocodeError(message=f'{extension} is not an allowed file extension')
         except Exception as e:
             raise e
+        logging.debug(f'[GeoCode Service] Data loaded: {data}')
         return GeocodeService.geocoding(data)
