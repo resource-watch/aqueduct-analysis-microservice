@@ -14,5 +14,3 @@ cached_property==1.5.1
 cerberus==1.2
 geopy==1.19.0
 xlrd==1.1.0
-gunicorn==19.9.0
-gevent==1.4.0

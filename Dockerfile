@@ -7,9 +7,12 @@ RUN apt-get update && apt-get install -y bash git gcc \
   build-essential postgresql postgresql-client postgresql-contrib
 RUN addgroup $USER && useradd -ms /bin/bash $USER -g $USER
 RUN easy_install pip && pip install --upgrade pip
-
+RUN pip install virtualenv gunicorn gevent
 RUN mkdir -p /opt/$NAME
+RUN cd /opt/$NAME && virtualenv venv && /bin/bash -c "source venv/bin/activate"
+
 COPY requirements.txt /opt/$NAME/requirements.txt
+
 RUN cd /opt/$NAME && pip install -r requirements.txt
 
 COPY entrypoint.sh /opt/$NAME/entrypoint.sh
