@@ -66,6 +66,7 @@ class GeocodeService(object):
 
                 p = Pool()
                 data[['lat', 'lon', 'match']] = p.map(get_latlonraw, data.iterrows())
+                data.fillna('NaN',inplace=True)
             else:
                 raise GeocodeError(message='Address column missing')
         except Exception as e:
