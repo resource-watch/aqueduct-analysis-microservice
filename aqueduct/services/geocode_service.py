@@ -46,9 +46,9 @@ def get_latlonraw(x):
     address = g.geocode(row['address'])
     logging.debug(f'[GeoCode Service] get_latlonraw address: {address}')
     try:
-        return address.latitude, address.longitude, True
+        return address.address, address.latitude, address.longitude, True
     except:
-        return None, None, False
+        return None, None, None, False
 
 
 class GeocodeService(object):
@@ -61,11 +61,11 @@ class GeocodeService(object):
             logging.debug(f'[GeoCode Service] Geo-encoding columns: {data.columns}')
             if 'address' in data.columns:
                 logging.debug(f'[GeoCode Service] "address" present in "data.columns":')
-                data1 = pd.DataFrame(0.0, index=list(range(0, len(data))), columns=list(['lat', 'lon', 'match']))
+                data1 = pd.DataFrame(0.0, index=list(range(0, len(data))), columns=list(['matched address', 'lat', 'lon', 'match']))
                 data = pd.concat([data, data1], axis=1)
 
                 p = Pool()
-                data[['lat', 'lon', 'match']] = p.map(get_latlonraw, data.iterrows())
+                data[['matched address', 'lat', 'lon', 'match']] = p.map(get_latlonraw, data.iterrows())
                 data.fillna('NaN',inplace=True)
             else:
                 raise GeocodeError(message='Address column missing')
