@@ -29,7 +29,8 @@ WATER RISK ATLAS ENDPOINTS
 """
 
 
-def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario):
+def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario, 
+            locations, input_address, match_address):
     """Analyze water risk"""
     try:
         geometry = geoj.loads(geoj.dumps(geojson))
@@ -40,8 +41,26 @@ def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator
         tmp = ", ".join(point_list)
         points = f"[{tmp}]"
         logging.info(f'[ROUTER] [ps_router.analyze]: points {points}')
+
+        nPoints = len(geometry["geometry"]["coordinates"])
+
+        if locations == None:
+            location_list = [f"null" for i in range(nPoints)]
+            tmp = ", ".join(location_list)
+            locations = f"[{tmp}]"
+
+        if input_address == None:
+            address_list = [f"null" for i in range(nPoints)]
+            tmp = ", ".join(address_list)
+            input_address = f"[{tmp}]"
+
+        if match_address == None:
+            address_list = [f"null" for i in range(nPoints)]
+            tmp = ", ".join(address_list)
+            match_address = f"[{tmp}]"
+
         data, downloadUrl = CartoService.get_table(points, analysis_type, wscheme, month, year, change_type, indicator,
-                                                   scenario)
+                                                   scenario, locations, input_address, match_address)
     except CartoError as e:
         logging.error('[ROUTER]: ' + e.message)
         return error(status=500, detail=e.message)
@@ -63,11 +82,13 @@ def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator
 @aqueduct_analysis_endpoints_v1.route('/', strict_slashes=False, methods=['GET'])
 @get_wra_params
 @get_geo_by_hash
-def get_by_geostore(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario):
+def get_by_geostore(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario, 
+                    locations, input_address, match_address):
     """By Geostore Endpoint"""
     logging.info(
         f'[ROUTER] [get_by_geostore]: Getting water risk analysis by geostore {wscheme} \n {geojson} \n {analysis_type}')
-    return analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario)
+    return analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario, 
+                    locations, input_address, match_address)
 
 
 """

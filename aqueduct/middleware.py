@@ -78,6 +78,12 @@ def get_wra_params(func):
             kwargs["indicator"] = str(indicator)
             scenario = request.args.get('scenario', None)
             kwargs["scenario"] = str(scenario)
+            locations = request.args.get('locations', None)
+            kwargs["locations"] = locations
+            input_address = request.args.get('input_address', None)
+            kwargs["input_address"] = input_address
+            match_address = request.args.get('match_address', None)
+            kwargs["match_address"] = match_address
         return func(*args, **kwargs)
 
     return wrapper
