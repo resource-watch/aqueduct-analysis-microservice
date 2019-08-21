@@ -1,7 +1,7 @@
 """Geocode SERVICE"""
 import logging
 import time
-from multiprocessing import Pool
+from multiprocessing import Pool, TimeoutError
 
 import pandas as pd
 from flask import request
@@ -36,17 +36,20 @@ def allowed_file(filename):
 
 
 geopy = SETTINGS.get('geopy')
-g = GoogleV3(api_key=geopy.get('places_api_key'))
+g = GoogleV3(api_key=geopy.get('places_api_key'), timeout=20)
 
 
 def get_latlonraw(x):
     logging.debug(f'[GeoCode Service] get_latlonraw init:')
     index, row = x
     time.sleep(0.001)
-    address = g.geocode(row['address'])
-    logging.debug(f'[GeoCode Service] get_latlonraw address: {address}')
     try:
-        return address.address, address.latitude, address.longitude, True
+        if pd.notna(row['address']):
+            address = g.geocode(row['address'])
+            logging.debug(f'[GeoCode Service] get_latlonraw address: {address}')
+            return address.address, address.latitude, address.longitude, True
+        else:
+            return None, None, None, False
     except:
         return None, None, None, False
 
@@ -63,14 +66,13 @@ class GeocodeService(object):
                 logging.debug(f'[GeoCode Service] "address" present in "data.columns":')
                 data1 = pd.DataFrame(0.0, index=list(range(0, len(data))), columns=list(['matched address', 'lat', 'lon', 'match']))
                 data = pd.concat([data, data1], axis=1)
-
-                p = Pool()
-                data[['matched address', 'lat', 'lon', 'match']] = p.map(get_latlonraw, data.iterrows())
-                data.fillna('NaN',inplace=True)
+                with Pool(processes=16) as p:
+                    data[['matched address', 'lat', 'lon', 'match']] = p.map(get_latlonraw, data.iterrows())
+                    data.fillna(None, inplace=True)
             else:
                 raise GeocodeError(message='Address column missing')
         except Exception as e:
-            raise e
+            pass
         return data
 
 
@@ -85,7 +87,9 @@ class GeocodeService(object):
                 extension = file.filename.rsplit('.', 1)[1].lower()
                 if file and allowed_file(file.filename):
                     data = read_functions(extension)(request.files.get('file'))
+                    logging.debug(f'[GeoCode Service] Data loaded: {data}')
                     data.rename(columns={'Unnamed: 0': 'row'}, inplace=True)
+                    data.dropna(axis=1, how='all', inplace=True)
                     if len(data) == 0:
                         raise GeocodeError(message='The file is empty')
                     if len(data) > 1000:
@@ -94,5 +98,6 @@ class GeocodeService(object):
                     raise GeocodeError(message=f'{extension} is not an allowed file extension')
         except Exception as e:
             raise e
+            
         logging.debug(f'[GeoCode Service] Data loaded: {data}')
         return GeocodeService.geocoding(data)

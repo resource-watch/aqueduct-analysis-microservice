@@ -108,7 +108,7 @@ def get_geocode():
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail=e.message)
 
-    return jsonify(serialize_response_geocoding(data)), 200
+    return jsonify(json.loads(json.dumps(serialize_response_geocoding(data), ignore_nan=True))), 200
 
 
 """
