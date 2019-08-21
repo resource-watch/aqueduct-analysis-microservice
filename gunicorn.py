@@ -11,6 +11,7 @@ timeout = 120
 keepalive = 2
 max_requests = 1000
 max_requests_jitter = 50
+max_request_line = 2**16 - 2
 
 spew = False
 
