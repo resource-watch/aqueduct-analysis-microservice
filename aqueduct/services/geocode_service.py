@@ -58,12 +58,12 @@ class GeocodeService(object):
 
     @staticmethod
     def geocoding(data):
-        logging.debug(f'[GeoCode Service] Geo-encoding data: {data}')
+        #logging.debug(f'[GeoCode Service] Geo-encoding data: {data}')
         try:
             data.columns = map(str.lower, data.columns)
-            logging.debug(f'[GeoCode Service] Geo-encoding columns: {data.columns}')
+            #logging.debug(f'[GeoCode Service] Geo-encoding columns: {data.columns}')
             if 'address' in data.columns:
-                logging.debug(f'[GeoCode Service] "address" present in "data.columns":')
+                #logging.debug(f'[GeoCode Service] "address" present in "data.columns":')
                 data1 = pd.DataFrame(0.0, index=list(range(0, len(data))), columns=list(['matched address', 'lat', 'lon', 'match']))
                 data = pd.concat([data, data1], axis=1)
                 with Pool(processes=16) as p:
@@ -80,16 +80,20 @@ class GeocodeService(object):
     def upload_file():
         try:
             if request.method == 'POST':
-                logging.debug(f'[GeoCode Service] File keys detected: {list(request.files.keys())}')
+                #logging.debug(f'[GeoCode Service] File keys detected: {list(request.files.keys())}')
                 if 'file' not in request.files:
                     raise GeocodeError(message='No file provided')
                 file = request.files['file']
                 extension = file.filename.rsplit('.', 1)[1].lower()
                 if file and allowed_file(file.filename):
                     data = read_functions(extension)(request.files.get('file'))
-                    logging.debug(f'[GeoCode Service] Data loaded: {data}')
+                    #logging.debug(f'[GeoCode Service] Data loaded: {data}')
                     data.rename(columns={'Unnamed: 0': 'row'}, inplace=True)
                     data.dropna(axis=1, how='all', inplace=True)
+                    if not {'row', 'Row'}.issubset(data.columns):
+                        logging.debug(f'[GeoCode Service] Columns: {list(data.columns)}')
+                        data.insert(loc=0, column='row', value=range(1, 1 + len(data)))
+                        logging.debug(f'[GeoCode Service] Columns: {list(data.columns)}')
                     if len(data) == 0:
                         raise GeocodeError(message='The file is empty')
                     if len(data) > 1000:
@@ -100,5 +104,5 @@ class GeocodeService(object):
             pass
             #raise e
 
-        logging.debug(f'[GeoCode Service] Data loaded: {data}')
+        #logging.debug(f'[GeoCode Service] Data loaded: {data}')
         return GeocodeService.geocoding(data)
