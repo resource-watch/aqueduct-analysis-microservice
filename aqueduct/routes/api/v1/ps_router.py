@@ -79,16 +79,15 @@ def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator
     return jsonify(serialize_response(data)), 200
 
 
-@aqueduct_analysis_endpoints_v1.route('/', strict_slashes=False, methods=['GET'])
+@aqueduct_analysis_endpoints_v1.route('/', strict_slashes=False, methods=['GET','POST'])
 @get_wra_params
 @get_geo_by_hash
-def get_by_geostore(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario, 
-                    locations, input_address, match_address):
+def get_by_geostore(**kwargs):
     """By Geostore Endpoint"""
     logging.info(
-        f'[ROUTER] [get_by_geostore]: Getting water risk analysis by geostore {wscheme} \n {geojson} \n {analysis_type}')
-    return analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario, 
-                    locations, input_address, match_address)
+        f'[ROUTER] [get_by_geostore]: Getting water risk analysis by geostore')
+    return analyze(kwargs['geojson'], kwargs['analysis_type'], kwargs['wscheme'], kwargs['month'], kwargs['year'], kwargs['change_type'], kwargs['indicator'], kwargs['scenario'], 
+                    kwargs['locations'], kwargs['input_address'], kwargs['match_address'])
 
 
 """

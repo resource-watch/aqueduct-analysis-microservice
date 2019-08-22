@@ -44,7 +44,7 @@ def get_latlonraw(x):
     index, row = x
     time.sleep(0.001)
     try:
-        if pd.notna(row['address']):
+        if pd.notna(row['address']) or (row['address'] in ('', ' ')):
             address = g.geocode(row['address'])
             logging.debug(f'[GeoCode Service] get_latlonraw address: {address}')
             return address.address, address.latitude, address.longitude, True
@@ -97,7 +97,8 @@ class GeocodeService(object):
                 else:
                     raise GeocodeError(message=f'{extension} is not an allowed file extension')
         except Exception as e:
-            raise e
-            
+            pass
+            #raise e
+
         logging.debug(f'[GeoCode Service] Data loaded: {data}')
         return GeocodeService.geocoding(data)

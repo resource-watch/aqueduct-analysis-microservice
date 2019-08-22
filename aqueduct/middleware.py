@@ -42,8 +42,8 @@ def get_geo_by_hash(func):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if request.method == 'GET':
-            geostore = request.args.get('geostore')
+        if kwargs["geostore"]:
+            geostore = kwargs["geostore"]
             logging.info('[middleware]: Getting geostore with ID ' + geostore)
             if not geostore:
                 return error(status=400, detail='Geostore is required')
@@ -64,6 +64,7 @@ def get_wra_params(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if request.method == 'GET':
+            kwargs["geostore"] = request.args.get('geostore', None)
             wscheme = request.args.get('wscheme', None)
             kwargs["wscheme"] = wscheme
             analysis_type = request.args.get('analysis_type', None)
@@ -84,6 +85,30 @@ def get_wra_params(func):
             kwargs["input_address"] = input_address
             match_address = request.args.get('match_address', None)
             kwargs["match_address"] = match_address
+        elif request.method == 'POST':
+            kwargs["geostore"] = request.json.get('geostore', None)
+            wscheme = request.json.get('wscheme', None)
+            kwargs["wscheme"] = wscheme
+            analysis_type = request.json.get('analysis_type', None)
+            kwargs["analysis_type"] = str(analysis_type)
+            month = request.json.get('month', None)
+            kwargs["month"] = str(month)
+            year = request.json.get('year', None)
+            kwargs["year"] = str(year)
+            change_type = request.json.get('change_type', None)
+            kwargs["change_type"] = str(change_type)
+            indicator = request.json.get('indicator', None)
+            kwargs["indicator"] = str(indicator)
+            scenario = request.json.get('scenario', None)
+            kwargs["scenario"] = str(scenario)
+            locations = request.json.get('locations', None)
+            kwargs["locations"] = locations
+            input_address = request.json.get('input_address', None)
+            kwargs["input_address"] = input_address
+            match_address = request.json.get('match_address', None)
+            kwargs["match_address"] = match_address
+
+        logging.debug(f'[MIDDLEWARE - ws scheme]: {kwargs}')
         return func(*args, **kwargs)
 
     return wrapper

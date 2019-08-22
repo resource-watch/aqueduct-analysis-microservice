@@ -16,6 +16,8 @@ services:
       API_VERION: v1
       POSTGRES_URL: postgresql+psycopg2://postgres@mymachine:5432/flood_v2
     command: develop
+    volumes:
+      - ./aqueduct:/opt/aqueduct/aqueduct
     restart: always
     depends_on:
       - postgres
