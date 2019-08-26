@@ -246,7 +246,7 @@ class RiskService(object):
                                                          "max")] - tot2010  # Total impact
             df_filt['soc_diff'] = dataframe[colFormat(self.exposure, y, self.scen_abb, "soc",
                                                       "avg")] - tot2010  # Total impact#Soc only impact
-            df_filt['sub_diff'] = dataframe[colFormat(self.exposure, y, self.scen_abb, "soc",
+            df_filt['sub_diff'] = dataframe[colFormat(self.exposure, y, self.scen_abb, "sub",
                                                       "avg")] - tot2010  # Total impact #Subsidence only impact
 
             # Correct for values if impact is less than 2010 baseline data
