@@ -510,7 +510,7 @@ class RiskService(object):
                 # 2030, 2050, 2080 DATA
                 else:
                     cc_raw.append(
-                        self.select_projection_data(df_urb, self.clim, m, "base", y))  # Add to climate change only list
+                        self.select_projection_data(df_raw, self.clim, m, "base", y))  # Add to climate change only list
                     soc_raw.append(self.select_projection_data(df_raw, "histor", modsT, self.socio,
                                                                y))  # Add to socieco change only list
                     cc_soc_raw.append(self.select_projection_data(df_raw, self.clim, m, self.socio,
