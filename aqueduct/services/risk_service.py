@@ -459,11 +459,11 @@ class RiskService(object):
 
         # CHANGEDIT
         selCol = climate + "_" + model + "_" + socioecon + "_" + self.sub_abb + "_" + year
-
+        #logging.debug(selCol)
         # selData = dataframe[[col for col in dataframe.index.tolist() if selCol in col]]
         selData = dataframe[[col for col in dataframe.columns if (selCol in col) and ("rp00001" not in col)]]
         # selData = dataframe[[col for col in dataframe.columns if (model in col) and (socioecon in col) and (climate in col)  and (year in col) and ("rp00001" not in col)]]
-        # logging.debug(f'[RISK SERVICE - select_projection_data]: {selData}')
+        #logging.debug(f'[RISK SERVICE - select_projection_data]: {selData}')
         return selData
 
     def calc_risk(self):
@@ -486,7 +486,7 @@ class RiskService(object):
                                    index_col='id')
         df_urb = pd.read_sql_query("SELECT * FROM {0} where id = '{1}' ".format(urbfn, self.geogunit_name), self.engine,
                                    index_col='id')
-
+        #∫∫logging.debug(f'[RISK SERVICE - calc_risk]: urbfn => {urbfn}  fn => {fn}')
         # Find impact for each model
         model_impact = pd.DataFrame(index=[self.geogunit_name])
         # Find model options associated with flood type
@@ -521,20 +521,23 @@ class RiskService(object):
                     dfsub = self.select_projection_data(df_raw, "histor", modsT, "base",
                                                         y)  # Add to socieco change only list
 
-                # logging.debug(f'[RISK SERVICE - calc_risk]: {dfsub.columns}')
-                dfsub_a = pd.melt(dfsub, value_vars=dfsub.columns)
-                logging.debug(f'[RISK SERVICE - calc_risk]: {dfsub_a}')
-                sub_raw.append(pd.Series(name=self.geogunit_name, index=self.rps, data=dfsub_a["value"].tolist()))
+                #logging.debug(f'[RISK SERVICE - calc_risk]: {dfsub.columns}')
+                
+                if not dfsub.empty:
+                    dfsub_a = pd.melt(dfsub, value_vars=dfsub.columns)
+                    sub_raw.append(pd.Series(name=self.geogunit_name, index=self.rps, data=dfsub_a["value"].tolist()))
+                    
+                
 
-                logging.debug(f'[RISK SERVICE - calc_risk]: {sub_raw}')
+                #logging.debug(f'[RISK SERVICE - calc_risk]: {sub_raw}')
 
             if self.sub_scenario == False:
                 sub_raw = []
                 dfsub = pd.Series(name=self.geogunit_name, index=self.rps, data=0)
                 sub_raw.extend([dfsub for i in range(4)])
 
-            logging.debug(f'[RISK SERVICE - calc_risk]: {len(sub_raw)}, {len(sub_raw[0])}')
-            logging.debug(f'[RISK SERVICE - calc_risk]: {type(sub_raw[0])}')
+            #logging.debug(f'[RISK SERVICE - calc_risk]: {len(sub_raw)}, {len(sub_raw[0])}')
+            #logging.debug(f'[RISK SERVICE - calc_risk]: {type(sub_raw[0])}')
 
             outData = self.find_impact(cc_raw, soc_raw, sub_raw, cc_soc_raw, urb_raw, m)
             model_impact = model_impact.join(outData)
