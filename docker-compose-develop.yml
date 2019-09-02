@@ -3,12 +3,12 @@ services:
   develop:
     build: .
     ports:
-      - "5700:5700"
+      - "5100:5100"
     env_file:
        - .env
     container_name: aqueduct_analysis-develop
     environment:
-      PORT: 5700
+      PORT: 5100
       CT_REGISTER_MODE: auto
       ENVIRONMENT: dev
       DEBUG: "True"
