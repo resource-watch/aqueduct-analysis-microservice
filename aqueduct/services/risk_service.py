@@ -78,7 +78,7 @@ class RiskService(object):
 
         # DEFAULT DATA
         defaultfn = "precalc_agg_{0}_{1}_{2}".format(self.flood, geogunit_type.lower(), sub_abb)
-        # logging.info('[SSSS]: '+str(defaultfn))
+        logging.info(f'[RISK - user_selection]: {str(defaultfn)}')
         df_precalc = pd.read_sql_query("SELECT * FROM {0} where id like '{1}'".format(defaultfn, geogunit_name),
                                        self.engine, index_col='id')
         # PROTECTION STANDARDS and RISK ANALYSIS TYPE
@@ -392,7 +392,7 @@ class RiskService(object):
         ### NEW CODE
         if target_impact.sum() == 0:
             new_prot = np.nan
-            # print "YES"
+            
         else:
             # interpolate to estimate impacts at protection level 'rp'
             prot_impact = self.interp_value(self.rps, ref_impact, rp)
@@ -415,7 +415,7 @@ class RiskService(object):
         # Create dataframes to hold expected impact (for each model and year)
         col = [model + x + j for x in ["_cc_", "_soc_", "_sub_", "_tot_", "_prot_"] for j in self.ys]
         model_imps = pd.DataFrame(index=[self.geogunit_name], columns=col)
-        # print(impact_cc)
+    
         # Perform for each year we have impact data
 
         for y, imp_cc, imp_soc, imp_sub, imp_cc_soc, imp_urb in zip(self.ys, impact_cc, impact_soc, impact_sub,
@@ -486,7 +486,7 @@ class RiskService(object):
                                    index_col='id')
         df_urb = pd.read_sql_query("SELECT * FROM {0} where id = '{1}' ".format(urbfn, self.geogunit_name), self.engine,
                                    index_col='id')
-        #∫∫logging.debug(f'[RISK SERVICE - calc_risk]: urbfn => {urbfn}  fn => {fn}')
+        logging.info(f'[RISK SERVICE - calc_risk]: urbfn => {urbfn}  fn => {fn}')
         # Find impact for each model
         model_impact = pd.DataFrame(index=[self.geogunit_name])
         # Find model options associated with flood type
