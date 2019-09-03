@@ -1,6 +1,7 @@
+import os
 
-SETTINGS={
+SETTINGS = {
     'logging': {
-        'level': 'INFO'
+        'level': os.getenv('LOGGER_LEVEL') or 'INFO'
     }
 }
