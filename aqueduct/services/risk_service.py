@@ -11,11 +11,9 @@ from scipy.interpolate import interp1d
 class RiskService(object):
     def __init__(self, user_selections):
         ### DBConexion
-        logging.info('[RiskService - Setting up conexion to the DB]: ...')
         self.engine = sqlalchemy.create_engine(os.getenv('POSTGRES_URL'))
         self.metadata = sqlalchemy.MetaData(bind=self.engine)
         self.metadata.reflect(self.engine)
-        logging.info('[RiskService - Setting up conexion to the DB]: Success')
         ###               BACKGROUND INTO  
         self.flood_types = ["riverine", "coastal"]
         self.exposures = ["gdpexp", "popexp", "urban_damage_v2"]
@@ -609,7 +607,6 @@ class RiskService(object):
 
     def get_widget(self, argument):
         method_name = 'widget_' + str(argument)
-        logging.info(f'[RiskService - get_widget]: Getting widget {method_name}')
         method = getattr(self, method_name, lambda: "Widget not found")
         return method()
 
