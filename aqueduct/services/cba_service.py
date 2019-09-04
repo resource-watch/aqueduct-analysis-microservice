@@ -14,11 +14,9 @@ from sqlalchemy.dialects.postgresql import JSON
 class CBAService(object):
     def __init__(self, user_selections):
         ### DBConexion
-        logging.info('[CBAService - Setting up conexion to the DB]: ...')
         self.engine = sqlalchemy.create_engine(os.getenv('POSTGRES_URL'))
         self.metadata = sqlalchemy.MetaData(bind=self.engine)
         self.metadata.reflect(self.engine)
-        logging.info('[CBAService - Setting up conexion to the DB]: Success')
         ### BACKGROUND INTO 
         # self.flood = "Riverine"
         self.exposures = ["gdpexp", "popexp", "urban_damage_v2"]
@@ -748,7 +746,6 @@ class CBAEndService(object):
 
     def get_widget(self, argument):
         method_name = 'widget_' + str(argument)
-        logging.info(f'[CBAEndService - get_widget]: Getting widget {method_name}')
         method = getattr(self, method_name, lambda: "Widget not found")
         return method()
 

@@ -13,11 +13,9 @@ from sqlalchemy.dialects.postgresql import JSON
 class CBADef(object):
     def __init__(self, user_selections):
         ### DBConexion
-        logging.info('[CBADef - Setting up conexion to the DB]: ...')
         self.engine = sqlalchemy.create_engine(os.getenv('POSTGRES_URL'))
         self.metadata = sqlalchemy.MetaData(bind=self.engine)
         self.metadata.reflect(self.engine)
-        logging.info('[CBADef - Setting up conexion to the DB]: Success')
         ### BACKGROUND INTO 
         # self.flood = "Riverine"
         self.scenarios = {"business as usual": ['rcp8p5', 'ssp2', "bau"],
