@@ -45,7 +45,7 @@ def validate_wra_params(func):
             }
         }
         if request.method == 'GET':
-            logging.debug(f"[VALIDATOR - wra_weights]: {kwargs}")
+            logging.info(f"[VALIDATOR - wra_weights]: {kwargs}")
             validator = Validator(validation_schema, allow_unknown=True)
 
             if not validator.validate(kwargs):
@@ -163,7 +163,7 @@ def validate_params_cba(func):
                 'max': 1000
             }
         }
-        logging.debug(f"[VALIDATOR - cba_params]: {kwargs}")
+        logging.info(f"[VALIDATOR - cba_params]: {kwargs}")
         validator = Validator(validation_schema, allow_unknown=True)
         if not validator.validate(kwargs['params']):
             return error(status=400, detail=validator.errors)
