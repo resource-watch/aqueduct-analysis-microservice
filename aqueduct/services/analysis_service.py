@@ -1,25 +1,24 @@
 """Aqueduct point analysis SERVICE (WRAPPER)"""
+import logging
 
 import geojson as geoj
-
-from aqueduct.errors import CartoError
+import json
 from aqueduct.services.carto_service import CartoService
+from aqueduct.errors import CartoError
+
 
 
 class AnalysisService(object):
     """."""
 
     @staticmethod
-    def analyze(wscheme, geojson):
+    def analyze(geojson, wscheme):
         """Query GEE using supplied args with threshold and polygon."""
-
+        
         try:
-            geometry = geoj.loads(geoj.dumps(geojson))
-
-            points = ['\'\'Point({0} {1})\'\''.format(point[0], point[1]) if geometry["geometry"][
-                                                                                 "type"] == 'MultiPoint' else None for
-                      point in geometry["geometry"]["coordinates"]]
-            data = CartoService.get_table(wscheme, points)
+        	t = geoj.loads(geoj.dumps(geojson))
+        	points = ['\'\'Point({0} {1})\'\''.format(geometry["geometry"]["coordinates"][0], geometry["geometry"]["coordinates"][1]) if geometry["geometry"]["type"] =='Point' else None for geometry in t.__geo_interface__['features']]
+        	data = CartoService.get_table(wscheme,points)
         except CartoError as e:
             raise e
         except Exception as e:

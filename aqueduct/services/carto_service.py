@@ -1,22 +1,21 @@
 """CARTO SQL SERVICE"""
 import logging
-
 import requests
 
 from aqueduct.config import SETTINGS
 from aqueduct.errors import CartoError
 
+PAnalysis="Select * from get_aqpoints(\'{weights_scheme}\',\'{coords_array}\')"
+
 
 class CartoService(object):
     """."""
-
     @staticmethod
-    def query(sql, sql_download):
+    def query(sql):
         carto = SETTINGS.get('carto')
-        url = "https://{serviceAcc}.{uri}".format(serviceAcc=carto.get('service_account'), uri=carto.get('uri'))
+        url = "https://{serviceAcc}.{uri}".format(serviceAcc=carto.get('service_account'),uri=carto.get('uri'))
         payload = {'q': sql}
-        downloadUrl = url + '?q=' + sql_download
-
+        logging.info("[SERVICE] [carto_service]: carto url: {0}".format(url))
         try:
             r = requests.post(url, data=payload)
             data = r.json()
@@ -24,24 +23,10 @@ class CartoService(object):
                 raise CartoError(message='Carto Error')
         except Exception as e:
             raise e
-        return data, downloadUrl
+        return data
 
     @staticmethod
-    def get_table(points, analysis_type, wscheme, month, year, change_type, indicator, scenario, 
-                    locations, input_address, match_address):
-        sqltype = {'annual': f"SELECT * FROM get_aqpoints_annual_02('{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'monthly': f"SELECT * FROM get_aqpoints_monthly_02('{month}', '{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'projected': f"SELECT * FROM get_aqpoints_projected_02('{year}', '''{change_type}''', '''{indicator}''', '''{scenario}''', '{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'custom': f"SELECT * FROM get_aqpoints_annual_custom_02({wscheme}, '{points}', '{locations}', '{input_address}', '{match_address}')"
-                   }
-
-        sqltype_download = {'annual': f"SELECT * FROM get_aqpoints_annual_02('{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'monthly': f"SELECT * FROM get_aqpoints_monthly_all('{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'projected': f"SELECT * FROM get_aqpoints_projected_all('{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'custom': f"SELECT * FROM get_aqpoints_annual_custom_02({wscheme}, '{points}', '{locations}', '{input_address}', '{match_address}')"
-                   }
-
-        sql = sqltype[analysis_type]
-        sql_download = sqltype_download[analysis_type]
-        logging.info(f"[SERVICE] [carto_service] query: {sql}")
-        return CartoService.query(sql, sql_download)
+    def get_table(wscheme,points):
+        sql = PAnalysis.format(weights_scheme=str(wscheme), coords_array='[{0}]'.format(', '.join(points)))
+        logging.info("[SERVICE] [carto_service]: query to be performed: {0}".format(sql))
+        return CartoService.query(sql)

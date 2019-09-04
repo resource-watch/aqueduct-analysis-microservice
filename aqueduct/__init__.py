@@ -3,33 +3,23 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import logging
 import os
-import sys
+import json
+import logging
 
-import CTRegisterMicroserviceFlask
+
 from flask import Flask
-
 from aqueduct.config import SETTINGS
 from aqueduct.routes.api import error
 from aqueduct.routes.api.v1 import aqueduct_analysis_endpoints_v1
 from aqueduct.utils.files import load_config_json
+import CTRegisterMicroserviceFlask
 
-formatter = logging.Formatter('%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s',
-                              '%Y%m%d-%H:%M%p')
-
-root = logging.getLogger()
-root.setLevel(logging.DEBUG)
-
-error_handler = logging.StreamHandler(sys.stderr)
-error_handler.setLevel(logging.WARN)
-error_handler.setFormatter(formatter)
-root.addHandler(error_handler)
-
-output_handler = logging.StreamHandler(sys.stdout)
-output_handler.setLevel(SETTINGS.get('logging', {}).get('level'))
-output_handler.setFormatter(formatter)
-root.addHandler(output_handler)
+logging.basicConfig(
+    level=SETTINGS.get('logging', {}).get('level'),
+    format='%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y%m%d-%H:%M%p',
+)
 
 # Flask App
 app = Flask(__name__)
@@ -45,8 +35,7 @@ CTRegisterMicroserviceFlask.register(
     name='aqueduct',
     info=info,
     swagger=swagger,
-    mode=CTRegisterMicroserviceFlask.AUTOREGISTER_MODE if os.getenv('CT_REGISTER_MODE') and os.getenv(
-        'CT_REGISTER_MODE') == 'auto' else CTRegisterMicroserviceFlask.NORMAL_MODE,
+    mode=CTRegisterMicroserviceFlask.AUTOREGISTER_MODE if os.getenv('CT_REGISTER_MODE') and os.getenv('CT_REGISTER_MODE') == 'auto' else CTRegisterMicroserviceFlask.NORMAL_MODE,
     ct_url=os.getenv('CT_URL'),
     url=os.getenv('LOCAL_URL')
 )

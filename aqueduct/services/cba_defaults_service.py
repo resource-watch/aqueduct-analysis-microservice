@@ -1,14 +1,15 @@
-import datetime
-import logging
 import os
-
 import numpy as np
 import pandas as pd
+import time
+import datetime
 import sqlalchemy
-from flask import json
+from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy import Column, Integer, Text, DateTime
-from sqlalchemy.dialects.postgresql import JSON
-
+from cached_property import cached_property
+import logging
+from flask import jsonify, json 
+from aqueduct.errors import DBError
 
 class CBADef(object):
     def __init__(self, user_selections):
@@ -17,38 +18,35 @@ class CBADef(object):
         self.metadata = sqlalchemy.MetaData(bind=self.engine)
         self.metadata.reflect(self.engine)
         ### BACKGROUND INTO 
-        # self.flood = "Riverine"
-        self.scenarios = {"business as usual": ['rcp8p5', 'ssp2', "bau"],
-                          "pessimistic": ['rcp8p5', 'ssp3', "pes"],
-                          "optimistic": ['rcp4p5', 'ssp2', "opt"]}
+        #self.flood = "Riverine"
+        self.scenarios = {  "business as usual": ['rcp8p5', 'ssp2', "bau"],
+                            "pessimistic": ['rcp8p5', 'ssp3', "pes"],
+                            "optimistic": ['rcp4p5', 'ssp2', "opt"]}
         ###  USER INPUTS 
         self.geogunit_unique_name = user_selections.get("geogunit_unique_name")
         self.scenario = self.scenarios.get(user_selections.get("scenario"))
-        self.flood = user_selections.get("flood")  # Flood type
+        self.flood = user_selections.get("flood") # Flood type
         self.sub_scenario = user_selections.get("sub_scenario")
 
-    # @cached_property
+    
+        
+    
+    #@cached_property
     def default(self):
-        fids, geogunit_name, geogunit_type = pd.read_sql_query(
-            "SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name),
-            self.engine).values[0]
+        fids, geogunit_name, geogunit_type = pd.read_sql_query("SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name), self.engine).values[0]
         clim, socio, scen_abb = self.scenario
         rps = np.array([2, 5, 10, 25, 50, 100, 250, 500, 1000])
         ##prot
-        sub_abb = "wtsub" if self.sub_scenario else "nosub"
+        sub_abb =  "wtsub" if self.sub_scenario else "nosub"
 
         # DEFAULT DATA
         read_prot = 'precalc_agg_{0}_{1}_{2}'.format(self.flood, geogunit_type.lower(), sub_abb)
         col_prot = 'urban_damage_v2_2010_{0}_prot_avg'.format(scen_abb)
-        df_prot = pd.read_sql_query(
-            "SELECT {0} FROM {1} where id like '{2}'".format(col_prot, read_prot, self.geogunit_unique_name),
-            self.engine)
+        df_prot = pd.read_sql_query("SELECT {0} FROM {1} where id like '{2}'".format(col_prot, read_prot, self.geogunit_unique_name), self.engine)
 
         prot_val = 0 if df_prot.empty else int(df_prot.values[0].tolist()[0])
         ##costs
-        con_itl = pd.read_sql_query(
-            "SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(
-                ', '.join(map(str, fids))), self.engine)
+        con_itl = pd.read_sql_query("SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(', '.join(map(str, fids))), self.engine)
         prot_round = int(rps[np.where(rps >= prot_val)][0])
         return [{
             "existing_prot": prot_val,
@@ -58,7 +56,6 @@ class CBADef(object):
 
         }]
 
-
 class CBADefaultService(object):
     """
     this will have the next methods:
@@ -66,17 +63,16 @@ class CBADefaultService(object):
         * check if a certain set of parameters exists on the table, if exists it will retrive cbaService data from the row selected
         * if not it will trigger the CBAService class to calculate it.
     """
-
     ### DBConexion
     def __init__(self, params):
         self.engine = sqlalchemy.create_engine(os.getenv('POSTGRES_URL'))
         self.metadata = sqlalchemy.MetaData(bind=self.engine, reflect=True)
-        # self.metadata.reflect(self.engine)
+        #self.metadata.reflect(self.engine)
         self.params = params
 
     @property
     def _generateKey(self):
-        return '_'.join([str(value) for (key, value) in sorted(self.params.items())])
+        return '_'.join( [str(value) for (key, value) in sorted(self.params.items())]) 
 
     def _createTable(self):
         """
@@ -85,15 +81,14 @@ class CBADefaultService(object):
         """
         try:
             myCache = sqlalchemy.Table("cache_d_cba", self.metadata,
-                                       Column('id', Integer, primary_key=True, unique=True),
-                                       Column('key', Text, unique=True, index=True),
-                                       Column('value', JSON),
-                                       Column('last_updated', DateTime, default=datetime.datetime.now,
-                                              onupdate=datetime.datetime.now)
-                                       )
+                    Column('id', Integer, primary_key=True, unique=True),
+                    Column('key', Text, unique=True, index=True),
+                    Column('value', JSON),
+                    Column('last_updated', DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now)
+               )
             myCache.create()
         except Exception as e:
-            logging.error('[CBADCache, _createTable]: ' + str(e))
+            logging.error('[CBADCache, _createTable]: '+str(e))
             return error(status=500, detail='cache table creation failed')
         return myCache
 
@@ -102,29 +97,29 @@ class CBADefaultService(object):
             table = self.metadata.tables['cache_d_cba']
 
             logging.info('[CBADCache, checkParams]: check params...')
-            # logging.info(self._generateKey)
+            #logging.info(self._generateKey)
             select_st = table.select().where(table.c.key == self._generateKey)
             res = self.engine.connect().execute(select_st).fetchone()
             logging.info(res)
             return res
-        except Exception as e:
-            logging.error('[CBADCache, checkParams]: ' + str(e))
+        except Exception as e:         
+            logging.error('[CBADCache, checkParams]: '+str(e))
             return error(status=500, detail='Generic Error')
 
-    def insertRecord(self, key, data):
+    def insertRecord(self,key, data):
         # insert data via insert() construct
         try:
             table = self.metadata.tables['cache_d_cba']
             ins = table.insert().values(
-                key=key,
-                value=data)
+                  key=key,
+                  value=data)
             conn = self.engine.connect()
             conn.execute(ins)
 
             return 200
 
-        except Exception as e:
-            logging.error('[CBADCache, insertRecord]: ' + str(e))
+        except Exception as e:         
+            logging.error('[CBADCache, insertRecord]: '+str(e))
             return error(status=500, detail='insert table failed')
 
     def updateRecord(self):
@@ -142,23 +137,23 @@ class CBADefaultService(object):
             if 'cache_d_cba' in inspector.get_table_names():
                 # It means we have the cache table, we will need to check the params
                 logging.info('[CBADCache]: table_exists')
-                checks = self.checkParams()
+                checks = self.checkParams() 
                 if checks != None:
                     logging.info('[CBADCache]: table available; extracting data')
                     data = json.loads(checks[2])
                     logging.info(data.keys())
-                    return data['data']  # we will give back the data in a way CBAEndService can use it
-
-                else:  # we will execute the whole process and we will generate the output in a way  CBAEndService can use it
+                    return data['data']# we will give back the data in a way CBAEndService can use it
+                
+                else: # we will execute the whole process and we will generate the output in a way  CBAEndService can use it
                     logging.info('[CBADCache]: data not available; generating data')
                     data_output = CBADef(self.params).default()
-                    data = json.dumps({'data': data_output}, ignore_nan=True)
+                    data = json.dumps({'data':data_output}, ignore_nan=True)
                     key = self._generateKey
                     self.insertRecord(key, data)
-                    return data_output  # we will give back the data in a way CBAEndService can use it
+                    return data_output # we will give back the data in a way CBAEndService can use it
             else:
                 self._createTable()
                 self.execute()
                 # executes the cba code to get the table, inserts it into the database and we should be ready to go
         except Exception as e:
-            logging.error('[CBADCache, _createTable]: ' + str(e))
+            logging.error('[CBADCache, _createTable]: '+str(e))

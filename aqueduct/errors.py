@@ -12,18 +12,11 @@ class Error(Exception):
             'message': self.message
         }
 
-
 class CartoError(Error):
     pass
-
 
 class GeostoreNotFound(Error):
     pass
 
-
 class DBError(Error):
-    pass
-
-
-class GeocodeError(Error):
     pass

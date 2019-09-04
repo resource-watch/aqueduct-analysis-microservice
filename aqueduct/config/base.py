@@ -2,9 +2,10 @@
 
 import os
 
+
 SETTINGS = {
     'logging': {
-        'level': os.getenv('LOGGER_LEVEL') or 'DEBUG'
+        'level': 'DEBUG'
     },
     'service': {
         'port': os.getenv('PORT')
@@ -12,8 +13,5 @@ SETTINGS = {
     'carto': {
         'service_account': os.getenv('CARTODB_USER'),
         'uri': 'carto.com/api/v2/sql'
-    },
-    'geopy': {
-        'places_api_key': os.getenv('AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY')
     }
 }

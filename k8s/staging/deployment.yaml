@@ -29,8 +29,6 @@ spec:
             value: "5700"
           - name: ENVIRONMENT
             value: staging
-          - name: LOGGER_LEVEL
-            value: DEBUG
           - name: LOCAL_URL
             value: http://{name}.aqueduct.svc.cluster.local:5700
           - name: CT_URL
@@ -63,11 +61,6 @@ spec:
                 secretKeyRef:
                   name: dbsecrets
                   key: AQUEDUCT_POSTGRES_URL
-          - name: AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY
-            valueFrom:
-                secretKeyRef:
-                  name: appsecrets
-                  key: AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY
 
         ports:
           - containerPort: 5700
