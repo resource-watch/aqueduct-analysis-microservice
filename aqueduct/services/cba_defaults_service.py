@@ -69,8 +69,11 @@ class CBADefaultService(object):
 
     ### DBConexion
     def __init__(self, params):
+        logging.info('[CBADCache, __init__]: creating db engine')
         self.engine = sqlalchemy.create_engine(os.getenv('POSTGRES_URL'))
+        logging.info('[CBADCache, __init__]: db engine created, loading metadata')
         self.metadata = sqlalchemy.MetaData(bind=self.engine, reflect=True)
+        logging.info('[CBADCache, __init__]: db engine metadata loaded')
         # self.metadata.reflect(self.engine)
         self.params = params
 

@@ -171,9 +171,10 @@ def get_cba_widget(widget_id, **kwargs):
 @sanitize_parameters
 @validate_params_cba_def
 def get_cba_default(**kwargs):
-    logging.info('[ROUTER]: Getting cba default')
+    logging.info('[ROUTER, get_cba_default]: Getting cba default')
     try:
         output = CBADefaultService(kwargs['sanitized_params'])
+        logging.debug('[ROUTER, get_cba_default]: output generated')
 
     except AttributeError as e:
         logging.error('[ROUTER]: ' + str(e))
