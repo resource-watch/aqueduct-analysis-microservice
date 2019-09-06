@@ -11,6 +11,23 @@
 		}
 	},
 	{
+		"path": "/v1/aqueduct/analysis",
+		"method": "POST",
+		"binary": true,
+		"redirect": {
+			"method": "POST",
+			"path": "/api/v1/aqueduct/analysis"
+		}
+	},
+	{
+		"path": "/v1/aqueduct/analysis/geocoding",
+		"method": "POST",
+		"redirect": {
+			"method": "POST",
+			"path": "/api/v1/aqueduct/analysis/geocoding"
+		}
+	},
+	{
 		"path": "/v1/aqueduct/analysis/cba",
 		"method": "GET",
 		"binary": true,

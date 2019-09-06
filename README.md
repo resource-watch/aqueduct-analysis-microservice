@@ -17,7 +17,14 @@ git clone https://github.com/resource-watch/aqueduct-analysis-microservice
 cd aqueduct-analysis-microservice
 ```
 
-2. Run the ms.sh shell script in development mode.
+
+2. Copy `.env.sample` to `.env` and set the corresponding variable values
+
+```ssh
+./aqueduct.sh develop
+```
+
+3. Run the aqueduct.sh shell script in development mode.
 
 ```ssh
 ./aqueduct.sh develop
