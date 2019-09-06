@@ -1,7 +1,7 @@
-"""-"""
+import os
 
 SETTINGS = {
     'logging': {
-        'level': 'INFO'
+        'level': os.getenv('LOGGER_LEVEL') or 'INFO'
     }
 }
