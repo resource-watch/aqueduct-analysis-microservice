@@ -40,13 +40,13 @@ g = GoogleV3(api_key=geopy.get('places_api_key'), timeout=20)
 
 
 def get_latlonraw(x):
-    logging.debug(f'[GeoCode Service] get_latlonraw init:')
+    #logging.debug(f'[GeoCode Service] get_latlonraw init:')
     index, row = x
     time.sleep(0.001)
     try:
         if pd.notna(row['address']) or (row['address'] in ('', ' ')):
             address = g.geocode(row['address'])
-            logging.debug(f'[GeoCode Service] get_latlonraw address: {address}')
+            #logging.debug(f'[GeoCode Service] get_latlonraw address: {address}')
             return address.address, address.latitude, address.longitude, True
         else:
             return None, None, None, False
@@ -67,6 +67,7 @@ class GeocodeService(object):
                 data1 = pd.DataFrame(0.0, index=list(range(0, len(data))), columns=list(['matched address', 'lat', 'lon', 'match']))
                 data = pd.concat([data, data1], axis=1)
                 with Pool(processes=16) as p:
+                    logging.info(f'[GeoCode Service] geocoding init:')
                     data[['matched address', 'lat', 'lon', 'match']] = p.map(get_latlonraw, data.iterrows())
                     data.fillna(None, inplace=True)
             else:
@@ -80,20 +81,21 @@ class GeocodeService(object):
     def upload_file():
         try:
             if request.method == 'POST':
-                #logging.debug(f'[GeoCode Service] File keys detected: {list(request.files.keys())}')
+                logging.info(f'[GeoCode Service]: File keys detected: {list(request.files.keys())}')
                 if 'file' not in request.files:
                     raise GeocodeError(message='No file provided')
                 file = request.files['file']
                 extension = file.filename.rsplit('.', 1)[1].lower()
                 if file and allowed_file(file.filename):
                     data = read_functions(extension)(request.files.get('file'))
-                    #logging.debug(f'[GeoCode Service] Data loaded: {data}')
+                    logging.info(f'[GeoCode Service] Data loaded: {data.columns}')
                     data.rename(columns={'Unnamed: 0': 'row'}, inplace=True)
                     data.dropna(axis=1, how='all', inplace=True)
+                    logging.info(f'[GeoCode Service] Data loaded; columns cleaned: {data.columns}')
                     if not {'row', 'Row'}.issubset(data.columns):
-                        logging.debug(f'[GeoCode Service] Columns: {list(data.columns)}')
+                        #logging.debug(f'[GeoCode Service] Columns: {list(data.columns)}')
                         data.insert(loc=0, column='row', value=range(1, 1 + len(data)))
-                        logging.debug(f'[GeoCode Service] Columns: {list(data.columns)}')
+                        #logging.debug(f'[GeoCode Service] Columns: {list(data.columns)}')
                     if len(data) == 0:
                         raise GeocodeError(message='The file is empty')
                     if len(data) > 1000:
