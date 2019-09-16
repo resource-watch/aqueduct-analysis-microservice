@@ -8,6 +8,7 @@ import logging
 
 import geojson as geoj
 import pandas as pd
+import re
 from flask import jsonify, request, Blueprint, json
 
 from aqueduct.errors import CartoError, DBError, GeocodeError
@@ -58,6 +59,9 @@ def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator
             address_list = [f"null" for i in range(nPoints)]
             tmp = ", ".join(address_list)
             match_address = f"[{tmp}]"
+
+        myexpr= r"(?!'')(?<=[a-z]|\s)'(?=[a-z]|\s)"
+        locations = re.sub(myexpr," ",locations)
 
         data, downloadUrl = CartoService.get_table(points, analysis_type, wscheme, month, year, change_type, indicator,
                                                    scenario, locations, input_address, match_address)

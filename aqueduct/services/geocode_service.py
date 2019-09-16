@@ -36,16 +36,16 @@ def allowed_file(filename):
 
 
 geopy = SETTINGS.get('geopy')
-g = GoogleV3(api_key=geopy.get('places_api_key'), timeout=20)
+g = GoogleV3(api_key=geopy.get('places_api_key'), timeout=30)
 
 
 def get_latlonraw(x):
     #logging.debug(f'[GeoCode Service] get_latlonraw init:')
     index, row = x
-    time.sleep(0.001)
+    time.sleep(0.005)
     try:
         if pd.notna(row['address']) or (row['address'] in ('', ' ')):
-            address = g.geocode(row['address'])
+            address = g.geocode(query=row['address'], exactly_one=True)
             #logging.debug(f'[GeoCode Service] get_latlonraw address: {address}')
             return address.address, address.latitude, address.longitude, True
         else:
