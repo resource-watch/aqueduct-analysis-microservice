@@ -13,7 +13,7 @@ class CartoService(object):
     @staticmethod
     def query(sql, sql_download):
         carto = SETTINGS.get('carto')
-        url = "https://{serviceAcc}.{uri}".format(serviceAcc=carto.get('service_account'), uri=carto.get('uri'))
+        url = "https://wri-rw.{uri}".format(serviceAcc=carto.get('service_account'), uri=carto.get('uri'))
         payload = {'q': sql}
         downloadUrl = url + '?q=' + sql_download
 
