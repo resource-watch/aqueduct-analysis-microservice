@@ -20,6 +20,8 @@ class CartoService(object):
         try:
             r = requests.post(url, data=payload)
             data = r.json()
+            if r.status_code != 200:
+              raise CartoError(message=r.text)
             if not data or len(data.get('rows')) == 0:
                 raise CartoError(message='Carto Error')
         except Exception as e:

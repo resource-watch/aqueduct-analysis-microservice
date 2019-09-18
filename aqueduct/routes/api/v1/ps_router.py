@@ -60,8 +60,8 @@ def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator
             tmp = ", ".join(address_list)
             match_address = f"[{tmp}]"
 
-        myexpr= r"(?!'')(?<=[a-z]|\s)'(?=[a-z]|\s)"
-        locations = re.sub(myexpr," ",locations)
+        myexpr= r"(?!'')((?<=[a-z]|\s)'(?=[a-z]|\s))|(\\)|(/)"
+        locations = re.sub(myexpr,"",locations)
 
         data, downloadUrl = CartoService.get_table(points, analysis_type, wscheme, month, year, change_type, indicator,
                                                    scenario, locations, input_address, match_address)
