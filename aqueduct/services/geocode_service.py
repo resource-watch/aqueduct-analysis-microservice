@@ -66,7 +66,7 @@ class GeocodeService(object):
                 #logging.debug(f'[GeoCode Service] "address" present in "data.columns":')
                 data1 = pd.DataFrame(0.0, index=list(range(0, len(data))), columns=list(['matched address', 'lat', 'lon', 'match']))
                 data = pd.concat([data, data1], axis=1)
-                with Pool(processes=8) as p:
+                with Pool(processes=4) as p:
                     logging.info(f'[GeoCode Service] geocoding init:')
                     data[['matched address', 'lat', 'lon', 'match']] = p.map(get_latlonraw, data.iterrows())
                     data.fillna(None, inplace=True)
