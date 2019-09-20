@@ -1,6 +1,8 @@
 """Geocode SERVICE"""
 import logging
 import time
+import asyncio
+import aiohttp
 from multiprocessing import Pool, TimeoutError
 
 import pandas as pd
@@ -36,7 +38,6 @@ def read_functions(extension):
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 
 #g = GoogleV3(api_key=geopy.get('places_api_key'), timeout=30)
@@ -114,6 +115,24 @@ def get_latlonraw(x):
     else:
         return None, None, None, False
 
+async def fetch_geocode_api(session, url):
+    async with session.get(url) as response:
+        assert response.status == 200
+        return await response.read()
+
+async def run_geocode(urls):
+    tasks = []
+
+    # Fetch all responses within one Client session,
+    # keep connection alive for all requests.
+    async with aiohttp.ClientSession() as session:
+        for i in range(len(urls)):
+            task = asyncio.ensure_future(fetch_geocode_api(session, url))
+            tasks.append(task)
+
+        responses = await asyncio.gather(*tasks)
+        # you now have all response bodies in this variable
+        print(responses)
 
 class GeocodeService(object):
 
@@ -124,14 +143,20 @@ class GeocodeService(object):
             #logging.debug(f'[GeoCode Service] Geo-encoding columns: {data.columns}')
             if 'address' in data.columns:
                 #logging.debug(f'[GeoCode Service] "address" present in "data.columns":')
-                data1 = pd.DataFrame(0.0, index=list(range(0, len(data))), columns=list(['matched address', 'lat', 'lon', 'match']))
-                data = pd.concat([data, data1], axis=1)
-                with Pool(processes=4) as p:
-                    logging.info(f'[GeoCode Service] geocoding init:')
-                    #output = p.map_async(get_latlonraw, data.iterrows())
-                    #output.wait()
-                    data[['matched address', 'lat', 'lon', 'match']] = p.map(get_latlonraw, data.iterrows())
-                    data.fillna(None, inplace=True)
+                # data1 = pd.DataFrame(0.0, index=list(range(0, len(data))), columns=list(['matched address', 'lat', 'lon', 'match']))
+                # data = pd.concat([data, data1], axis=1)
+                # with Pool(processes=4) as p:
+                #     logging.info(f'[GeoCode Service] geocoding init:')
+                #     #output = p.map_async(get_latlonraw, data.iterrows())
+                #     #output.wait()
+                #     data[['matched address', 'lat', 'lon', 'match']] = p.map(get_latlonraw, data.iterrows())
+                #     data.fillna(None, inplace=True)
+
+               
+                urls = ["http://httpbin.org/get/{}", "http://httpbin.org/get/{}", "http://httpbin.org/get/{}"]
+                loop = asyncio.get_event_loop()
+                future = asyncio.ensure_future(run_geocode(urls))
+                loop.run_until_complete(future)
             else:
                 raise GeocodeError(message='Address column missing')
         except Exception as e:
