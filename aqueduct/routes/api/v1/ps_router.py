@@ -19,7 +19,7 @@ from aqueduct.serializers import serialize_response, serialize_response_geocodin
 from aqueduct.services.carto_service import CartoService
 from aqueduct.services.cba_defaults_service import CBADefaultService
 from aqueduct.services.cba_service import CBAEndService, CBAICache
-from aqueduct.services.geocode_service import GeocodeService
+
 from aqueduct.services.risk_service import RiskService
 from aqueduct.validators import validate_params_cba, validate_params_cba_def, validate_params_risk
 
@@ -62,6 +62,8 @@ def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator
 
         myexpr= r"(?!'')((?<=[a-z]|\s)'(?=[a-z]|\s))|(\\)|(/)"
         locations = re.sub(myexpr,"",locations)
+        match_address = re.sub(myexpr,"",match_address)
+        input_address = re.sub(myexpr,"",input_address)
 
         data, downloadUrl = CartoService.get_table(points, analysis_type, wscheme, month, year, change_type, indicator,
                                                    scenario, locations, input_address, match_address)
@@ -92,27 +94,6 @@ def get_by_geostore(**kwargs):
         f'[ROUTER] [get_by_geostore]: Getting water risk analysis by geostore')
     return analyze(kwargs['geojson'], kwargs['analysis_type'], kwargs['wscheme'], kwargs['month'], kwargs['year'], kwargs['change_type'], kwargs['indicator'], kwargs['scenario'], 
                     kwargs['locations'], kwargs['input_address'], kwargs['match_address'])
-
-
-"""
-GEOCODING ENDPOINTS
-"""
-
-
-@aqueduct_analysis_endpoints_v1.route('/geocoding', strict_slashes=False, methods=['POST'])
-def get_geocode():
-    """Geocode addresses"""
-    try:
-        data = GeocodeService.upload_file()
-    except GeocodeError as e:
-        logging.error('[ROUTER]: ' + str(e.message))
-        return error(status=500, detail=e.message)
-    except Exception as e:
-        logging.error('[ROUTER]: ' + str(e))
-        return error(status=500, detail=e.message)
-
-    return jsonify(json.loads(json.dumps(serialize_response_geocoding(data), ignore_nan=True))), 200
-
 
 """
 FLOOD ENDPOINTS
