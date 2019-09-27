@@ -33,24 +33,83 @@ def validate_wra_params(func):
         validation_schema = {
             'wscheme': {
                 'type': 'string',
-                'maxlength': 13,
-                'schema': {'type': 'integer',
-                           'nullable': True,
-                           'coerce': null2int,
-                           'anyof': [{'min': 0, 'max': 4}]},
-                'required': True},
+                'required': True
+                },
             'geostore': {
                 'type': 'string',
                 'required': True
+            },
+            'analysis_type': {
+                'type': 'string',
+                'required': True,
+                'default': None
+            },
+            'month': {
+                'type': 'string',
+                'required': False,
+                'default': None,
+                'nullable': True
+            },
+            'year': {
+                'type': 'string',
+                'required': False,
+                'default': None,
+                'nullable': True
+            },
+            'change_type': {
+                'type': 'string',
+                'required': False,
+                'default': None,
+                'nullable': True
+            },
+            'indicator': {
+                'type': 'string',
+                'required': True,
+                'default': None,
+                'nullable': True
+            },
+            'scenario': {
+                'type': 'string',
+                'required': False,
+                'default': None,
+                'nullable': True
+            },
+            'locations': {
+                'type': 'string',
+                'required': True,
+                'required': False,
+                'default': None,
+                'nullable': True
+            },
+            'input_address': {
+                'type': 'string',
+                'required': False,
+                'default': None,
+                'nullable': True
+            },
+            'match_address': {
+                'type': 'string',
+                'required': False,
+                'default': None,
+                'nullable': True
+            },
+            'ids': {
+                'type': 'string',
+                'required': False,
+                'nullable': True,
+                'default': None
             }
+            
         }
-        if request.method == 'GET':
-            logging.debug(f"[VALIDATOR - wra_weights]: {kwargs}")
-            validator = Validator(validation_schema, allow_unknown=True)
+        rArgs = {**request.args, **request.json}
+        kwargs.update(rArgs)  
+        logging.debug(f'[MIDDLEWARE - ws scheme]: {kwargs}')
+        logging.debug(f"[VALIDATOR - wra_weights]: {kwargs}")
+        validator = Validator(validation_schema, allow_unknown=True)
 
-            if not validator.validate(kwargs):
-                return error(status=400, detail=validator.errors)
-            kwargs['sanitized_params'] = validator.normalized(kwargs)
+        if not validator.validate(kwargs):
+            return error(status=400, detail=validator.errors)
+        kwargs['sanitized_params'] = validator.normalized(kwargs)
         return func(*args, **kwargs)
 
     return wrapper

@@ -30,7 +30,7 @@ class CartoService(object):
 
     @staticmethod
     def get_table(points, analysis_type, wscheme, month, year, change_type, indicator, scenario, 
-                    locations, input_address, match_address):
+                    locations, input_address, match_address, ids):
         sqltype = {'annual': f"SELECT * FROM get_aqpoints_annual_test('{points}', '{locations}', '{input_address}', '{match_address}')",
                    'monthly': f"SELECT * FROM get_aqpoints_monthly_02('{month}', '{points}', '{locations}', '{input_address}', '{match_address}')",
                    'projected': f"SELECT * FROM get_aqpoints_projected_02('{year}', '''{change_type}''', '''{indicator}''', '''{scenario}''', '{points}', '{locations}', '{input_address}', '{match_address}')",
