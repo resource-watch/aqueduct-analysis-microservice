@@ -65,7 +65,7 @@ def analyze(**kwargs):
             match_address = kwargs["sanitized_params"]["match_address"]
         
         if kwargs["sanitized_params"]["ids"] == None:
-            idsList = [f"{i}" for i in range(nPoints)]
+            idsList = [str(i) for i in range(nPoints)]
             tmp = ", ".join(idsList)
             ids = f"[{tmp}]"
         else:
