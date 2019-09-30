@@ -37,7 +37,7 @@ class CartoService(object):
                    'custom': f"SELECT * FROM get_aqpoints_annual_custom_test('{ids}',{wscheme}, '{points}', '{locations}', '{input_address}', '{match_address}')"
                    }
 
-        sqltype_download = {'annual': f"SELECT * FROM get_aqpoints_annual_04('{points}', '{locations}', '{input_address}', '{match_address}')",
+        sqltype_download = {'annual': f"SELECT * FROM get_aqpoints_annual_04('{ids}','{points}', '{locations}', '{input_address}', '{match_address}')",
                    'monthly': f"SELECT * FROM get_aqpoints_monthly_all('{points}', '{locations}', '{input_address}', '{match_address}')",
                    'projected': f"SELECT * FROM get_aqpoints_projected_all('{points}', '{locations}', '{input_address}', '{match_address}')",
                    'custom': f"SELECT * FROM get_aqpoints_annual_custom_test('{ids}',{wscheme}, '{points}', '{locations}', '{input_address}', '{match_address}')"
