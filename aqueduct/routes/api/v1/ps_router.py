@@ -8,19 +8,20 @@ import logging
 
 import geojson as geoj
 import pandas as pd
+import re
 from flask import jsonify, request, Blueprint, json
 
 from aqueduct.errors import CartoError, DBError, GeocodeError
-from aqueduct.middleware import get_geo_by_hash, sanitize_parameters, get_wra_params
+from aqueduct.middleware import get_geo_by_hash, sanitize_parameters
 from aqueduct.routes.api import error
 from aqueduct.serializers import serialize_response, serialize_response_geocoding, serialize_response_cba, \
     serialize_response_default, serialize_response_risk
 from aqueduct.services.carto_service import CartoService
 from aqueduct.services.cba_defaults_service import CBADefaultService
 from aqueduct.services.cba_service import CBAEndService, CBAICache
-from aqueduct.services.geocode_service import GeocodeService
+
 from aqueduct.services.risk_service import RiskService
-from aqueduct.validators import validate_params_cba, validate_params_cba_def, validate_params_risk
+from aqueduct.validators import validate_params_cba, validate_params_cba_def, validate_params_risk, validate_wra_params
 
 aqueduct_analysis_endpoints_v1 = Blueprint('aqueduct_analysis_endpoints_v1', __name__)
 
@@ -29,14 +30,12 @@ WATER RISK ATLAS ENDPOINTS
 """
 
 
-def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator, scenario, 
-            locations, input_address, match_address):
+def analyze(**kwargs):
     """Analyze water risk"""
     try:
-        geometry = geoj.loads(geoj.dumps(geojson))
+        geometry = geoj.loads(geoj.dumps(kwargs["sanitized_params"]["geojson"]))
         if geometry["geometry"]["type"] != 'MultiPoint':
-            return error(status=500,
-                         detail=f'Error: geostore must be of multipoint type, not {geometry["geometry"]["type"]}.')
+            return error(status=500, detail=f'Error: geostore must be of multipoint type, not {geometry["geometry"]["type"]}.')
         point_list = [f"\'\'Point({point[0]} {point[1]})\'\'" for point in geometry["geometry"]["coordinates"]]
         tmp = ", ".join(point_list)
         points = f"[{tmp}]"
@@ -44,23 +43,40 @@ def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator
 
         nPoints = len(geometry["geometry"]["coordinates"])
 
-        if locations == None:
+        if kwargs["sanitized_params"]["locations"] == None:
             location_list = [f"null" for i in range(nPoints)]
             tmp = ", ".join(location_list)
             locations = f"[{tmp}]"
+        else:
+            locations = kwargs["sanitized_params"]["locations"]
 
-        if input_address == None:
+        if kwargs["sanitized_params"]["input_address"] == None:
             address_list = [f"null" for i in range(nPoints)]
             tmp = ", ".join(address_list)
             input_address = f"[{tmp}]"
+        else:
+            input_address = kwargs["sanitized_params"]["input_address"]
 
-        if match_address == None:
-            address_list = [f"null" for i in range(nPoints)]
-            tmp = ", ".join(address_list)
+        if kwargs["sanitized_params"]["match_address"] == None:
+            maddress_list = [f"null" for i in range(nPoints)]
+            tmp = ", ".join(maddress_list)
             match_address = f"[{tmp}]"
+        else:
+            match_address = kwargs["sanitized_params"]["match_address"]
+        
+        if kwargs["sanitized_params"]["ids"] == None:
+            idsList = [str(i) for i in range(nPoints)]
+            tmp = ", ".join(idsList)
+            ids = f"[{tmp}]"
+        else:
+            ids = kwargs["sanitized_params"]["ids"]
 
-        data, downloadUrl = CartoService.get_table(points, analysis_type, wscheme, month, year, change_type, indicator,
-                                                   scenario, locations, input_address, match_address)
+        myexpr= r"(?!'')((?<=[a-z]|\s)'(?=[a-z]|\s))|(\\)|(/)"
+        locations = re.sub(myexpr,"",locations)
+        match_address = re.sub(myexpr,"",match_address)
+        input_address = re.sub(myexpr,"",input_address)
+
+        data, downloadUrl = CartoService.get_table(points, kwargs["sanitized_params"]["analysis_type"], kwargs["sanitized_params"]["wscheme"], kwargs["sanitized_params"]["month"], kwargs["sanitized_params"]["year"], kwargs["sanitized_params"]["change_type"], kwargs["sanitized_params"]["indicator"], kwargs["sanitized_params"]["scenario"], locations, input_address, match_address, ids)
     except CartoError as e:
         logging.error('[ROUTER]: ' + e.message)
         return error(status=500, detail=e.message)
@@ -68,47 +84,24 @@ def analyze(geojson, analysis_type, wscheme, month, year, change_type, indicator
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail='Generic Error')
 
-    data['analysis_type'] = analysis_type
-    data['wscheme'] = wscheme
-    data['month'] = month
-    data['year'] = year
-    data['change_type'] = change_type
-    data['indicator'] = indicator
-    data['scenario'] = scenario
+    data['analysis_type'] = kwargs["sanitized_params"]["analysis_type"]
+    data['wscheme'] = kwargs["sanitized_params"]["wscheme"]
+    data['month'] = kwargs["sanitized_params"]["month"]
+    data['year'] = kwargs["sanitized_params"]["year"]
+    data['change_type'] = kwargs["sanitized_params"]["change_type"]
+    data['indicator'] = kwargs["sanitized_params"]["indicator"]
+    data['scenario'] = kwargs["sanitized_params"]["scenario"]
     data['downloadUrl'] = downloadUrl
     return jsonify(serialize_response(data)), 200
 
 
 @aqueduct_analysis_endpoints_v1.route('/', strict_slashes=False, methods=['GET','POST'])
-@get_wra_params
+@sanitize_parameters
+@validate_wra_params
 @get_geo_by_hash
 def get_by_geostore(**kwargs):
     """By Geostore Endpoint"""
-    logging.info(
-        f'[ROUTER] [get_by_geostore]: Getting water risk analysis by geostore')
-    return analyze(kwargs['geojson'], kwargs['analysis_type'], kwargs['wscheme'], kwargs['month'], kwargs['year'], kwargs['change_type'], kwargs['indicator'], kwargs['scenario'], 
-                    kwargs['locations'], kwargs['input_address'], kwargs['match_address'])
-
-
-"""
-GEOCODING ENDPOINTS
-"""
-
-
-@aqueduct_analysis_endpoints_v1.route('/geocoding', strict_slashes=False, methods=['POST'])
-def get_geocode():
-    """Geocode addresses"""
-    try:
-        data = GeocodeService.upload_file()
-    except GeocodeError as e:
-        logging.error('[ROUTER]: ' + str(e.message))
-        return error(status=500, detail=e.message)
-    except Exception as e:
-        logging.error('[ROUTER]: ' + str(e))
-        return error(status=500, detail=e.message)
-
-    return jsonify(json.loads(json.dumps(serialize_response_geocoding(data), ignore_nan=True))), 200
-
+    return analyze(**kwargs)
 
 """
 FLOOD ENDPOINTS
