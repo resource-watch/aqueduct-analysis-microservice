@@ -42,6 +42,9 @@ def analyze(**kwargs):
         logging.info(f'[ROUTER] [ps_router.analyze]: points {points}')
 
         nPoints = len(geometry["geometry"]["coordinates"])
+        
+        if nPoints > 500:
+            return error(status=500, detail=f'Error: Row number should be less or equal to 500, provided: {nPoints}')
 
         if kwargs["sanitized_params"]["locations"] == None:
             location_list = [f"null" for i in range(nPoints)]
