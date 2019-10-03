@@ -74,7 +74,7 @@ def analyze(**kwargs):
         else:
             ids = kwargs["sanitized_params"]["ids"]
 
-        myexpr= r"(?!'')((?<=[a-z]|\s)'(?=[a-z]|\s))|(\\)|(/)"
+        myexpr= r"(?!'')((?<=[a-z]|\s|[\,\.\\])'(?=[a-z]|\s|[\,\.\\]))|(\\)|(\/)"
         locations = re.sub(myexpr,"",locations)
         match_address = re.sub(myexpr,"",match_address)
         input_address = re.sub(myexpr,"",input_address)
