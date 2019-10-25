@@ -17,6 +17,9 @@ class CartoService(object):
         payload = {'q': sql}
         downloadUrl = url + '?q=' + sql_download
 
+        logging.debug(f"[SERVICE] [carto_service] url: {url}")
+        logging.debug(f"[SERVICE] [carto_service] sql: {sql}")
+
         try:
             r = requests.post(url, data=payload)
             data = r.json()
@@ -45,5 +48,4 @@ class CartoService(object):
 
         sql = sqltype[analysis_type]
         sql_download = sqltype_download[analysis_type]
-        logging.info(f"[SERVICE] [carto_service] query: {sql}")
         return CartoService.query(sql, sql_download)

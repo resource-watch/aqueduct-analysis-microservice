@@ -18,6 +18,12 @@ from aqueduct.utils.files import load_config_json
 formatter = logging.Formatter('%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s',
                               '%Y%m%d-%H:%M%p')
 
+logging.basicConfig(
+    level=SETTINGS.get('logging', {}).get('level'),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y%m%d-%H:%M%p',
+)
+
 root = logging.getLogger()
 root.setLevel(logging.DEBUG)
 
