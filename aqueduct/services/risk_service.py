@@ -7,13 +7,17 @@ import sqlalchemy
 from cached_property import cached_property
 from scipy.interpolate import interp1d
 
+import logging
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
 
 class RiskService(object):
     def __init__(self, user_selections):
         ### DBConexion
         self.engine = sqlalchemy.create_engine(os.getenv('POSTGRES_URL'))
-        self.metadata = sqlalchemy.MetaData(bind=self.engine)
-        self.metadata.reflect(self.engine)
+        # self.metadata = sqlalchemy.MetaData(bind=self.engine)
+        # self.metadata.reflect(self.engine)
         ###               BACKGROUND INTO  
         self.flood_types = ["riverine", "coastal"]
         self.exposures = ["gdpexp", "popexp", "urban_damage_v2"]

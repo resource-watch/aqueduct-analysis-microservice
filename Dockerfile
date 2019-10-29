@@ -9,8 +9,11 @@ RUN addgroup $USER && useradd -ms /bin/bash $USER -g $USER
 RUN easy_install pip && pip install --upgrade pip
 
 RUN mkdir -p /opt/$NAME
+COPY tox.ini /opt/$NAME/tox.ini
 COPY requirements.txt /opt/$NAME/requirements.txt
+COPY requirements_dev.txt /opt/$NAME/requirements_dev.txt
 RUN cd /opt/$NAME && pip install -r requirements.txt
+RUN cd /opt/$NAME && pip install -r requirements_dev.txt
 
 COPY entrypoint.sh /opt/$NAME/entrypoint.sh
 COPY main.py /opt/$NAME/main.py

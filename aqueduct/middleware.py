@@ -47,8 +47,8 @@ def get_geo_by_hash(func):
         try:
             geojson = GeostoreService.get(geostore)
             kwargs["sanitized_params"]["geojson"] = geojson
-        except GeostoreNotFound:
-            return error(status=404, detail='Geostore not found')
+        except GeostoreNotFound as e:
+            return error(status=404, detail='Geostore not found: {}'.format(e.message))
         
         return func(*args, **kwargs)
 

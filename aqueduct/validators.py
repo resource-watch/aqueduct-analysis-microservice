@@ -34,7 +34,7 @@ def validate_wra_params(func):
             'wscheme': {
                 'type': 'string',
                 'required': True
-                },
+            },
             'geostore': {
                 'type': 'string',
                 'required': True
@@ -99,10 +99,12 @@ def validate_wra_params(func):
                 'nullable': True,
                 'default': None
             }
-            
+
         }
-        rArgs = {**request.args, **request.json}
-        kwargs.update(rArgs)  
+
+        jsonRequestContent = request.json or {}
+        rArgs = {**request.args, **jsonRequestContent}
+        kwargs.update(rArgs)
         logging.debug(f'[MIDDLEWARE - ws scheme]: {kwargs}')
         logging.debug(f"[VALIDATOR - wra_weights]: {kwargs}")
         validator = Validator(validation_schema, allow_unknown=True)
