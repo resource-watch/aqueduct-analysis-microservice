@@ -47,7 +47,7 @@ class RiskService(object):
 
     def user_selections(self):
         """
-        Purpose: Gather all neccesary inputs to run any analysis
+        Purpose: Gather all necessary inputs to run any analysis
         Input:
             flood: Riverine of Coastal (User must select)
             Geogunit_unique_name: geographical unit name from website.  (User must select)

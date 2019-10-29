@@ -1,0 +1,42 @@
+{
+  "chart_type": "table",
+  "data": [
+    {
+      "Annual_Damage_Avg": 68500413.7359,
+      "Asset_Value": 612000000000.0,
+      "Flood_Protection": 1000.0,
+      "Percent_Damage_Avg": 0.0111928780614,
+      "index": "2010"
+    },
+    {
+      "Annual_Damage_Avg": 214039474.398,
+      "Asset_Value": 836000000000.0,
+      "Flood_Protection": 693.6,
+      "Percent_Damage_Avg": 0.0256028079423,
+      "index": "2030"
+    },
+    {
+      "Annual_Damage_Avg": 224507251.023,
+      "Asset_Value": 1140000000000.0,
+      "Flood_Protection": 736.2,
+      "Percent_Damage_Avg": 0.0196936185108,
+      "index": "2050"
+    },
+    {
+      "Annual_Damage_Avg": 752626862.354,
+      "Asset_Value": 1720000000000.0,
+      "Flood_Protection": 559.8,
+      "Percent_Damage_Avg": 0.0437573757183,
+      "index": "2080"
+    }
+  ],
+  "meta": {
+    "Average Protection": 1000,
+    "Exposure": "urban_damage_v2",
+    "Scenario": "business as usual",
+    "flood": "riverine",
+    "geogunit_name": "Netherlands",
+    "geogunit_type": "country"
+  },
+  "widgetId": "table"
+}

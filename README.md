@@ -41,3 +41,18 @@ The API has been packed in a Python module (aqueduct). It creates and exposes a 
 has been divided in three different layers or submodules (Routes, Services and Models).
 
 There are also some generic submodules that manage the request validations, HTTP errors and the background tasks manager.
+
+
+### Testing
+
+To run tests, you need to install both production and development dependencies. To do so, run:
+
+```ssh
+pip install -r requirements.txt
+pip install -r requirements_dev.txt
+```
+
+To run the test suite, you'll need to configure some environment variables:
+- `CT_URL`: Can have any value, as long as it's a syntactically correct URL.
+- `CT_TOKEN`: Can have any value
+- `POSTGRES_URL`: Full URL of a running PostgreSQL server with a preloaded database. Example: `postgresql://postgres@localhost:5432/aqueduct_ms_test`
