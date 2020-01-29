@@ -4,7 +4,9 @@
 
 ### Requirements
 
-You need to install Docker in your machine if you haven't already [Docker](https://www.docker.com/)
+* You need to install Docker in your machine if you haven't already [Docker](https://www.docker.com/)
+
+* You will need [Control Tower](https://github.com/Skydipper/control-tower) up and running before run this service.
 
 ### Development
 
@@ -12,22 +14,25 @@ Follow the next steps to set up the development environment in your machine.
 
 1. Clone the repo and go to the folder
 
-```ssh
+```bash
 git clone https://github.com/resource-watch/aqueduct-analysis-microservice
+```
+
+2. Copy `.env.sample` to `.env` and set the corresponding variable values. Note if your are using GNU/Linux you have to replace `mymachine` by your local ip address.
+```bash
 cd aqueduct-analysis-microservice
+cp .env.sample .env
 ```
 
+3. Run the `aqueduct.sh` shell script in development mode.
 
-2. Copy `.env.sample` to `.env` and set the corresponding variable values
-
-```ssh
+```bash
 ./aqueduct.sh develop
 ```
 
-3. Run the aqueduct.sh shell script in development mode.
-
-```ssh
-./aqueduct.sh develop
+4. Once postgresql docker container is running we are ready to import the service database in case was not imported yet. Note postgresql docker instance port is mapped to 5432 so, if we have another service in localhost running in this port, the service won't start. To import a dump of the service database execute the following command:
+```bash
+psql -h localhost -U postgres -c "CREATE DATABASE {DATABASE_NAME}" && pg_restore -h localhost -U postgres -d {DATABASE_NAME} /PATH/TO/DUMP/FILE.sql
 ```
 
 If this is the first time you run it, it may take a few minutes.
