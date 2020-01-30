@@ -1,6 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: aqueduct
   labels:
     name: {name}
   name: {name}

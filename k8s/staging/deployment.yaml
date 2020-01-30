@@ -1,6 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
+  namespace: aqueduct
   labels:
     name: {name}
   name: {name}
@@ -28,8 +29,10 @@ spec:
             value: "5700"
           - name: ENVIRONMENT
             value: staging
+          - name: LOGGER_LEVEL
+            value: DEBUG
           - name: LOCAL_URL
-            value: http://{name}.default.svc.cluster.local:5700
+            value: http://{name}.aqueduct.svc.cluster.local:5700
           - name: CT_URL
             valueFrom:
                 secretKeyRef:
@@ -55,6 +58,16 @@ spec:
                 secretKeyRef:
                   name: mssecrets
                   key: CARTODB_USER
+          - name: POSTGRES_URL
+            valueFrom:
+                secretKeyRef:
+                  name: dbsecrets
+                  key: AQUEDUCT_POSTGRES_URL
+          - name: AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY
+            valueFrom:
+                secretKeyRef:
+                  name: appsecrets
+                  key: AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY
 
         ports:
           - containerPort: 5700
