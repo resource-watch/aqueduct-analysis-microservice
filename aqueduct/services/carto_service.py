@@ -35,15 +35,15 @@ class CartoService(object):
     def get_table(points, analysis_type, wscheme, month, year, change_type, indicator, scenario, 
                     locations, input_address, match_address, ids):
         sqltype = {'annual': f"SELECT * FROM get_aqpoints_annual_04('{ids}','{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'monthly': f"SELECT * FROM get_aqpoints_monthly_02('{month}', '{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'projected': f"SELECT * FROM get_aqpoints_projected_02('{year}', '''{change_type}''', '''{indicator}''', '''{scenario}''', '{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'custom': f"SELECT * FROM get_aqpoints_annual_custom_test('{ids}',{wscheme}, '{points}', '{locations}', '{input_address}', '{match_address}')"
+                   'monthly': f"SELECT * FROM get_aqpoints_monthly_04('{ids}', '{month}', '{points}', '{locations}', '{input_address}', '{match_address}')",
+                   'projected': f"SELECT * FROM get_aqpoints_projected_04('{ids}', '{year}', '''{change_type}''', '''{indicator}''', '''{scenario}''', '{points}', '{locations}', '{input_address}', '{match_address}')",
+                   'custom': f"SELECT * FROM get_aqpoints_annual_custom_test('{ids}', {wscheme}, '{points}', '{locations}', '{input_address}', '{match_address}')"
                    }
 
-        sqltype_download = {'annual': f"SELECT * FROM get_aqpoints_annual_04('{ids}','{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'monthly': f"SELECT * FROM get_aqpoints_monthly_all('{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'projected': f"SELECT * FROM get_aqpoints_projected_all('{points}', '{locations}', '{input_address}', '{match_address}')",
-                   'custom': f"SELECT * FROM get_aqpoints_annual_custom_test('{ids}',{wscheme}, '{points}', '{locations}', '{input_address}', '{match_address}')"
+        sqltype_download = {'annual': f"SELECT * FROM get_aqpoints_annual_04('{ids}', '{points}', '{locations}', '{input_address}', '{match_address}')",
+                   'monthly': f"SELECT * FROM get_aqpoints_monthly_04_all('{ids}', '{points}', '{locations}', '{input_address}', '{match_address}')",
+                   'projected': f"SELECT * FROM get_aqpoints_projected_04_all('{ids}', '{points}', '{locations}', '{input_address}', '{match_address}')",
+                   'custom': f"SELECT * FROM get_aqpoints_annual_custom_test('{ids}', {wscheme}, '{points}', '{locations}', '{input_address}', '{match_address}')"
                    }
 
         sql = sqltype[analysis_type]
