@@ -3,7 +3,7 @@ services:
   test:
     build: .
     ports:
-      - "5700:5700"
+      - "5100:5100"
     container_name: aqueduct_analysis-test
     environment:
       PORT: 5700
