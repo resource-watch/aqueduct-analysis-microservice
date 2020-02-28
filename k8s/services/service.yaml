@@ -3,10 +3,10 @@ kind: Service
 metadata:
   namespace: aqueduct
   labels:
-    name: {name}
-  name: {name}
+    name:  aqueduct-analysis
+  name:  aqueduct-analysis
 spec:
   ports:
     - port: 5700
   selector:
-    name: {name}
+    name:  aqueduct-analysis
