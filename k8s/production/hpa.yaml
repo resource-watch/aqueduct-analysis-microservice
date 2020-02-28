@@ -1,13 +1,13 @@
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  name:  aqueduct-analysis
+  name: aqueduct-analysis
   namespace: aqueduct
 spec:
   scaleTargetRef:
     apiVersion: apps/v1beta1
     kind: Deployment
-    name:  aqueduct-analysis
+    name: aqueduct-analysis
   minReplicas: 2
   maxReplicas: 3
   targetCPUUtilizationPercentage: 50
