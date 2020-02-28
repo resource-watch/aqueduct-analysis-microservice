@@ -19,6 +19,7 @@ env:
 
 before_script:
   - psql -c 'create database aqueduct_flood;' -U postgres
+  - pg_restore  -U postgres -d aqueduct_flood -1 db_struct.sql
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
   - ./cc-test-reporter before-build
