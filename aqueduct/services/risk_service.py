@@ -562,9 +562,9 @@ class RiskService(object):
         df_risk = pd.concat(
             [df_risk, pd.Series(per, index=[colFormat(self.exposure, '2010', self.scen_abb, "per", "avg")])])
         for y in self.ys[1:]:
-            ast = df_risk.ix[colFormat(self.exposure, y, self.scen_abb, "ast", "tot")]
+            ast = df_risk.loc[colFormat(self.exposure, y, self.scen_abb, "ast", "tot")]
             for t in ["avg", "min", "max"]:
-                imp = df_risk.ix[colFormat(self.exposure, y, self.scen_abb, "tot", t)]
+                imp = df_risk.loc[colFormat(self.exposure, y, self.scen_abb, "tot", t)]
                 per = np.where(ast < imp, np.nan, imp / ast * 100)
                 df_risk = pd.concat(
                     [df_risk, pd.Series(per, index=[colFormat(self.exposure, y, self.scen_abb, "per", t)])])

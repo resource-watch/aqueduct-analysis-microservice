@@ -10,6 +10,8 @@ from scipy.interpolate import interp1d
 from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.dialects.postgresql import JSON
 
+from aqueduct.errors import Error
+
 
 class CBAService(object):
     def __init__(self, user_selections):
@@ -90,13 +92,14 @@ class CBAService(object):
             df_precalc: precalculated impact data
             risk_analysis - can we use precalculated risk data, or do we need to calculate on-the-fly?
         """
+        logging.debug('[CBA, user_selections]: start')
         # GEOGUNIT INFO
 
         fids, geogunit_name, geogunit_type = pd.read_sql_query(
             "SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name),
             self.engine).values[0]
 
-        # IMPACT DRIVER INFO (climate and socioeconomc scenarios
+        # IMPACT DRIVER INFO (climate and socioeconomc scenarios)
         clim, socio, scen_abb = self.scenarios.get(self.scenario)
 
         read_prot = 'precalc_agg_riverine_{0}_nosub'.format(geogunit_type).lower()
@@ -118,7 +121,7 @@ class CBAService(object):
             else:
                 # Average prot standard for a whole unit (i.e. country)
                 prot_name = "_".join(["Urban_Damage_v2", '2010', scen_abb, "PROT_avg"]).lower()
-                prot_pres = df_prot.ix[geogunit_name, prot_name]
+                prot_pres = df_prot.loc[geogunit_name, prot_name]
         else:
             risk_analysis = "calc"
             prot_pres = self.existing_prot
@@ -137,7 +140,6 @@ class CBAService(object):
 
         # Define the desired protection standard
         rpend = "endrp" + str(prot_fut).zfill(5)
-
         return geogunit_name, geogunit_type, fids, clim, socio, scen_abb, prot_pres, rpend, \
                build_start_end, year_range, benefit_increase, prot_idx_fut, risk_analysis, df_prot, prot_fut
 
@@ -145,6 +147,7 @@ class CBAService(object):
         """
         select col_min, col_max, col_avg from table
         """
+        logging.debug('[CBA, run_stats]: start')
         df_stats = pd.DataFrame(index=dataframe.index)
         for t in self.cba_types:
             df_filt = dataframe[[col for col in dataframe.columns if (t in col.lower())]]
@@ -159,6 +162,7 @@ class CBAService(object):
            Output:
             time series of costs without any discount rate included
         """
+        logging.debug('[CBA, compute_costs]: start')
         time_series = np.arange(self.year_range[0], self.year_range[1] + 1)  # list of years until horizon
         build_years = np.arange(
             self.build_start_end[1] - self.build_start_end[0]) + 1.  # list of build years (starting at 1)
@@ -180,6 +184,7 @@ class CBAService(object):
 
     def compute_benefits(self, model, annual_risk_pres, annual_risk_fut, annual_pop_pres, annual_pop_fut,
                          annual_gdp_pres, annual_gdp_fut, annual_prot_pres, annual_prot_fut):
+        logging.debug('[CBA, compute_benefits]: start')
         diff_urb = annual_risk_pres - annual_risk_fut  # difference is the potential yearly benefit
         diff_pop = annual_pop_pres - annual_pop_fut  # difference is the potential yearly benefit
         diff_gdp = annual_gdp_pres - annual_gdp_fut  # difference is the potential yearly benefit
@@ -218,6 +223,7 @@ class CBAService(object):
         Output:
             vector with expected values for each time period
         """
+        logging.debug('[CBA, expected_value]: start')
         # append the return period at which maximum impact occurs, normally this is set to 1e6 years
         RPs = np.append(np.array(RPs), RP_infinite)
         # derive the probabilities associated with return periods
@@ -248,6 +254,7 @@ class CBAService(object):
         Allows for extrapolation to find new Y given user-defined X
         Do a linear inter/extrapolation of y(x) to find a value y(x_idx)
         """
+        logging.debug('[CBA, interp_value]: start')
         x = np.atleast_1d(x)
         y = np.atleast_1d(y)
         f = interp1d(x, y, fill_value=(y.min(), y.max()), bounds_error=False)
@@ -258,6 +265,7 @@ class CBAService(object):
         """
         Purpose: Make an extrapolation function
         """
+        logging.debug('[CBA, extrap1d]: start')
         xs = interpolator.x
         ys = interpolator.y
 
@@ -288,6 +296,7 @@ class CBAService(object):
                             (i.e. year the flood protection should be valid in)
             rp, protection standard at reference impacts
         """
+        logging.debug('[CBA, compute_rp_change]: start')
         # interpolate to estimate impacts at protection level 'rp'
         # atleast1_1d = scalar inputs are converted to 1-D arrays. Arrays of higher dimensions are preserved
         p = 1. / np.atleast_1d(rps)
@@ -301,6 +310,7 @@ class CBAService(object):
         return new_prot
 
     def find_startrp(self, x):
+        logging.debug('[CBA, find_startrp]: start')
         if pd.isnull(x):
             rpstart = np.nan
         else:
@@ -309,7 +319,7 @@ class CBAService(object):
         return rpstart
 
     def find_dimension_v2(self, m, df_lookup, df_cost, user_urb):
-
+        logging.debug('[CBA, find_dimension_v2]: start')
         uniStartRPList = [x for x in list(set(df_lookup['startrp'].values)) if pd.notnull(x)]
         erp = "endrp" + str(self.prot_fut).zfill(5)
         uniSRPdfList = []
@@ -342,7 +352,7 @@ class CBAService(object):
                 costList.append(cost_itl * ppp_itl * con_itl)
             else:
                 costList.append(cost_itl)
-        ####-------------------------
+            ####-------------------------
         totalCost = sum(costList)
         return totalCost
 
@@ -355,7 +365,7 @@ class CBAService(object):
         Output:
             cost = total cost of dike
         """
-
+        logging.debug('[CBA, find_construction]: start')
         lookup_c = pd.read_sql_query(
             "SELECT * FROM lookup_{0} where {1} = '{2}' ".format(self.geogunit, self.geogunit_type, self.geogunit_name),
             self.engine, 'id')
@@ -375,6 +385,7 @@ class CBAService(object):
         return cost
 
     def average_prot(self, m, year, risk_data_input):
+        logging.debug('[CBA, average_prot]: start')
         idx = int(year) - self.implementation_start
         clm = "histor" if year == '2010' else self.clim
         sco = "base" if year == '2010' else self.socio
@@ -389,7 +400,7 @@ class CBAService(object):
             # PULL ONLY CURRENT DATA
             cols = [col for col in sqlalchemy.Table(self.df_urb_agg, self.metadata).columns.keys() if
                     (clm.lower() in col) and (mdl.lower() in col) and (sco.lower() in col) and (year in col)]
-            # impact_present = df_urb_agg.ix[geogunit_name, [col for col in df_urb_agg.columns if (clm in col) and (mdl in col) and (sco in col) and (year in col)]]
+            # impact_present = df_urb_agg.loc[geogunit_name, [col for col in df_urb_agg.columns if (clm in col) and (mdl in col) and (sco in col) and (year in col)]]
             impact_present = pd.read_sql_query(
                 "SELECT {0} FROM {1} where id ='{2}'".format(', '.join(cols), self.df_urb_agg, self.geogunit_name),
                 self.engine).iloc[0]
@@ -417,7 +428,7 @@ class CBAService(object):
         """
         # determine risk evaolution
         risk_prot, pop_impact, gdp_impact, prot_levels = [], [], [], []
-
+        logging.debug('[CBA, risk_evolution]: start')
         for year, imp_cc, imp_urb, imp_pop, imp_gdp in zip(self.years, impact_cc, impact_urb, impact_pop, impact_gdp):
             prot_trans = self.compute_rp_change(self.rps, impact_cc[prot_idx], imp_cc, prot, min_rp=2,
                                                 max_rp=1000)  # i.e. RP_zero
@@ -445,7 +456,7 @@ class CBAService(object):
     def calc_impact(self, m, pt, ptid):
         """this can be improved with threads and is where the leak happens, a more ammount of fids, the runtime increases"""
         annual_risk, annual_pop, annual_gdp = 0, 0, 0
-
+        logging.debug('[CBA, calc_impact]: start')
         # cba_raw = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(columns), inData, inName), self.engine)
         # impact_present = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(cols), inData, inName), self.engine).values[0]
         df_urb = pd.read_sql_query(
@@ -481,7 +492,7 @@ class CBAService(object):
         """
         # Find total costs without discount(over timeseries)
         # DEFAULT DATA
-
+        logging.debug('[CBA, precalc_present_benefits]: start')
         urb_imp = self.filt_risk[
             [col for col in self.filt_risk.columns if ("urban_damage" in col) and (self.scen_abb.lower() in col)
              and (model.lower() in col) and ("tot" in col)]].sum(axis=0)
@@ -491,7 +502,7 @@ class CBAService(object):
         gdp_imp = self.filt_risk[
             [col for col in self.filt_risk.columns if ("gdpexp" in col) and (self.scen_abb.lower() in col)
              and (model.lower() in col) and ("tot" in col)]].sum(axis=0)
-        prot_imp = self.df_prot.ix[self.geogunit_name, [col for col in self.df_prot.columns if
+        prot_imp = self.df_prot.loc[self.geogunit_name, [col for col in self.df_prot.columns if
                                                         ("urban_damage" in col) and (self.scen_abb.lower() in col)
                                                         and ("prot_avg" in col)]]
 
@@ -523,6 +534,7 @@ class CBAService(object):
         
         Time is being killed here on big selections
         """
+        logging.debug('[CBA, select_impact]: start')
         cba_raw = inData.set_index('id').loc[inName]
         # Present data = 2010 data
         impact_present = cba_raw.filter(like="_2010_", axis=0).values
@@ -546,7 +558,7 @@ class CBAService(object):
         ##--------------------------------------------------------
         ###              ANALYSIS          ###
         ##--------------------------------------------------------
-        # logging.debug( "Analysis starting...")
+        logging.debug( "Analysis starting...")
         # IMPACT DATA BY MODEL
 
         # model_benefits = pd.DataFrame(index=time_series)
@@ -556,12 +568,15 @@ class CBAService(object):
 
             for m in self.mods:
                 # start_time = time.time()
-                # logging.debug( "--------------------------------   Model %s starting...  --------------------------------------" %m)
+                logging.debug( "------------------   Model %s starting...  ---------------" %m)
 
                 if self.risk_analysis == "precalc":
+                    logging.debug( "------------------   precalc  ---------------" )
                     annual_risk_pres, annual_pop_pres, annual_gdp_pres, annual_prot_pres = self.precalc_present_benefits(
                         m)
+                    
                 else:
+                    logging.debug( "------------------   Calc  ---------------" %m)
                     annual_risk_pres, annual_pop_pres, annual_gdp_pres = self.calc_impact(m, self.prot_pres, 0)
                     prot_pres_list = []
                     for y in self.ys:
@@ -596,8 +611,8 @@ class CBAService(object):
                 model_benefits = model_benefits.join(df_pc)
                 df_gc = self.compute_costs(m, gdp_costs, "GDP")
                 model_benefits = model_benefits.join(df_gc)
-                # logging.debug(m, "costs done", time.time()-start_time)
-                # logging.debug("Model %s done..." % m)
+                #logging.debug(m, "costs done", time.time()-start_time)
+                #logging.debug("Model %s done..." % m)
 
             # start_time = time.time()
             df_final = self.run_stats(model_benefits)
@@ -619,17 +634,16 @@ class CBAService(object):
                        "gdpCosts": gdp_costs.tolist()}
             # df_final = model_benefits
             # print( "All done! Total computation time:", time.time() - allStartTime)
-        except Exception as e:
-            logging.error('[CBA analysis]: ' + str(e))
-            return error(status=500, detail='computation failed')
-
-        finally:
-            self.engine.dispose()
-
-        return {
+            return {
             "meta": details,
             "df": df_final
         }
+        except Exception as e:
+            logging.error('[CBA analyze]: ' + str(e))
+            raise Error(message='computation failed: '+ str(e))
+
+        finally:
+            self.engine.dispose()
 
 
 class CBAICache(object):
@@ -667,22 +681,22 @@ class CBAICache(object):
             myCache.create()
         except Exception as e:
             logging.error('[CBAICache, _createTable]: ' + str(e))
-            return error(status=500, detail='cache table creation failed')
+            raise Error(message='cache table creation failed'+ str(e))
         return myCache
 
     def checkParams(self):
         try:
             table = self.metadata.tables['cache_cba']
 
-            logging.info('[CBAICache, checkParams]: check params...')
+            logging.info('[CBAICache, checkParams]: checking params...')
             # logging.info(self._generateKey)
             select_st = table.select().where(table.c.key == self._generateKey)
             res = self.engine.connect().execute(select_st).fetchone()
-            logging.info(res)
+            logging.info(f'[CBAICache, checkParams - result]: {res}')
             return res
         except Exception as e:
             logging.error('[CBAICache, checkParams]: ' + str(e))
-            return error(status=500, detail='Generic Error')
+            raise Error(message='Checked params failed' + str(e))
 
     def insertRecord(self, key, data):
         # insert data via insert() construct
@@ -698,7 +712,7 @@ class CBAICache(object):
 
         except Exception as e:
             logging.error('[CBAICache, insertRecord]: ' + str(e))
-            return error(status=500, detail='insert table failed')
+            raise Error(message='insert record in cache table failed. \n'+ str(e))
 
     def updateRecord(self):
         return 0
@@ -736,7 +750,8 @@ class CBAICache(object):
                 self.execute()
                 # executes the cba code to get the table, inserts it into the database and we should be ready to go
         except Exception as e:
-            logging.error('[CBAICache, _createTable]: ' + str(e))
+            logging.error('[CBAICache, execute]: ' + str(e))
+            raise e
 
 
 class CBAEndService(object):

@@ -22,7 +22,7 @@ formatter = logging.Formatter('%(asctime)s  - %(funcName)s - %(lineno)d - %(name
 
 logging.basicConfig(
     level=SETTINGS.get('logging', {}).get('level'),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format=formatter,
     datefmt='%Y%m%d-%H:%M%p',
 )
 
@@ -33,11 +33,16 @@ error_handler = logging.StreamHandler(sys.stderr)
 error_handler.setLevel(logging.WARN)
 error_handler.setFormatter(formatter)
 root.addHandler(error_handler)
+#
+#output_handler = logging.StreamHandler(sys.stdout)
+#output_handler.setLevel(SETTINGS.get('logging', {}).get('level'))
+#output_handler.setFormatter(formatter)
+#root.addHandler(output_handler)
+#
+logging.getLogger('sqlalchemy').propagate = False
+logging.getLogger("pandas").setLevel(logging.ERROR)
+logging.getLogger("pandas").propagate = False
 
-output_handler = logging.StreamHandler(sys.stdout)
-output_handler.setLevel(SETTINGS.get('logging', {}).get('level'))
-output_handler.setFormatter(formatter)
-root.addHandler(output_handler)
 
 # Flask App
 app = Flask(__name__)

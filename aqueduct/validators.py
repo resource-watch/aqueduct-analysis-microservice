@@ -12,7 +12,7 @@ from aqueduct.routes.api import error
 def myCoerc(n):
     try:
         return lambda v: None if v in ('null') else n(v)
-    except Exception:
+    except Exception as e:
         return None
 
 
@@ -222,12 +222,13 @@ def validate_params_cba(func):
                 'max': 1000
             }
         }
-        logging.debug(f"[VALIDATOR - cba_params]: {kwargs}")
+        
         validator = Validator(validation_schema, allow_unknown=True)
         if not validator.validate(kwargs['params']):
             return error(status=400, detail=validator.errors)
 
         kwargs['sanitized_params'] = validator.normalized(kwargs['params'])
+        logging.debug(f"[VALIDATOR - cba_params]: {kwargs['sanitized_params']}")
         return func(*args, **kwargs)
 
     return wrapper

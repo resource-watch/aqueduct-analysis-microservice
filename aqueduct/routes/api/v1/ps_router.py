@@ -11,7 +11,7 @@ import pandas as pd
 import re
 from flask import jsonify, request, Blueprint, json
 
-from aqueduct.errors import CartoError, DBError, GeocodeError
+from aqueduct.errors import CartoError, DBError, CacheError
 from aqueduct.middleware import get_geo_by_hash, sanitize_parameters
 from aqueduct.routes.api import error
 from aqueduct.serializers import serialize_response, serialize_response_geocoding, serialize_response_cba, \
@@ -201,7 +201,7 @@ def precalc_cba(**kwargs):
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail=e.message)
     except Exception as e:
-        logging.error('[ROUTER]: ' + str(e))
+        logging.error('[ROUTER]: Unknown error: ' + str(e))
         return error(status=500, detail=e.message)
 
     return jsonify({'status': 'saved'}), 200
