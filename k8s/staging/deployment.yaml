@@ -3,8 +3,8 @@ kind: Deployment
 metadata:
   namespace: aqueduct
   labels:
-    name: {name}
-  name: {name}
+    name: aqueduct-analysis
+  name: aqueduct-analysis
 spec:
   revisionHistoryLimit: 0
   template:
@@ -12,11 +12,11 @@ spec:
       annotations:
         chaos.alpha.kubernetes.io/enabled: "true"
       labels:
-        name: {name}
+        name: aqueduct-analysis
     spec:
       containers:
-      - name: {name}
-        image: vizzuality/{name}
+      - name: aqueduct-analysis
+        image: vizzuality/aqueduct-analysis
         imagePullPolicy: Always
         resources:
           requests:
@@ -32,7 +32,7 @@ spec:
           - name: LOGGER_LEVEL
             value: DEBUG
           - name: LOCAL_URL
-            value: http://{name}.aqueduct.svc.cluster.local:5700
+            value: http://aqueduct-analysis.aqueduct.svc.cluster.local:5700
           - name: CT_URL
             valueFrom:
                 secretKeyRef:

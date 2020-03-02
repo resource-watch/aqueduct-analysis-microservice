@@ -28,17 +28,17 @@ node {
   properties([pipelineTriggers([[$class: 'GitHubPushTrigger']])])
 
   try {
- 
-      stage ('Build docker') {
+
+    stage ('Build docker') {
       sh("docker -H :2375 build -t ${imageTag} .")
       sh("docker -H :2375 build -t ${dockerUsername}/${appName}:latest .")
     }
 
- //  stage ('Run Tests') {
- //    sh('docker-compose -H :2375 -f docker-compose-test.yml build')
- //   sh('docker-compose -H :2375 -f docker-compose-test.yml run --rm test')
- //    sh('docker-compose -H :2375 -f docker-compose-test.yml stop')
- //  }
+//     stage ('Run Tests') {
+//       sh('docker-compose -H :2375 -f docker-compose-test.yml build')
+//       sh('docker-compose -H :2375 -f docker-compose-test.yml run --rm test')
+//       sh('docker-compose -H :2375 -f docker-compose-test.yml stop')
+//     }
 
     stage('Push Docker') {
       withCredentials([usernamePassword(credentialsId: 'Vizzuality Docker Hub', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
@@ -55,11 +55,9 @@ node {
         // Roll out to staging
         case "develop":
           sh("echo Deploying to STAGING cluster")
-          sh("kubectl config use-context gke_${GCLOUD_PROJECT}_${GCLOUD_GCE_ZONE}_${KUBE_STAGING_CLUSTER}")
+          sh("kubectl config use-context ${KUBECTL_CONTEXT_PREFIX}_${CLOUD_PROJECT_NAME}_${CLOUD_PROJECT_ZONE}_${KUBE_STAGING_CLUSTER}")
           def service = sh([returnStdout: true, script: "kubectl get deploy ${appName} --namespace=aqueduct || echo NotFound"]).trim()
           if ((service && service.indexOf("NotFound") > -1) || (forceCompleteDeploy)){
-            sh("sed -i -e 's/{name}/${appName}/g' k8s/services/*.yaml")
-            sh("sed -i -e 's/{name}/${appName}/g' k8s/staging/*.yaml")
             sh("kubectl apply -f k8s/services/")
             sh("kubectl apply -f k8s/staging/")
           }
@@ -88,11 +86,9 @@ node {
           }
           if (userInput == true && !didTimeout){
             sh("echo Deploying to PROD cluster")
-            sh("kubectl config use-context gke_${GCLOUD_PROJECT}_${GCLOUD_GCE_ZONE}_${KUBE_PROD_CLUSTER}")
+            sh("kubectl config use-context ${KUBECTL_CONTEXT_PREFIX}_${CLOUD_PROJECT_NAME}_${CLOUD_PROJECT_ZONE}_${KUBE_PROD_CLUSTER}")
             def service = sh([returnStdout: true, script: "kubectl get deploy ${appName} --namespace=aqueduct || echo NotFound"]).trim()
             if ((service && service.indexOf("NotFound") > -1) || (forceCompleteDeploy)){
-              sh("sed -i -e 's/{name}/${appName}/g' k8s/services/*.yaml")
-              sh("sed -i -e 's/{name}/${appName}/g' k8s/production/*.yaml")
               sh("kubectl apply -f k8s/services/")
               sh("kubectl apply -f k8s/production/")
             }
