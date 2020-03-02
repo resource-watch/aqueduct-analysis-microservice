@@ -29,22 +29,105 @@ aqueduct_analysis_endpoints_v1 = Blueprint('aqueduct_analysis_endpoints_v1', __n
 WATER RISK ATLAS ENDPOINTS
 """
 
-
+@aqueduct_analysis_endpoints_v1.route('/', strict_slashes=False, methods=['GET','POST'])
+@sanitize_parameters
+@validate_wra_params
+@get_geo_by_hash
 def analyze(**kwargs):
-    """Analyze water risk"""
+    """ Analyze water risk data
+    ---
+    get:
+        summary: Allow  water risk atlas analysis. Pasing this params as 'application/json' on a Post 
+        description: Get the water risk scores for the selectec params in the locations array 
+        parameters:
+            - name: wscheme
+              in: query
+              description: weight scheme as defined in 
+              type: string
+              required: true
+            - name: indicator
+              in: query
+              description: a valid indicator that you want to analyse. The available list can be found [here]() 
+              type: string
+              required: true            
+            - name: geostore
+              in: query
+              description: valid geostore
+              type: string
+              required: true           
+            - name: analysis_type
+              in: query
+              description: Type of analysis to perform. Allowed values `annual`, `monthly`, `projected` or `custom`
+              type: string
+              required: true          
+            - name: month
+              in: query
+              description: If we have selected `monthly` as *analyssis_type* we will need to specify a month `1..12` from January to December 
+              type: integer
+              required: false            
+            - name: year
+              in: query
+              description: If we have selected `projected` as *analyssis_type* we will need to specify a year, one of `2030` or `2034`. Other values from *analyssis_type* will consider year as `baseline`
+              type: string
+              required: false
+            - name: change_type
+              in: query
+              description: If we have selected `projected` as *analyssis_type* we will need to specify one of `change_from_baseline` or `future_value`.
+              type: string
+              required: false           
+            - name: scenario
+              in: query
+              description: If we have selected `projected` as *analyssis_type* we will need to specify one of `optimistic`, `business_as_usual` or `pessimistic`.
+              type: string
+              required: false
+            - name: locations
+              in: query
+              description: location list name. The text must be formater like `"[''Location A'',''Loccation B'']"`.
+              type: string
+              required: false
+            - name: input_address
+              in: query
+              description: location list name as the result of the [geolocation function](). The text must be formater like `"[''Location A'',''Loccation B'']"`.
+              type: string
+              required: false            
+            - name: match_address
+              in: query
+              description: location list name as the result of the [geolocation function](). The text must be formater like `"[''Location A'',''Loccation B'']"`.
+              type: string
+              required: false            
+            - name: ids
+              in: query
+              description: Ids list name. The text must be formater like `"[''Location A'',''Loccation B'']"`
+              type: string
+              required: false
+        responses:
+            200:
+                description: Foo object to be returned.
+                schema: FooSchema
+            404:
+                description: Foo not found.
+            500:
+                description: Internal server error.
+    """
     try:
         geometry = geoj.loads(geoj.dumps(kwargs["sanitized_params"]["geojson"]))
+        
         if geometry["geometry"]["type"] != 'MultiPoint':
             return error(status=500, detail=f'Error: geostore must be of multipoint type, not {geometry["geometry"]["type"]}.')
-        point_list = [f"\'\'Point({point[0]} {point[1]})\'\'" for point in geometry["geometry"]["coordinates"]]
-        tmp = ", ".join(point_list)
-        points = f"[{tmp}]"
-        logging.info(f'[ROUTER] [ps_router.analyze]: points {points}')
 
         nPoints = len(geometry["geometry"]["coordinates"])
         
         if nPoints > 500:
             return error(status=500, detail=f'Error: Row number should be less or equal to 500, provided: {nPoints}')
+
+        point_list = [f"\'\'Point({point[0]} {point[1]})\'\'" for point in geometry["geometry"]["coordinates"]]
+        
+        tmp = ", ".join(point_list)
+        
+        points = f"[{tmp}]"
+        
+        logging.info(f'[ROUTER] [ps_router.analyze]: points {points}')
+
 
         if kwargs["sanitized_params"]["locations"] == None:
             location_list = [f"null" for i in range(nPoints)]
@@ -80,9 +163,11 @@ def analyze(**kwargs):
         input_address = re.sub(myexpr,"",input_address)
 
         data, downloadUrl = CartoService.get_table(points, kwargs["sanitized_params"]["analysis_type"], kwargs["sanitized_params"]["wscheme"], kwargs["sanitized_params"]["month"], kwargs["sanitized_params"]["year"], kwargs["sanitized_params"]["change_type"], kwargs["sanitized_params"]["indicator"], kwargs["sanitized_params"]["scenario"], locations, input_address, match_address, ids)
+    
     except CartoError as e:
         logging.error('[ROUTER]: ' + e.message)
         return error(status=500, detail=e.message)
+    
     except Exception as e:
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail='Generic Error')
@@ -97,14 +182,6 @@ def analyze(**kwargs):
     data['downloadUrl'] = downloadUrl
     return jsonify(serialize_response(data)), 200
 
-
-@aqueduct_analysis_endpoints_v1.route('/', strict_slashes=False, methods=['GET','POST'])
-@sanitize_parameters
-@validate_wra_params
-@get_geo_by_hash
-def get_by_geostore(**kwargs):
-    """By Geostore Endpoint"""
-    return analyze(**kwargs)
 
 """
 FLOOD ENDPOINTS

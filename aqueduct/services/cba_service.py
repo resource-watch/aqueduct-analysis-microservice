@@ -757,7 +757,7 @@ class CBAEndService(object):
         # npv = None
         avoidedGdp = round(fOutput.loc[self.data['meta']['implementionEnd']:].gdp_benefits_avg.sum())
         avoidedPop = round(fOutput.loc[self.data['meta']['implementionEnd']:].pop_benefits_avg.sum())
-        bcr = round((cumOut['gdp_costs_avg'] / cumOut['urb_benefits_avg']), 2)
+        bcr = round((cumOut['gdp_costs_avg'] / cumOut['urb_benefits_avg']), 5   )
 
         return {'widgetId': 'table', 'chart_type': 'table', 'meta': self.data['meta'],
                 'data': [{'bcr': bcr, 'avoidedPop': avoidedPop, 'avoidedGdp': avoidedGdp}]}

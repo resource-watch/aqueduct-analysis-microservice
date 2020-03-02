@@ -32,7 +32,6 @@ def validate_wra_params(func):
     def wrapper(*args, **kwargs):
         validation_schema = {
             'wscheme': {
-                'type': 'string',
                 'required': True
             },
             'geostore': {
@@ -45,7 +44,6 @@ def validate_wra_params(func):
                 'default': None
             },
             'month': {
-                'type': 'string',
                 'required': False,
                 'default': None,
                 'nullable': True

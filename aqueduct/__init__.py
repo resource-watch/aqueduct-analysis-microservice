@@ -7,13 +7,15 @@ import logging
 import os
 import sys
 
+from apispec import APISpec
+from apispec_webframeworks.flask import FlaskPlugin
 import CTRegisterMicroserviceFlask
 from flask import Flask
 
 from aqueduct.config import SETTINGS
 from aqueduct.routes.api import error
 from aqueduct.routes.api.v1 import aqueduct_analysis_endpoints_v1
-from aqueduct.utils.files import load_config_json
+from aqueduct.utils.files import load_config_json, write_json
 
 formatter = logging.Formatter('%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s',
                               '%Y%m%d-%H:%M%p')
@@ -43,9 +45,43 @@ app = Flask(__name__)
 # Routing
 app.register_blueprint(aqueduct_analysis_endpoints_v1, url_prefix='/api/v1/aqueduct/analysis')
 
+
+# Generating documantation for the endpoints
+# Create spec
+spec = APISpec(
+    openapi_version="3.0.2",
+    swagger='1.0',
+    title='Aqueduct Analisis API',
+    host='staging-api.globalforestwatch.org',
+    version='1.0.0',
+    info=dict(
+        title='Python Skeleton',
+        description='Python Skeleton',
+        version='1.0.0'
+    ),
+    schemes = [
+        "https",
+        "http"]
+    ,
+    basePath="/api/v1",
+    produces=["application/vnd.api+json"],
+    plugins=[
+        FlaskPlugin()
+    ]
+)
+myRoutes = [v  for k, v  in app.view_functions.items() if '.' in k]
+with app.test_request_context():
+    for route in myRoutes:
+        spec.path(view=route)
+# 
+# We're good to go! Save this to a file for now.
+write_json(spec.to_dict(), 'public-swagger')
 # CT
+# if micro exited with code 1 it means it couldn't register against CT check if the etc/hosts mymachine ip or the ip on .env (linux users) match with the machine ip
 info = load_config_json('register')
 swagger = load_config_json('swagger')
+logging.info('swagger')
+
 CTRegisterMicroserviceFlask.register(
     app=app,
     name='aqueduct',
