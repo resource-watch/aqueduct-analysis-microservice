@@ -92,7 +92,7 @@ class CBAService(object):
             df_precalc: precalculated impact data
             risk_analysis - can we use precalculated risk data, or do we need to calculate on-the-fly?
         """
-        logging.debug('[CBA, user_selections]: start')
+        #logging.debug('[CBA, user_selections]: start')
         # GEOGUNIT INFO
 
         fids, geogunit_name, geogunit_type = pd.read_sql_query(
@@ -147,7 +147,7 @@ class CBAService(object):
         """
         select col_min, col_max, col_avg from table
         """
-        logging.debug('[CBA, run_stats]: start')
+        #logging.debug('[CBA, run_stats]: start')
         df_stats = pd.DataFrame(index=dataframe.index)
         for t in self.cba_types:
             df_filt = dataframe[[col for col in dataframe.columns if (t in col.lower())]]
@@ -162,7 +162,7 @@ class CBAService(object):
            Output:
             time series of costs without any discount rate included
         """
-        logging.debug('[CBA, compute_costs]: start')
+        #logging.debug('[CBA, compute_costs]: start')
         time_series = np.arange(self.year_range[0], self.year_range[1] + 1)  # list of years until horizon
         build_years = np.arange(
             self.build_start_end[1] - self.build_start_end[0]) + 1.  # list of build years (starting at 1)
@@ -184,7 +184,7 @@ class CBAService(object):
 
     def compute_benefits(self, model, annual_risk_pres, annual_risk_fut, annual_pop_pres, annual_pop_fut,
                          annual_gdp_pres, annual_gdp_fut, annual_prot_pres, annual_prot_fut):
-        logging.debug('[CBA, compute_benefits]: start')
+        #logging.debug('[CBA, compute_benefits]: start')
         diff_urb = annual_risk_pres - annual_risk_fut  # difference is the potential yearly benefit
         diff_pop = annual_pop_pres - annual_pop_fut  # difference is the potential yearly benefit
         diff_gdp = annual_gdp_pres - annual_gdp_fut  # difference is the potential yearly benefit
@@ -223,7 +223,7 @@ class CBAService(object):
         Output:
             vector with expected values for each time period
         """
-        logging.debug('[CBA, expected_value]: start')
+        #logging.debug('[CBA, expected_value]: start')
         # append the return period at which maximum impact occurs, normally this is set to 1e6 years
         RPs = np.append(np.array(RPs), RP_infinite)
         # derive the probabilities associated with return periods
@@ -254,7 +254,7 @@ class CBAService(object):
         Allows for extrapolation to find new Y given user-defined X
         Do a linear inter/extrapolation of y(x) to find a value y(x_idx)
         """
-        logging.debug('[CBA, interp_value]: start')
+        #logging.debug('[CBA, interp_value]: start')
         x = np.atleast_1d(x)
         y = np.atleast_1d(y)
         f = interp1d(x, y, fill_value=(y.min(), y.max()), bounds_error=False)
@@ -265,7 +265,7 @@ class CBAService(object):
         """
         Purpose: Make an extrapolation function
         """
-        logging.debug('[CBA, extrap1d]: start')
+        #logging.debug('[CBA, extrap1d]: start')
         xs = interpolator.x
         ys = interpolator.y
 
@@ -296,7 +296,7 @@ class CBAService(object):
                             (i.e. year the flood protection should be valid in)
             rp, protection standard at reference impacts
         """
-        logging.debug('[CBA, compute_rp_change]: start')
+        #logging.debug('[CBA, compute_rp_change]: start')
         # interpolate to estimate impacts at protection level 'rp'
         # atleast1_1d = scalar inputs are converted to 1-D arrays. Arrays of higher dimensions are preserved
         p = 1. / np.atleast_1d(rps)
@@ -310,7 +310,7 @@ class CBAService(object):
         return new_prot
 
     def find_startrp(self, x):
-        logging.debug('[CBA, find_startrp]: start')
+        #logging.debug('[CBA, find_startrp]: start')
         if pd.isnull(x):
             rpstart = np.nan
         else:
@@ -319,7 +319,7 @@ class CBAService(object):
         return rpstart
 
     def find_dimension_v2(self, m, df_lookup, df_cost, user_urb):
-        logging.debug('[CBA, find_dimension_v2]: start')
+        #logging.debug('[CBA, find_dimension_v2]: start')
         uniStartRPList = [x for x in list(set(df_lookup['startrp'].values)) if pd.notnull(x)]
         erp = "endrp" + str(self.prot_fut).zfill(5)
         uniSRPdfList = []
@@ -365,7 +365,7 @@ class CBAService(object):
         Output:
             cost = total cost of dike
         """
-        logging.debug('[CBA, find_construction]: start')
+        #logging.debug('[CBA, find_construction]: start')
         lookup_c = pd.read_sql_query(
             "SELECT * FROM lookup_{0} where {1} = '{2}' ".format(self.geogunit, self.geogunit_type, self.geogunit_name),
             self.engine, 'id')
@@ -385,13 +385,17 @@ class CBAService(object):
         return cost
 
     def average_prot(self, m, year, risk_data_input):
-        logging.debug('[CBA, average_prot]: start')
+        #logging.debug('[CBA, average_prot]: start')
         idx = int(year) - self.implementation_start
+        #logging.debug(f'[CBA, average_prot, idx]: {idx} ==> {year} {self.implementation_start}')
         clm = "histor" if year == '2010' else self.clim
         sco = "base" if year == '2010' else self.socio
         mdl = "wt" if year == '2010' else m
         test_rps = np.linspace(min(self.rps), max(self.rps), 999)
-        real_impact = risk_data_input[int(idx)]
+        if len(risk_data_input)>=idx:
+            real_impact = risk_data_input[int(idx)]
+        else:
+            real_impact = 0
         # READ IN REFERENCE IMPACT
         # READ IN RAW DATA
         if real_impact == 0:
@@ -428,7 +432,7 @@ class CBAService(object):
         """
         # determine risk evaolution
         risk_prot, pop_impact, gdp_impact, prot_levels = [], [], [], []
-        logging.debug('[CBA, risk_evolution]: start')
+        #logging.debug('[CBA, risk_evolution]: start')
         for year, imp_cc, imp_urb, imp_pop, imp_gdp in zip(self.years, impact_cc, impact_urb, impact_pop, impact_gdp):
             prot_trans = self.compute_rp_change(self.rps, impact_cc[prot_idx], imp_cc, prot, min_rp=2,
                                                 max_rp=1000)  # i.e. RP_zero
@@ -456,7 +460,7 @@ class CBAService(object):
     def calc_impact(self, m, pt, ptid):
         """this can be improved with threads and is where the leak happens, a more ammount of fids, the runtime increases"""
         annual_risk, annual_pop, annual_gdp = 0, 0, 0
-        logging.debug('[CBA, calc_impact]: start')
+        #logging.debug('[CBA, calc_impact]: start')
         # cba_raw = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(columns), inData, inName), self.engine)
         # impact_present = pd.read_sql_query("SELECT {0} FROM {1} where id = {2} ".format(', '.join(cols), inData, inName), self.engine).values[0]
         df_urb = pd.read_sql_query(
@@ -492,7 +496,7 @@ class CBAService(object):
         """
         # Find total costs without discount(over timeseries)
         # DEFAULT DATA
-        logging.debug('[CBA, precalc_present_benefits]: start')
+        #logging.debug('[CBA, precalc_present_benefits]: start')
         urb_imp = self.filt_risk[
             [col for col in self.filt_risk.columns if ("urban_damage" in col) and (self.scen_abb.lower() in col)
              and (model.lower() in col) and ("tot" in col)]].sum(axis=0)
@@ -534,7 +538,7 @@ class CBAService(object):
         
         Time is being killed here on big selections
         """
-        logging.debug('[CBA, select_impact]: start')
+        #logging.debug('[CBA, select_impact]: start')
         cba_raw = inData.set_index('id').loc[inName]
         # Present data = 2010 data
         impact_present = cba_raw.filter(like="_2010_", axis=0).values
@@ -587,12 +591,16 @@ class CBAService(object):
 
                 # start_time = time.time()
                 # sTimetl = time.time()
+                logging.debug( "------------------   CALC2  ---------------" )
                 annual_risk_fut, annual_pop_fut, annual_gdp_fut = self.calc_impact(m, self.prot_fut, self.prot_idx_fut)
-
+                logging.debug( "------------------   CALC3  ---------------" )
+                logging.debug(f'[CBA, {m}]')
+                logging.debug(f'[CBA, {self.ys}]')
+                logging.debug(f'[CBA, {annual_risk_fut}]')
                 prot_fut_list = [self.average_prot(m, y, annual_risk_fut) for y in self.ys]
-
+                logging.debug( "------------------   CALC4  ---------------" )
                 prot_func_fut = self.extrap1d(interp1d(self.years, prot_fut_list))
-
+                logging.debug( "------------------   CALC5  ---------------" )
                 annual_prot_fut = prot_func_fut(self.time_series)  # Run timeseries through interpolation function
 
                 # logging.debug( m, "future  done", time.time() - start_time)
@@ -601,12 +609,14 @@ class CBAService(object):
                 df = self.compute_benefits(m, annual_risk_pres, annual_risk_fut, annual_pop_pres, annual_pop_fut,
                                            annual_gdp_pres, annual_gdp_fut, annual_prot_pres, annual_prot_fut)
                 model_benefits = model_benefits.join(df)
+                logging.debug( "------------------   CALC6  ---------------" )
                 # logging.debug( m, "benefits done", time.time()-start_time )
 
                 # start_time = time.time()
+                
                 pop_costs = self.find_construction(m, "POPexp", self.user_rur_cost, self.user_urb_cost)
                 gdp_costs = self.find_construction(m, "Urban_Damage_v2", self.user_rur_cost, self.user_urb_cost)
-
+                logging.debug( "------------------   CALC7  ---------------" )
                 df_pc = self.compute_costs(m, pop_costs, "POP")
                 model_benefits = model_benefits.join(df_pc)
                 df_gc = self.compute_costs(m, gdp_costs, "GDP")
