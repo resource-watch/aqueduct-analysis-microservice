@@ -392,10 +392,8 @@ class CBAService(object):
         sco = "base" if year == '2010' else self.socio
         mdl = "wt" if year == '2010' else m
         test_rps = np.linspace(min(self.rps), max(self.rps), 999)
-        if len(risk_data_input)>=idx:
-            real_impact = risk_data_input[int(idx)]
-        else:
-            real_impact = 0
+        assert (len(risk_data_input)>=idx),f"the infrastructure lifetime ({self.infrastructure_life}) MUST be  between {2080 - self.implementation_start} - {2100 - self.implementation_start}"
+        real_impact = risk_data_input[int(idx)]
         # READ IN REFERENCE IMPACT
         # READ IN RAW DATA
         if real_impact == 0:
