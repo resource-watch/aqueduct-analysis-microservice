@@ -9,6 +9,8 @@ from flask import json
 from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.dialects.postgresql import JSON
 
+from aqueduct.errors import Error
+
 
 class CBADef(object):
     def __init__(self, user_selections):
@@ -99,7 +101,7 @@ class CBADefaultService(object):
             myCache.create()
         except Exception as e:
             logging.error('[CBADCache, _createTable]: ' + str(e))
-            return error(status=500, detail='cache table creation failed')
+            raise Error(str(e))
         return myCache
 
     def checkParams(self):
@@ -114,7 +116,7 @@ class CBADefaultService(object):
             return res
         except Exception as e:
             logging.error('[CBADCache, checkParams]: ' + str(e))
-            return error(status=500, detail='Generic Error')
+            raise Error(str(e))
 
     def insertRecord(self, key, data):
         # insert data via insert() construct
@@ -130,7 +132,7 @@ class CBADefaultService(object):
 
         except Exception as e:
             logging.error('[CBADCache, insertRecord]: ' + str(e))
-            return error(status=500, detail='insert table failed')
+            raise Error(str(e))
 
     def updateRecord(self):
         return 0
@@ -167,3 +169,4 @@ class CBADefaultService(object):
                 # executes the cba code to get the table, inserts it into the database and we should be ready to go
         except Exception as e:
             logging.error('[CBADCache, _createTable]: ' + str(e))
+            raise Error(str(e))

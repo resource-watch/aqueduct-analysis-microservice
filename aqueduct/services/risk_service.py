@@ -7,9 +7,7 @@ import sqlalchemy
 from cached_property import cached_property
 from scipy.interpolate import interp1d
 
-import logging
-logging.basicConfig()
-logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+from aqueduct.errors import Error
 
 
 class RiskService(object):
@@ -602,12 +600,16 @@ class RiskService(object):
 
     def getRisk(self):
         # Run risk data analysis based on user-inputs
-        if self.risk_analysis == "precalc":
-            risk_data = self.precalc_risk()
-        else:
-            risk_data = self.calc_risk()
+        try:
+            if self.risk_analysis == "precalc":
+                risk_data = self.precalc_risk()
+            else:
+                risk_data = self.calc_risk()
 
-        return self.format_risk(risk_data)
+            return self.format_risk(risk_data)
+        except Exception as e:
+            logging.error('[RISK]: ' + str(e))
+            raise Error('[RISK] Computation failed: '+ str(e))
 
     def get_widget(self, argument):
         method_name = 'widget_' + str(argument)

@@ -17,12 +17,11 @@ from aqueduct.routes.api import error
 from aqueduct.routes.api.v1 import aqueduct_analysis_endpoints_v1
 from aqueduct.utils.files import load_config_json, write_json
 
-formatter = logging.Formatter('%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s',
-                              '%Y%m%d-%H:%M%p')
+formatter = logging.Formatter('%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s', '%Y%m%d-%H:%M%p')
 
 logging.basicConfig(
     level=SETTINGS.get('logging', {}).get('level'),
-    format=formatter,
+    format='%(asctime)s  - %(funcName)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y%m%d-%H:%M%p',
 )
 
@@ -85,7 +84,6 @@ write_json(spec.to_dict(), 'public-swagger')
 # if micro exited with code 1 it means it couldn't register against CT check if the etc/hosts mymachine ip or the ip on .env (linux users) match with the machine ip
 info = load_config_json('register')
 swagger = load_config_json('swagger')
-logging.info('swagger')
 
 CTRegisterMicroserviceFlask.register(
     app=app,
