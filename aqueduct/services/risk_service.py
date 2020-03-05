@@ -14,8 +14,8 @@ class RiskService(object):
     def __init__(self, user_selections):
         ### DBConexion
         self.engine = sqlalchemy.create_engine(os.getenv('POSTGRES_URL'))
-        # self.metadata = sqlalchemy.MetaData(bind=self.engine)
-        # self.metadata.reflect(self.engine)
+        self.metadata = sqlalchemy.MetaData(bind=self.engine)
+        self.metadata.reflect(self.engine)
         ###               BACKGROUND INTO  
         self.flood_types = ["riverine", "coastal"]
         self.exposures = ["gdpexp", "popexp", "urban_damage_v2"]
@@ -31,6 +31,7 @@ class RiskService(object):
         self.rps = [2, 5, 10, 25, 50, 100, 250, 500, 1000]
         self.rps_names = ["rp" + str(x).zfill(5) for x in self.rps]
         # MANDATORY USER INPUTS
+        
         self.flood = user_selections.get("flood")  # Flood type
         self.exposure = user_selections.get("exposure")  # Exposure type
         self.geogunit_unique_name = user_selections.get("geogunit_unique_name")  # Unique geographical unit name
