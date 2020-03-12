@@ -624,7 +624,7 @@ class CBAService(object):
 
             # start_time = time.time()
             df_final = self.run_stats(model_benefits)
-
+            # check benefits or cost is 0
             if df_final.urb_benefits_avg.sum() == 0:
                 df_final[[x for x in df_final.columns if "costs" in x]] = 0
             elif df_final.gdp_costs_avg.sum() == 0:
