@@ -263,8 +263,8 @@ def get_cba_default(**kwargs):
 @sanitize_parameters
 @validate_params_risk
 def get_risk_widget(widget_id, **kwargs):
-    logging.info('[ROUTER]: Getting risk widget ' + widget_id)
     try:
+        logging.info('[ROUTER]: Getting risk widget ' + widget_id)
         output = RiskService(kwargs['sanitized_params'])
         ## shity code; to redo one day
         if 'format' in request.args and request.args.get("format") == 'json':
