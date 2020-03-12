@@ -23,7 +23,7 @@ COPY gunicorn.py /opt/$NAME/gunicorn.py
 WORKDIR /opt/$NAME
 COPY ./$NAME /opt/$NAME/$NAME
 COPY ./microservice /opt/$NAME/microservice
-COPY ./tests /opt/$NAME/tests
+COPY ./$NAME/tests /opt/$NAME/tests
 RUN chown -R $USER:$USER /opt/$NAME
 
 # Tell Docker we are going to use this ports

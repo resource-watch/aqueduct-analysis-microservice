@@ -163,24 +163,22 @@ def analyze(**kwargs):
         input_address = re.sub(myexpr,"",input_address)
 
         data, downloadUrl = CartoService.get_table(points, kwargs["sanitized_params"]["analysis_type"], kwargs["sanitized_params"]["wscheme"], kwargs["sanitized_params"]["month"], kwargs["sanitized_params"]["year"], kwargs["sanitized_params"]["change_type"], kwargs["sanitized_params"]["indicator"], kwargs["sanitized_params"]["scenario"], locations, input_address, match_address, ids)
-    
+        data['analysis_type'] = kwargs["sanitized_params"]["analysis_type"]
+        data['wscheme'] = kwargs["sanitized_params"]["wscheme"]
+        data['month'] = kwargs["sanitized_params"]["month"]
+        data['year'] = kwargs["sanitized_params"]["year"]
+        data['change_type'] = kwargs["sanitized_params"]["change_type"]
+        data['indicator'] = kwargs["sanitized_params"]["indicator"]
+        data['scenario'] = kwargs["sanitized_params"]["scenario"]
+        data['downloadUrl'] = downloadUrl
+        return jsonify(serialize_response(data)), 200
     except CartoError as e:
-        logging.error('[ROUTER]: ' + e.message)
-        return error(status=500, detail=e.message)
+        logging.error('[ROUTER]: ' + str(e))
+        return error(status=500, detail=str(e))
     
     except Exception as e:
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail='Generic Error')
-
-    data['analysis_type'] = kwargs["sanitized_params"]["analysis_type"]
-    data['wscheme'] = kwargs["sanitized_params"]["wscheme"]
-    data['month'] = kwargs["sanitized_params"]["month"]
-    data['year'] = kwargs["sanitized_params"]["year"]
-    data['change_type'] = kwargs["sanitized_params"]["change_type"]
-    data['indicator'] = kwargs["sanitized_params"]["indicator"]
-    data['scenario'] = kwargs["sanitized_params"]["scenario"]
-    data['downloadUrl'] = downloadUrl
-    return jsonify(serialize_response(data)), 200
 
 
 """
