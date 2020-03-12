@@ -574,7 +574,7 @@ class RiskService(object):
 
         # Filter by
         # we have set  self.exposure as urban Damage
-
+        logging.info('[RISK, precalc in]')
         df_risk = self.df_precalc[
             [col for col in self.df_precalc.columns.tolist() if (self.exposure in col) and (self.scen_abb in col)]]
 
@@ -586,8 +586,11 @@ class RiskService(object):
                 columns=dict(zip(columnsD, [cols.replace("urban_damage_v2", self.exposure) for cols in columnsD])),
                 inplace=True)
             df_risk = pd.concat([df_risk, df_prot], axis=1, sort=False)
-            #if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands','Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
-            #    df_risk[[self.exposure + "_2010_" + self.scen_abb + "_PROT_avg"]] = 1000
+            logging.debug('[RISK] WHAT the hell is going on?]')
+            logging.debug(df_risk)
+            if self.geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
+                logging.info(df_risk)
+                df_risk[self.exposure + "_2010_" + self.scen_abb + "_prot_avg"] = 1000
 
         return df_risk
 
@@ -604,7 +607,6 @@ class RiskService(object):
     def getRisk(self):
         # Run risk data analysis based on user-inputs
         try:
-            logging.info('[RISK, precalc]')
             if self.risk_analysis == "precalc":
                 logging.info('[RISK, precalc]')
                 risk_data = self.precalc_risk()
