@@ -217,27 +217,27 @@ def get_cba_widget(widget_id, **kwargs):
     logging.info(f'[ROUTER]: Getting cba widget: {widget_id}')
     try:
         output = CBAEndService(kwargs['sanitized_params'])
-
+        ## shity code; to redo one day
+        if 'format' in request.args and request.args.get("format") == 'json':
+            return jsonify(
+                serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200, {
+                    'Content-Disposition': 'attachment', 'filename': '{0}.json'.format(widget_id)}
+        elif 'format' in request.args and request.args.get("format") == 'csv':
+            return pd.DataFrame(output.get_widget(widget_id)['data']).to_csv(), 200, {'Content-Type': 'text/csv', 
+                                                                                    'Content-Disposition': 'attachment',
+                                                                                    'filename': '{0}.csv'.format(
+                                                                                         widget_id)}
+        else:
+            return jsonify(
+                serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
     except DBError as e:
-        logging.error('[ROUTER]: ' + e.message)
-        return error(status=500, detail=e.message)
+        logging.error('[ROUTER]: ' + str(e))
+        return error(status=500, detail=str(e))
     except Exception as e:
         logging.error('[ROUTER]: ' + str(e))
-        return error(status=500, detail=e.message)
+        return error(status=500, detail=str(e))
 
-    ## shity code; to redo one day
-    if 'format' in request.args and request.args.get("format") == 'json':
-        return jsonify(
-            serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200, {
-                   'Content-Disposition': 'attachment', 'filename': '{0}.json'.format(widget_id)}
-    elif 'format' in request.args and request.args.get("format") == 'csv':
-        return pd.DataFrame(output.get_widget(widget_id)['data']).to_csv(), 200, {'Content-Type': 'text/csv',
-                                                                                  'Content-Disposition': 'attachment',
-                                                                                  'filename': '{0}.csv'.format(
-                                                                                      widget_id)}
-    else:
-        return jsonify(
-            serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
+    
 
 
 @aqueduct_analysis_endpoints_v1.route('/cba/default', strict_slashes=False, methods=['GET'])
@@ -248,15 +248,15 @@ def get_cba_default(**kwargs):
     try:
         output = CBADefaultService(kwargs['sanitized_params'])
         logging.debug('[ROUTER, get_cba_default]: output generated')
-
+        return jsonify(serialize_response_default(output.execute())), 200
     except AttributeError as e:
         logging.error('[ROUTER]: ' + str(e))
-        return error(status=500, detail=e)
+        return error(status=500, detail=str(e))
     except Exception as e:
         logging.error('[ROUTER]: ' + str(e))
-        return error(status=500, detail=e.message)
+        return error(status=500, detail=str(e))
 
-    return jsonify(serialize_response_default(output.execute())), 200
+    
 
 
 @aqueduct_analysis_endpoints_v1.route('/risk/widget/<widget_id>', strict_slashes=False, methods=['GET'])
@@ -266,7 +266,19 @@ def get_risk_widget(widget_id, **kwargs):
     logging.info('[ROUTER]: Getting risk widget ' + widget_id)
     try:
         output = RiskService(kwargs['sanitized_params'])
-
+        ## shity code; to redo one day
+        if 'format' in request.args and request.args.get("format") == 'json':
+            return jsonify(
+                serialize_response_risk(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200, {
+                    'Content-Disposition': 'attachment', 'filename': '{0}.json'.format(widget_id)}
+        elif 'format' in request.args and request.args.get("format") == 'csv':
+            return pd.DataFrame(output.get_widget(widget_id)['data']).to_csv(), 200, {'Content-Type': 'text/csv',
+                                                                                    'Content-Disposition': 'attachment',
+                                                                                    'filename': '{0}.csv'.format(
+                                                                                        widget_id)}
+        else:
+            return jsonify(
+                serialize_response_risk(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
     except AttributeError as e:
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail=str(e))
@@ -274,16 +286,4 @@ def get_risk_widget(widget_id, **kwargs):
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail=str(e))
 
-    ## shity code; to redo one day
-    if 'format' in request.args and request.args.get("format") == 'json':
-        return jsonify(
-            serialize_response_risk(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200, {
-                   'Content-Disposition': 'attachment', 'filename': '{0}.json'.format(widget_id)}
-    elif 'format' in request.args and request.args.get("format") == 'csv':
-        return pd.DataFrame(output.get_widget(widget_id)['data']).to_csv(), 200, {'Content-Type': 'text/csv',
-                                                                                  'Content-Disposition': 'attachment',
-                                                                                  'filename': '{0}.csv'.format(
-                                                                                      widget_id)}
-    else:
-        return jsonify(
-            serialize_response_risk(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
+    

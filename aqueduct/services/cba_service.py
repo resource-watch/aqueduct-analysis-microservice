@@ -185,9 +185,9 @@ class CBAService(object):
     def compute_benefits(self, model, annual_risk_pres, annual_risk_fut, annual_pop_pres, annual_pop_fut,
                          annual_gdp_pres, annual_gdp_fut, annual_prot_pres, annual_prot_fut):
         #logging.debug('[CBA, compute_benefits]: start')
-        diff_urb = annual_risk_pres - annual_risk_fut  # difference is the potential yearly benefit
-        diff_pop = annual_pop_pres - annual_pop_fut  # difference is the potential yearly benefit
-        diff_gdp = annual_gdp_pres - annual_gdp_fut  # difference is the potential yearly benefit
+        diff_urb = np.where(annual_risk_pres - annual_risk_fut < 0, 0, annual_risk_pres - annual_risk_fut)  # difference is the potential yearly benefit
+        diff_pop = np.where(annual_pop_pres - annual_pop_fut < 0, 0, annual_pop_pres - annual_pop_fut) # difference is the potential yearly benefit
+        diff_gdp = np.where(annual_gdp_pres - annual_gdp_fut < 0, 0, annual_gdp_pres - annual_gdp_fut) # difference is the potential yearly benefit
 
         relative_benefit = np.maximum(
             np.minimum(self.extrap1d(interp1d(list(self.benefit_increase), [0., 1.]))(self.time_series), 1.), 0.)
@@ -624,6 +624,13 @@ class CBAService(object):
 
             # start_time = time.time()
             df_final = self.run_stats(model_benefits)
+
+            if df_final.urb_benefits_avg.sum() == 0:
+                df_final[[x for x in df_final.columns if "costs" in x]] = 0
+            elif df_final.gdp_costs_avg.sum() == 0:
+                df_final[[x for x in df_final.columns if "Benefits" in x]] = 0
+            
+
             ### DETAILS
             details = {"geogunitName": self.geogunit_name,
                        "geogunitType": self.geogunit_type,
@@ -812,7 +819,7 @@ class CBAEndService(object):
         minY = fOutput['year'].min() - 1
         fOutput['value'] = (fOutput['gdp_costs_avg'] * (1 + self.data['meta']['discount']) ** (
                 fOutput['year'] - minY)) / 10.1
-        fOutput.loc[fOutput['year'] > self.data['meta']['implementionEnd'], 'value'] = 0
+        fOutput.loc[fOutput['year'] >= self.data['meta']['implementionEnd'], 'value'] = 0
 
         return {'widgetId': 'impl_cost', 'chart_type': 'bar', 'meta': self.data['meta'],
                 'data': fOutput[['year', 'value']].to_dict('records')}
