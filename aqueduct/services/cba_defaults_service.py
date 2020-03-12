@@ -9,6 +9,8 @@ from flask import json
 from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.dialects.postgresql import JSON
 
+from aqueduct.errors import Error
+
 
 class CBADef(object):
     def __init__(self, user_selections):
@@ -41,7 +43,7 @@ class CBADef(object):
         read_prot = 'precalc_agg_{0}_{1}_{2}'.format(self.flood, geogunit_type.lower(), sub_abb)
         col_prot = 'urban_damage_v2_2010_{0}_prot_avg'.format(scen_abb)
         df_prot = pd.read_sql_query(
-            "SELECT {0} FROM {1} where id like '{2}'".format(col_prot, read_prot, self.geogunit_unique_name),
+            "SELECT {0} FROM {1} where id like '{2}'".format(col_prot, read_prot, geogunit_name),
             self.engine)
 
         prot_val = 0 if df_prot.empty else int(df_prot.values[0].tolist()[0])
@@ -50,6 +52,7 @@ class CBADef(object):
             "SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(
                 ', '.join(map(str, fids))), self.engine)
         prot_round = int(rps[np.where(rps >= prot_val)][0])
+        logging.debug(f'[CBADef, default]: {df_prot}')
         return [{
             "existing_prot": prot_val,
             "existing_prot_r": prot_round,
@@ -87,6 +90,7 @@ class CBADefaultService(object):
         "geogunit_unique_name"_"existing_prot"_"scenario"_"prot_fut"_"implementation_start_"implementation_end"_"infrastructure_life"_"benefits_start"_"ref_year"_"estimated_costs"_"discount_rate"_"om_costs"_"user_urb_cost"_"user_rur_cost"
         """
         try:
+            logging.info(f'[]:{datetime.datetime.now}')
             myCache = sqlalchemy.Table("cache_d_cba", self.metadata,
                                        Column('id', Integer, primary_key=True, unique=True),
                                        Column('key', Text, unique=True, index=True),
@@ -97,7 +101,7 @@ class CBADefaultService(object):
             myCache.create()
         except Exception as e:
             logging.error('[CBADCache, _createTable]: ' + str(e))
-            return error(status=500, detail='cache table creation failed')
+            raise Error(str(e))
         return myCache
 
     def checkParams(self):
@@ -112,7 +116,7 @@ class CBADefaultService(object):
             return res
         except Exception as e:
             logging.error('[CBADCache, checkParams]: ' + str(e))
-            return error(status=500, detail='Generic Error')
+            raise Error(str(e))
 
     def insertRecord(self, key, data):
         # insert data via insert() construct
@@ -128,7 +132,7 @@ class CBADefaultService(object):
 
         except Exception as e:
             logging.error('[CBADCache, insertRecord]: ' + str(e))
-            return error(status=500, detail='insert table failed')
+            raise Error(str(e))
 
     def updateRecord(self):
         return 0
@@ -165,3 +169,4 @@ class CBADefaultService(object):
                 # executes the cba code to get the table, inserts it into the database and we should be ready to go
         except Exception as e:
             logging.error('[CBADCache, _createTable]: ' + str(e))
+            raise Error(str(e))

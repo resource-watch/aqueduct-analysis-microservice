@@ -1,5 +1,8 @@
 # Aqueduct point analysis microservice
 
+[![Build Status](https://travis-ci.org/resource-watch/aqueduct-analysis-microservice.svg?branch=master)](https://travis-ci.org/resource-watch/aqueduct-analysis-microservice)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/412dbad07a559dbd4105/test_coverage)](https://codeclimate.com/github/resource-watch/aqueduct-analysis-microservice/test_coverage)
+
 ## Getting started
 
 ### Requirements
@@ -31,6 +34,17 @@ cd aqueduct-analysis-microservice
 ```
 
 If this is the first time you run it, it may take a few minutes.
+
+For the DB:
+In order to populate the DB you will need to update the data as you need on the `/data`  folder. 
+You will need to connect to the postgres container. To do so:
+`docker exec -it aqueduct-postgres /bin/bash`
+To check the folder: `cd /data_import`
+To import data dump:
+`su - postgres`
+`createdb flood_v2`
+`exit`
+`pg_restore -U postgres -d flood_v2 flood_v3.sql`
 
 ### Code structure
 

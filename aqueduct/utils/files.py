@@ -12,3 +12,8 @@ def load_config_json(name):
     with open(json_path) as data_file:
         info = json.load(data_file)
     return info
+
+def write_json(data,name):
+    json_path = os.path.abspath(os.path.join(BASE_DIR, 'microservice')) + '/' + name + '.json'
+    with open(json_path, 'w') as f:
+        json.dump(data, f)

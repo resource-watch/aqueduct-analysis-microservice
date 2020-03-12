@@ -25,5 +25,5 @@ class DBError(Error):
     pass
 
 
-class GeocodeError(Error):
+class CacheError(Error):
     pass

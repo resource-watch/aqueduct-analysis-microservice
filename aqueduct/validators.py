@@ -12,7 +12,7 @@ from aqueduct.routes.api import error
 def myCoerc(n):
     try:
         return lambda v: None if v in ('null') else n(v)
-    except Exception:
+    except Exception as e:
         return None
 
 
@@ -32,9 +32,8 @@ def validate_wra_params(func):
     def wrapper(*args, **kwargs):
         validation_schema = {
             'wscheme': {
-                'type': 'string',
                 'required': True
-                },
+            },
             'geostore': {
                 'type': 'string',
                 'required': True
@@ -45,7 +44,6 @@ def validate_wra_params(func):
                 'default': None
             },
             'month': {
-                'type': 'string',
                 'required': False,
                 'default': None,
                 'nullable': True
@@ -99,10 +97,12 @@ def validate_wra_params(func):
                 'nullable': True,
                 'default': None
             }
-            
+
         }
-        rArgs = {**request.args, **request.json}
-        kwargs.update(rArgs)  
+
+        jsonRequestContent = request.json or {}
+        rArgs = {**request.args, **jsonRequestContent}
+        kwargs.update(rArgs)
         logging.debug(f'[MIDDLEWARE - ws scheme]: {kwargs}')
         logging.debug(f"[VALIDATOR - wra_weights]: {kwargs}")
         validator = Validator(validation_schema, allow_unknown=True)
@@ -222,12 +222,13 @@ def validate_params_cba(func):
                 'max': 1000
             }
         }
-        logging.debug(f"[VALIDATOR - cba_params]: {kwargs}")
+        
         validator = Validator(validation_schema, allow_unknown=True)
         if not validator.validate(kwargs['params']):
             return error(status=400, detail=validator.errors)
 
         kwargs['sanitized_params'] = validator.normalized(kwargs['params'])
+        logging.debug(f"[VALIDATOR - cba_params]: {kwargs['sanitized_params']}")
         return func(*args, **kwargs)
 
     return wrapper

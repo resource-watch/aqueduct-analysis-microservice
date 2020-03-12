@@ -1,0 +1,66 @@
+{
+    "data": {
+        "type": "geoStore",
+        "id": "4167b7093e1486f3016b53e2c95c465c",
+        "attributes": {
+            "geojson": {
+                "features": [
+                    {
+                        "properties": {
+                            "locations": [
+                                {
+                                    "match_address": "-",
+                                    "input_address": "_",
+                                    "id": "1"
+                                },
+                                {
+                                    "match_address": "-",
+                                    "input_address": "_",
+                                    "id": "2"
+                                },
+                                {
+                                    "match_address": "-",
+                                    "input_address": "_",
+                                    "id": "3"
+                                }
+                            ]
+                        },
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "MultiPoint",
+                            "coordinates": [
+                                [
+                                    -77.007986,
+                                    38.898992
+                                ],
+                                [
+                                    -46.693983,
+                                    -23.568232
+                                ],
+                                [
+                                    4.318852,
+                                    52.07906
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "crs": {},
+                "type": "FeatureCollection"
+            },
+            "hash": "4167b7093e1486f3016b53e2c95c465c",
+            "provider": {},
+            "areaHa": 0,
+            "bbox": [
+                -77.007986,
+                -23.568232,
+                4.318852,
+                52.07906
+            ],
+            "lock": false,
+            "info": {
+                "use": {}
+            }
+        }
+    }
+}
