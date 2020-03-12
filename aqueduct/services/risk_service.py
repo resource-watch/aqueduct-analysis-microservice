@@ -99,7 +99,7 @@ class RiskService(object):
                                                    'Overijssel, Netherlands', 'Utrecht, Netherlands',
                                                    'Netherlands'] else df_precalc[
                 ["_".join(['urban_damage_v2', '2010', scen_abb, "prot_avg"])]])
-
+        
         else:
             risk_analysis = "calc"
             prot_pres = self.existing_prot
