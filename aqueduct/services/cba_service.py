@@ -733,9 +733,14 @@ class CBAICache(object):
         return 0
 
     def cleanCache(self):
-        table = self.metadata.tables['cache_cba']
-        table.delete()
-        return 0
+        try:
+            table_drop = self.metadata.tables['cache_cba'].delete()
+            conn = self.engine.connect()
+            conn.execute(table_drop)
+            return 200
+        except Exception as e:
+            logging.error('[CBAICache, cleanCache table]: ' + str(e))
+            raise Error(message='Cache table drop has failed. \n'+ str(e))
 
     def execute(self):
         try:

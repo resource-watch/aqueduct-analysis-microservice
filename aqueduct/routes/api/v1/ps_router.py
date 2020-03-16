@@ -12,7 +12,7 @@ import re
 from flask import jsonify, request, Blueprint, json
 
 from aqueduct.errors import CartoError, DBError, CacheError
-from aqueduct.middleware import get_geo_by_hash, sanitize_parameters
+from aqueduct.middleware import get_geo_by_hash, sanitize_parameters, is_microservice_or_admin
 from aqueduct.routes.api import error
 from aqueduct.serializers import serialize_response, serialize_response_geocoding, serialize_response_cba, \
     serialize_response_default, serialize_response_risk
@@ -184,7 +184,18 @@ def analyze(**kwargs):
 """
 FLOOD ENDPOINTS
 """
-
+@aqueduct_analysis_endpoints_v1.route('/cba/expire-cache', strict_slashes=False, methods=['POST'])
+@is_microservice_or_admin
+def expire_cache():
+    """Expire cache tile layer Endpoint"""
+    try:
+        logging.info('[ROUTER]: Expire cache tables')
+        CBAICache({}).cleanCache()
+        CBADefaultService({}).cleanCache()
+        return jsonify({'status': 'cleaned'}), 200
+    except Exception as e:
+        logging.error('[ROUTER]: Unknown error: ' + str(e))
+        return error(status=500, detail=e.message)
 
 @aqueduct_analysis_endpoints_v1.route('/cba', strict_slashes=False, methods=['GET'])
 @sanitize_parameters
