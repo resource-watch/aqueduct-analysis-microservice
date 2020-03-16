@@ -586,11 +586,9 @@ class RiskService(object):
                 columns=dict(zip(columnsD, [cols.replace("urban_damage_v2", self.exposure) for cols in columnsD])),
                 inplace=True)
             df_risk = pd.concat([df_risk, df_prot], axis=1, sort=False)
-            logging.debug('[RISK] WHAT the hell is going on?]')
-            logging.debug(df_risk)
-            if self.geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
-                logging.info(df_risk)
-                df_risk[self.exposure + "_2010_" + self.scen_abb + "_prot_avg"] = 1000
+        if self.geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands', 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands', 'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands', 'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
+            logging.info(df_risk)
+            df_risk[self.exposure + "_2010_" + self.scen_abb + "_prot_avg"] = 1000
 
         return df_risk
 
