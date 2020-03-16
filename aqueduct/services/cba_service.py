@@ -820,8 +820,6 @@ class CBAEndService(object):
     def widget_impl_cost(self):
         """GDP_Costs_avg"""
         self.data['meta']["yAxisTitle"] = 'Implementation Cost ($)'
-
-        om_costs =  self.data['meta']['om']
         fOutput = self.data['df'].reset_index()[['year','gdp_costs_avg']]
         minY = fOutput['year'].min() - 1
         fOutput['value'] = (fOutput['gdp_costs_avg'] * (1 + self.data['meta']['discount']) ** (
@@ -840,16 +838,17 @@ class CBAEndService(object):
         impE = self.data['meta']['implementionEnd']
         impS = self.data['meta']['implementionStart']
         life = self.data['meta']['infrastructureLifespan']
-
-        om_costs =  self.data['meta']['om']
-        
-        build_years =  impE - impS
+        ## Review this to make it work	
+        cost = fOutput.loc[self.data['meta']['implementionEnd']]['gdp_costs_avg'] * ((1 + self.data['meta']['discount']) ** (impE - impS))
+        om_costs = self.data['meta']['om']
+        build_years = impE - impS
         years = list(range(impS, impS + life +1))
-        mp = [1/build_years*cost for i in range(build_years)]
+        mp = [1.0 / build_years * cost for i in range(build_years)]
         cum_costs_present = np.cumsum(mp)
-        mains=cum_costs_present * om_costs
-        maintenance = pd.Series(np.concatenate((mains,[mains[-1]] * (impS + life - impE +1 ))), index=years)
-        fOutput.insert(1,'costs', maintenance )
+        mains = cum_costs_present * om_costs
+        
+        maintenance = pd.Series(np.concatenate((mains, [mains[-1]] * (impS + life - impE + 1))), index=years)
+        fOutput.insert(1,'costs', maintenance)
 
         result = fOutput.reset_index()
         result['value'] = result['costs'] / ((1 + self.data['meta']['discount']) ** (result['year'] - impS + 1))
