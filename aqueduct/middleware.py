@@ -10,6 +10,7 @@ from aqueduct.services.geostore_service import GeostoreService
 
 
 def remove_keys(keys, dictionary):
+    """Get geodata"""
     for key in keys:
         try:
             del dictionary[key]
@@ -17,6 +18,20 @@ def remove_keys(keys, dictionary):
             pass
     return dictionary
 
+def is_microservice_or_admin(func):
+    """Check if auth is admin"""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        logging.debug("[MIDDLEWARE ]: Checking microservice user")
+        logged_user = request.json.get("loggedUser", None)
+        if (logged_user.get("id") == "microservice") or (logged_user.get("role") == "ADMIN"):
+            logging.debug("is microservice or admin")
+            return func(*args, **kwargs)
+        else:
+            return error(status=403, detail="Not authorized")
+
+    return wrapper
 
 def sanitize_parameters(func):
     """Sets any queryparams in the kwargs"""
