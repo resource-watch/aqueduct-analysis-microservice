@@ -1,6 +1,6 @@
 # Aqueduct point analysis microservice
 
-[![Build Status](https://travis-ci.org/resource-watch/aqueduct-analysis-microservice.svg?branch=master)](https://travis-ci.org/resource-watch/aqueduct-analysis-microservice)
+[![Build Status](https://travis-ci.org/resource-watch/aqueduct-analysis-microservice.svg?branch=develop)](https://travis-ci.org/resource-watch/aqueduct-analysis-microservice)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/412dbad07a559dbd4105/test_coverage)](https://codeclimate.com/github/resource-watch/aqueduct-analysis-microservice/test_coverage)
 
 ## Getting started
