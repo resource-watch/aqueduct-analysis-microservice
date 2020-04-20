@@ -121,9 +121,11 @@ class RiskService(object):
         df1 = df_lpcurve.reset_index().rename(columns={"index": "index", 0: "y"})
         df2 = df_lpcurve.reset_index()['index'].str.split('_', expand=True).rename(
             columns={0: "lp", 1: "c", 2: "year", 3: "x"})
-
-        return pd.concat([df1, df2], axis=1, join_axes=[df1.index])[['c', 'year', 'y', 'x']].replace(self.rps_names,
-                                                                                                     self.rps)
+        logging.info('[RISK]: lp_curve')
+        #logging.info(df1)
+        #logging.info(df2)
+        return pd.concat([df1, df2], axis=1).reindex(df1.index)[['c', 'year', 'y', 'x']].replace(self.rps_names, self.rps)
+        #return pd.concat([df1, df2], axis=1, join_axes=[df1.index])[['c', 'year', 'y', 'x']].replace(self.rps_names, self.rps)
 
     def bench(self):
         defaultfn = "precalc_agg_{0}_{1}_{2}".format(self.flood, self.geogunit_type, self.sub_abb)
