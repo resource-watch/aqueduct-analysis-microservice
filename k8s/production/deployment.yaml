@@ -6,15 +6,6 @@ metadata:
     name: aqueduct-analysis
   name: aqueduct-analysis
 spec:
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-          - matchExpressions:
-              - key: type
-                operator: In
-                values:
-                  - apps
   revisionHistoryLimit: 2
   template:
     metadata:
