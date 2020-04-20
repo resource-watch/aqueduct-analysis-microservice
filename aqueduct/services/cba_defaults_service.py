@@ -45,8 +45,15 @@ class CBADef(object):
         df_prot = pd.read_sql_query(
             "SELECT {0} FROM {1} where id like '{2}'".format(col_prot, read_prot, geogunit_name),
             self.engine)
-
         prot_val = 0 if df_prot.empty else int(df_prot.values[0].tolist()[0])
+        prot_val =1000 if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands',
+                                                   'Zeeuwse meren, Netherlands', 'Zuid-Holland, Netherlands',
+                                                   'Drenthe, Netherlands', 'Flevoland, Netherlands',
+                                                   'Friesland, Netherlands', 'Gelderland, Netherlands',
+                                                   'Groningen, Netherlands', 'IJsselmeer, Netherlands',
+                                                   'Limburg, Netherlands', 'Noord-Holland, Netherlands',
+                                                   'Overijssel, Netherlands', 'Utrecht, Netherlands',
+                                                   'Netherlands'] else prot_val
         ##costs
         con_itl = pd.read_sql_query(
             "SELECT avg(construction_cost_index) FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(
