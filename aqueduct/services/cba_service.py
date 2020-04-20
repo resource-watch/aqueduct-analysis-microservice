@@ -1,6 +1,8 @@
 import datetime
 import logging
 import os
+import sys, traceback
+
 
 import numpy as np
 import pandas as pd
@@ -56,7 +58,7 @@ class CBAService(object):
         # DEFAULT VARIABLES
         self.geogunit_name, self.geogunit_type, self.fids, self.clim, self.socio, self.scen_abb, self.prot_pres, rpend, \
         self.build_start_end, self.year_range, self.benefit_increase, self.prot_idx_fut, self.risk_analysis, self.df_prot, self.prot_fut = self.user_selections()
-
+        logging.info(self.prot_fut)
         # Define the time series of the analysis
         self.time_series = np.arange(self.year_range[0], self.year_range[1] + 1)
         self.year_array = np.arange(len(self.time_series)) + 1.
@@ -98,7 +100,8 @@ class CBAService(object):
         fids, geogunit_name, geogunit_type = pd.read_sql_query(
             "SELECT fids, name, type FROM lookup_master where uniqueName = '{0}' ".format(self.geogunit_unique_name),
             self.engine).values[0]
-
+        logging.info(geogunit_name)
+        logging.info(self.geogunit_unique_name)
         # IMPACT DRIVER INFO (climate and socioeconomc scenarios)
         clim, socio, scen_abb = self.scenarios.get(self.scenario)
 
@@ -118,6 +121,7 @@ class CBAService(object):
                                  'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands',
                                  'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
                 prot_pres = 1000
+                logging.info('!!!!!!!!!!!!!!!!!')
             else:
                 # Average prot standard for a whole unit (i.e. country)
                 prot_name = "_".join(["Urban_Damage_v2", '2010', scen_abb, "PROT_avg"]).lower()
@@ -127,6 +131,7 @@ class CBAService(object):
             prot_pres = self.existing_prot
 
         if self.prot_futu == None:
+            logging.info(prot_pres)
             prot_fut = min([x for x in self.rps if x >= prot_pres])
         else:
             prot_fut = self.prot_futu
@@ -322,6 +327,8 @@ class CBAService(object):
         #logging.debug('[CBA, find_dimension_v2]: start')
         uniStartRPList = [x for x in list(set(df_lookup['startrp'].values)) if pd.notnull(x)]
         erp = "endrp" + str(self.prot_fut).zfill(5)
+        logging.info(erp)
+        logging.info(str(self.prot_fut))
         uniSRPdfList = []
         targetColNameList = []
         for srp in uniStartRPList:
@@ -330,13 +337,18 @@ class CBAService(object):
             targetColName = "_".join([self.scenarios.get(self.scenario)[0], m,
                                       self.scenarios.get(self.scenario)[1], str(self.ref_year), srp, erp])
             targetColNameList.append(targetColName)
+        
         df = pd.DataFrame(np.transpose([uniStartRPList, targetColNameList, uniSRPdfList]),
                           columns=['startrp', 'tgtCol', 'df'])
-
         costList = []
+        
         for itl in np.arange(0, len(df.index), 1):
+            logging.info(itl)
             df_itl = df['df'].iloc[itl]
             tgtCol_itl = df['tgtCol'].iloc[itl]
+            logging.info(tgtCol_itl)
+            # if '00000' in tgtCol_itl:
+            #     continue
             cost_itl = pd.read_sql_query("SELECT sum({0}) FROM {1} where id in ({2})".format(tgtCol_itl, df_cost,
                                                                                              ", ".join(map(str, df_itl[
                                                                                                  'FID'].values))),
@@ -370,6 +382,8 @@ class CBAService(object):
             "SELECT * FROM lookup_{0} where {1} = '{2}' ".format(self.geogunit, self.geogunit_type, self.geogunit_name),
             self.engine, 'id')
         lookup_c["FID"] = lookup_c.index
+        lookup_c["riverine"] = self.prot_pres
+        logging.info(self.prot_pres)
         lookup_c["startrp"] = lookup_c["riverine"].apply(lambda x: self.find_startrp(x))
         urb_dimensions = self.find_dimension_v2(m, lookup_c, self.df_urb_all, user_urb)
         # Find the Purchasing Power Parity to Market value rate
@@ -578,7 +592,7 @@ class CBAService(object):
                         m)
                     
                 else:
-                    logging.debug( "------------------   Calc  ---------------" %m)
+                    logging.debug( "------------------   Calc  ---------------")
                     annual_risk_pres, annual_pop_pres, annual_gdp_pres = self.calc_impact(m, self.prot_pres, 0)
                     prot_pres_list = []
                     for y in self.ys:
@@ -590,7 +604,7 @@ class CBAService(object):
                 # start_time = time.time()
                 # sTimetl = time.time()
                 logging.debug( "------------------   CALC2  ---------------" )
-                annual_risk_fut, annual_pop_fut, annual_gdp_fut = self.calc_impact(m, self.prot_fut, self.prot_idx_fut)
+                annual_risk_fut, annual_pop_fut, annual_gdp_fut = self.calc_impact(m, self.prot_futu, self.prot_idx_fut)
                 logging.debug( "------------------   CALC3  ---------------" )
                 logging.debug(f'[CBA, {m}]')
                 logging.debug(f'[CBA, {self.ys}]')
@@ -637,7 +651,7 @@ class CBAService(object):
                        "scenario": self.scenario,
                        "averageProtection": self.prot_pres,
                        "startingProtection": min(self.rps, key=lambda rp: abs(rp - self.prot_pres)),
-                       "futureProtection": self.prot_fut,
+                       "futureProtection": self.prot_futu,
                        "referenceYear": self.ref_year,
                        "implementionStart": self.implementation_start,
                        "implementionEnd": self.implementation_end,
@@ -770,7 +784,11 @@ class CBAICache(object):
                 self.execute()
                 # executes the cba code to get the table, inserts it into the database and we should be ready to go
         except Exception as e:
-            logging.error('[CBAICache, execute]: ' + str(e))
+            logging.error('[CBAICache, execute]: ')
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
+            logging.error(repr(traceback.format_exception(exc_type, exc_value,
+                                          exc_traceback)))
             raise e
 
 
