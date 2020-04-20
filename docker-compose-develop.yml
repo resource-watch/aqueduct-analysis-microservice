@@ -31,9 +31,9 @@ services:
       - ${LOCAL_DATABASE}:/data
       - ./data:/data_import
   
-  pgadmin:
+  pgadmin-aq:
     image: dpage/pgadmin4
-    container_name: pgadmin
+    container_name: pgadmin-aq
     environment:
       PGADMIN_DEFAULT_EMAIL: "test@vizzuality.com"
       PGADMIN_DEFAULT_PASSWORD: "PgAdmin2019!"
