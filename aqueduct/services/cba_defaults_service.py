@@ -22,7 +22,8 @@ class CBADef(object):
         # self.flood = "Riverine"
         self.scenarios = {"business as usual": ['rcp8p5', 'ssp2', "bau"],
                           "pessimistic": ['rcp8p5', 'ssp3', "pes"],
-                          "optimistic": ['rcp4p5', 'ssp2', "opt"]}
+                          "optimistic": ['rcp4p5', 'ssp2', "opt"],
+                          "rcp4p5": ['rcp4p5', 'ssp2', "opt"]}
         ###  USER INPUTS 
         self.geogunit_unique_name = user_selections.get("geogunit_unique_name")
         self.scenario = self.scenarios.get(user_selections.get("scenario"))
@@ -114,7 +115,6 @@ class CBADefaultService(object):
     def checkParams(self):
         try:
             table = self.metadata.tables['cache_d_cba']
-
             logging.info('[CBADCache, checkParams]: check params...')
             # logging.info(self._generateKey)
             select_st = table.select().where(table.c.key == self._generateKey)
@@ -142,6 +142,9 @@ class CBADefaultService(object):
             raise Error(str(e))
 
     def updateRecord(self):
+        """
+        TODO:
+        """
         return 0
 
     def cleanCache(self):

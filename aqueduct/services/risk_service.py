@@ -22,7 +22,8 @@ class RiskService(object):
         self.geogunits = ["geogunit_103", "geogunit_108"]
         self.scenarios = {"business as usual": ['rcp8p5', 'ssp2', "bau"],
                           "pessimistic": ['rcp8p5', 'ssp3', "pes"],
-                          "optimistic": ['rcp4p5', 'ssp2', "opt"]}
+                          "optimistic": ['rcp4p5', 'ssp2', "opt"],
+                          "rcp4p5": ['rcp4p5', 'ssp2', "opt"]}
         self.models = {"riverine": ["gf", "ha", "ip", "mi", "nr"],
                        # "coastal": ["wt"]}
                        "coastal": ["95", "50", "05"]}
