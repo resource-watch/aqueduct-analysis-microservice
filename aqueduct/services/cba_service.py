@@ -364,7 +364,7 @@ class CBAService(object):
 
                 costList.append(cost_itl * ppp_itl * con_itl)
             else:
-                costList.append(cost_itl)
+                costList.append((cost_itl)/ppp_itl)
             ####-------------------------
         totalCost = sum(costList)
         return totalCost
