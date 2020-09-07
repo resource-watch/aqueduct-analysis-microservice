@@ -359,7 +359,7 @@ class CBAService(object):
             if user_urb == None:
 
                 ppp_itl, con_itl = pd.read_sql_query(
-                    "SELECT avg(ppp_mer_rate_2005_index) mean_1, avg(construction_cost_index) mean_2 FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(
+                    "SELECT avg(ppp_mer_rate_2005_index) mean_1, avg(construction_cost_index*7) mean_2 FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(
                         ', '.join(map(str, self.fids))), self.engine).values[0]
 
                 costList.append(cost_itl * ppp_itl * con_itl)
