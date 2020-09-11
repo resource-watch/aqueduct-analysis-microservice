@@ -89,7 +89,6 @@ class RiskService(object):
                                        self.engine, index_col='id')
         # PROTECTION STANDARDS and RISK ANALYSIS TYPE
         if not self.existing_prot:
-
             risk_analysis = "precalc"
             # Hardwire in the protection standards for the Netherlands or Average prot standard for a whole unit (i.e. country)
             # here self.exposure should be allways urban_damage_v2
@@ -102,7 +101,6 @@ class RiskService(object):
                                                    'Overijssel, Netherlands', 'Utrecht, Netherlands',
                                                    'Netherlands'] else df_precalc[
                 ["_".join(['urban_damage_v2', '2010', scen_abb, "prot_avg"])]])
-        
         else:
             risk_analysis = "calc"
             prot_pres = self.existing_prot
@@ -495,6 +493,7 @@ class RiskService(object):
         df_urb = pd.read_sql_query("SELECT * FROM {0} where id = '{1}' ".format(urbfn, self.geogunit_name), self.engine,
                                    index_col='id')
         logging.info(f'[RISK SERVICE - calc_risk]: urbfn => {urbfn}  fn => {fn}')
+        logging.debug('[RISK SERVICE - calc_risk]: prot_press => ' + str(self.prot_pres))
         # Find impact for each model
         model_impact = pd.DataFrame(index=[self.geogunit_name])
         # Find model options associated with flood type
@@ -502,6 +501,7 @@ class RiskService(object):
         for m in self.mods:
             cc_raw, soc_raw, sub_raw, cc_soc_raw, urb_raw = [], [], [], [], []
             for y in self.ys:
+                logging.debug('[RISK SERVICE - calc_risk]: prot_press1 => ' + str(self.prot_pres))
                 dfsub_a = []
                 # 2010 DATA
                 if y == '2010':
@@ -572,7 +572,7 @@ class RiskService(object):
                 per = np.where(ast < imp, np.nan, imp / ast * 100)
                 df_risk = pd.concat(
                     [df_risk, pd.Series(per, index=[colFormat(self.exposure, y, self.scen_abb, "per", t)])])
-
+        logging.debug('[RISK SERVICE - calc_risk]: prot_press3 => ' + str(self.prot_pres))
         return df_risk.T
 
     def precalc_risk(self):
@@ -580,6 +580,7 @@ class RiskService(object):
         # Filter by
         # we have set  self.exposure as urban Damage
         logging.info('[RISK, precalc in]')
+        logging.debug('[RISK]: ' + str(self.prot_pres))
         df_risk = self.df_precalc[
             [col for col in self.df_precalc.columns.tolist() if (self.exposure in col) and (self.scen_abb in col)]]
 

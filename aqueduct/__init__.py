@@ -29,7 +29,7 @@ root = logging.getLogger()
 root.setLevel(logging.DEBUG)
 
 error_handler = logging.StreamHandler(sys.stderr)
-error_handler.setLevel(logging.WARN)
+error_handler.setLevel(logging.DEBUG)
 error_handler.setFormatter(formatter)
 root.addHandler(error_handler)
 #
