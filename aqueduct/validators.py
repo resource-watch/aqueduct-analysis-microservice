@@ -244,7 +244,7 @@ def validate_params_cba_def(func):
             'scenario': {
                 'type': 'string',
                 'required': True,
-                'allowed': ["business as usual", "pessimistic", "optimistic"],
+                'allowed': ["business as usual", "pessimistic", "optimistic", "rcp4p5", "rcp8p5"],
                 'coerce': to_lower
             },
             'flood': {
