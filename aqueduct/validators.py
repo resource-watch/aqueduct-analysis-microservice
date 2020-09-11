@@ -134,7 +134,11 @@ def validate_params_cba(func):
             'scenario': {
                 'type': 'string',
                 'required': True,
+<<<<<<< HEAD
                 'allowed': ["business as usual", "pessimistic", "optimistic", "rcp4p5"],
+=======
+                'allowed': ["business as usual", "pessimistic", "optimistic", "rcp4p5", "rcp8p5"],
+>>>>>>> develop
                 'coerce': to_lower
             },
             'prot_fut': {

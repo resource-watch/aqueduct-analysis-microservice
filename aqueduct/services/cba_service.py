@@ -28,7 +28,12 @@ class CBAService(object):
         self.scenarios = {"business as usual": ['rcp8p5', 'ssp2', "bau"],
                           "pessimistic": ['rcp8p5', 'ssp3', "pes"],
                           "optimistic": ['rcp4p5', 'ssp2', "opt"],
+<<<<<<< HEAD
                           "rcp4p5": ['rcp4p5', 'ssp2', "opt"]}
+=======
+                          "rcp8p5": ['rcp8p5', 'ssp3', "pes"],
+                          "rcp4p5": ['rcp8p5', 'ssp2', "bau"]}
+>>>>>>> develop
         self.sub_abb = "nosub"
         self.mods = ["gf", "ha", "ip", "mi", "nr"]
         self.years = [2010., 2030., 2050., 2080.]
