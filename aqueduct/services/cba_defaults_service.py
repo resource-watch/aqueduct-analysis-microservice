@@ -25,6 +25,7 @@ class CBADef(object):
                           "optimistic": ['rcp4p5', 'ssp2', "opt"],
                           "rcp8p5": ['rcp8p5', 'ssp3', "pes"],
                           "rcp4p5": ['rcp8p5', 'ssp2', "bau"]}
+r
         ###  USER INPUTS 
         self.geogunit_unique_name = user_selections.get("geogunit_unique_name")
         self.scenario = self.scenarios.get(user_selections.get("scenario"))

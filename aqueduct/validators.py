@@ -135,6 +135,7 @@ def validate_params_cba(func):
                 'type': 'string',
                 'required': True,
                 'allowed': ["business as usual", "pessimistic", "optimistic", "rcp4p5", "rcp8p5"],
+
                 'coerce': to_lower
             },
             'prot_fut': {
