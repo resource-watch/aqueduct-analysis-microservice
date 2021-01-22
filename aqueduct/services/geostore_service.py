@@ -1,6 +1,6 @@
 """Geostore SERVICE"""
-from CTRegisterMicroserviceFlask import request_to_microservice
-from CTRegisterMicroserviceFlask.errors import NotFound
+from RWAPIMicroservicePython import request_to_microservice
+from RWAPIMicroservicePython.errors import NotFound
 
 from aqueduct.errors import GeostoreNotFound
 
