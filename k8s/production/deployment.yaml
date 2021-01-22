@@ -1,12 +1,22 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: aqueduct
   labels:
     name: aqueduct-analysis
   name: aqueduct-analysis
+  namespace: aqueduct
 spec:
+  progressDeadlineSeconds: 2147483647
+  replicas: 1
   revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      name: aqueduct-analysis
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
   template:
     metadata:
       labels:
@@ -22,15 +32,7 @@ spec:
                     values:
                       - apps
       containers:
-        - name: aqueduct-analysis
-          image: vizzuality/aqueduct-analysis
-          imagePullPolicy: Always
-          resources:
-            requests:
-              memory: "0Mi"
-            limits:
-              memory: "0Mi"
-          args:
+        - args:
             - start
           env:
             - name: PORT
@@ -42,40 +44,55 @@ spec:
             - name: CT_URL
               valueFrom:
                 secretKeyRef:
-                  name: mssecrets
                   key: CT_URL
+                  name: mssecrets
             - name: CT_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: mssecrets
                   key: CT_TOKEN
+                  name: mssecrets
             - name: CT_REGISTER_MODE
               valueFrom:
                 secretKeyRef:
-                  name: mssecrets
                   key: CT_REGISTER_MODE
+                  name: mssecrets
             - name: API_VERSION
               valueFrom:
                 secretKeyRef:
-                  name: mssecrets
                   key: API_VERSION
+                  name: mssecrets
             - name: CARTODB_USER
               valueFrom:
                 secretKeyRef:
-                  name: mssecrets
                   key: CARTODB_USER
+                  name: mssecrets
             - name: POSTGRES_URL
               valueFrom:
                 secretKeyRef:
-                  name: dbsecrets
                   key: AQUEDUCT_POSTGRES_URL
+                  name: dbsecrets
             - name: AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: appsecrets
                   key: AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY
-
+                  name: appsecrets
+          image: vizzuality/aqueduct-analysis
+          imagePullPolicy: Always
+          name: aqueduct-analysis
           ports:
             - containerPort: 5700
-
+              protocol: TCP
+          resources:
+            limits:
+              memory: "0"
+            requests:
+              memory: "0"
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+        - name: regcred
       restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: { }
+      terminationGracePeriodSeconds: 30
