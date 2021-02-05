@@ -76,7 +76,7 @@ spec:
                 secretKeyRef:
                   key: AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY
                   name: appsecrets
-          image: vizzuality/aqueduct-analysis
+          image: gfwdockerhub/aqueduct-analysis
           imagePullPolicy: Always
           name: aqueduct-analysis
           ports:
