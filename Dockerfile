@@ -6,7 +6,7 @@ ENV USER aqueduct
 RUN apt-get update && apt-get install -y bash git gcc \
   build-essential postgresql postgresql-client postgresql-contrib
 RUN addgroup $USER && useradd -ms /bin/bash $USER -g $USER
-RUN easy_install pip && pip install --upgrade pip
+RUN pip install --upgrade pip
 
 RUN mkdir -p /opt/$NAME
 COPY tox.ini /opt/$NAME/tox.ini
