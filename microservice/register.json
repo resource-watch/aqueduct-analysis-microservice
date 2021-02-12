@@ -61,7 +61,6 @@
     {
       "path": "/v1/aqueduct/analysis/cba/expire-cache",
       "method": "DELETE",
-      "authenticated": true,
       "redirect": {
         "method": "POST",
         "path": "/api/v1/aqueduct/analysis/cba/expire-cache"

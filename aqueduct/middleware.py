@@ -29,7 +29,7 @@ def is_microservice_or_admin(func):
             logging.debug("is microservice or admin")
             return func(*args, **kwargs)
         else:
-            return error(status=403, detail="Not authorized")
+            return error(status=401, detail="Unauthorized")
 
     return wrapper
 
