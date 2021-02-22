@@ -187,7 +187,7 @@ def validate_params_cba(func):
                 'default': None,
                 'nullable': True,
                 'min': 0,
-                'max': 2
+                'max': 1000
             },
             'discount_rate': {
                 'type': 'float',
