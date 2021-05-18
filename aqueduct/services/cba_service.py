@@ -21,7 +21,7 @@ class CBAService(object):
         self.engine = sqlalchemy.create_engine(os.getenv('POSTGRES_URL'))
         self.metadata = sqlalchemy.MetaData(bind=self.engine)
         self.metadata.reflect(self.engine)
-        ### BACKGROUND INTO 
+        ### BACKGROUND INTO
         # self.flood = "Riverine"
         self.exposures = ["gdpexp", "popexp", "urban_damage_v2"]
         self.geogunit = "geogunit_108"
@@ -40,7 +40,7 @@ class CBAService(object):
                           "prot_future"]
         self.inAGGFormat = 'raw_agg_riverine_{:s}_{:s}'.format
         self.inRAWFormat = 'raw_riverine_{:s}_{:s}'.format
-        ###  USER INPUTS 
+        ###  USER INPUTS
         self.geogunit_unique_name = user_selections.get("geogunit_unique_name")
         self.existing_prot = user_selections.get("existing_prot")
         self.scenario = user_selections.get("scenario")
@@ -339,11 +339,11 @@ class CBAService(object):
             targetColName = "_".join([self.scenarios.get(self.scenario)[0], m,
                                       self.scenarios.get(self.scenario)[1], str(self.ref_year), srp, erp])
             targetColNameList.append(targetColName)
-        
+
         df = pd.DataFrame(np.transpose([uniStartRPList, targetColNameList, uniSRPdfList]),
                           columns=['startrp', 'tgtCol', 'df'])
         costList = []
-        
+
         for itl in np.arange(0, len(df.index), 1):
             logging.info(itl)
             df_itl = df['df'].iloc[itl]
@@ -363,7 +363,7 @@ class CBAService(object):
                     "SELECT avg(ppp_mer_rate_2005_index) mean_1, avg(construction_cost_index*7) mean_2 FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(
                         ', '.join(map(str, self.fids))), self.engine).values[0]
 
-                costList.append(cost_itl * ppp_itl * con_itl)
+                costList.append((cost_itl * con_itl)/ ppp_itl)
             else:
                 costList.append((cost_itl)/ppp_itl)
             ####-------------------------
@@ -549,7 +549,7 @@ class CBAService(object):
             socioecono = socioeconomic data
         Output:
             List of dataframes for each year with impact estimates. Impact data for climate change only scenario and total change
-        
+
         Time is being killed here on big selections
         """
         #logging.debug('[CBA, select_impact]: start')
@@ -592,7 +592,7 @@ class CBAService(object):
                     logging.debug( "------------------   precalc  ---------------" )
                     annual_risk_pres, annual_pop_pres, annual_gdp_pres, annual_prot_pres = self.precalc_present_benefits(
                         m)
-                    
+
                 else:
                     logging.debug( "------------------   Calc  ---------------")
                     annual_risk_pres, annual_pop_pres, annual_gdp_pres = self.calc_impact(m, self.prot_pres, 0)
@@ -627,7 +627,7 @@ class CBAService(object):
                 # logging.debug( m, "benefits done", time.time()-start_time )
 
                 # start_time = time.time()
-                
+
                 pop_costs = self.find_construction(m, "POPexp", self.user_rur_cost, self.user_urb_cost)
                 gdp_costs = self.find_construction(m, "Urban_Damage_v2", self.user_rur_cost, self.user_urb_cost)
                 logging.debug( "------------------   CALC7  ---------------" )
@@ -645,7 +645,7 @@ class CBAService(object):
                 df_final[[x for x in df_final.columns if "costs" in x]] = 0
             elif df_final.gdp_costs_avg.sum() == 0:
                 df_final[[x for x in df_final.columns if "Benefits" in x]] = 0
-            
+
 
             ### DETAILS
             details = {"geogunitName": self.geogunit_name,
@@ -698,7 +698,7 @@ class CBAICache(object):
 
     def _createTable(self):
         """
-        where key is a composition of the user selected params: 
+        where key is a composition of the user selected params:
         "geogunit_unique_name"_"existing_prot"_"scenario"_"prot_fut"_"implementation_start_"implementation_end"_"infrastructure_life"_"benefits_start"_"ref_year"_"estimated_costs"_"discount_rate"_"om_costs"_"user_urb_cost"_"user_rur_cost"
         """
         try:
@@ -858,7 +858,7 @@ class CBAEndService(object):
         impE = self.data['meta']['implementionEnd']
         impS = self.data['meta']['implementionStart']
         life = self.data['meta']['infrastructureLifespan']
-        ## Review this to make it work	
+        ## Review this to make it work
         cost = fOutput.loc[self.data['meta']['implementionEnd']]['gdp_costs_avg'] * ((1 + self.data['meta']['discount']) ** (impE - impS))
         om_costs = self.data['meta']['om']
         build_years = impE - impS
@@ -866,7 +866,7 @@ class CBAEndService(object):
         mp = [1.0 / build_years * cost for i in range(build_years)]
         cum_costs_present = np.cumsum(mp)
         mains = cum_costs_present * om_costs
-        
+
         maintenance = pd.Series(np.concatenate((mains, [mains[-1]] * (impS + life - impE + 1))), index=years)
         fOutput.insert(1,'costs', maintenance)
 
