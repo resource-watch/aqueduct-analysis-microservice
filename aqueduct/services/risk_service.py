@@ -12,11 +12,11 @@ from aqueduct.errors import Error
 
 class RiskService(object):
     def __init__(self, user_selections):
-        ### DBConexion
+        # DB Connection
         self.engine = sqlalchemy.create_engine(os.getenv('POSTGRES_URL'))
         self.metadata = sqlalchemy.MetaData(bind=self.engine)
         self.metadata.reflect(self.engine)
-        ###               BACKGROUND INTO  
+        # BACKGROUND INFO
         self.flood_types = ["riverine", "coastal"]
         self.exposures = ["gdpexp", "popexp", "urban_damage_v2"]
         self.geogunits = ["geogunit_103", "geogunit_108"]
@@ -43,18 +43,18 @@ class RiskService(object):
             "existing_prot")  # User input for protection standard (triggers on-the-fly calculation)
         self.scenario = user_selections.get("scenario")
         self.geogunit, self.geogunit_name, self.geogunit_type, self.clim, self.socio, self.scen_abb, self.sub_abb, self.df_precalc, self.prot_pres, self.risk_analysis = self.user_selections()
-        # Scenario abbrevation
+        # Scenario abbreviation
         self.mods = self.models.get(self.flood)
 
     def user_selections(self):
         """
-        Purpose: Gather all neccesary inputs to run any analysis
+        Purpose: Gather all necessary inputs to run any analysis
         Input:
             flood: Riverine of Coastal (User must select)
             Geogunit_unique_name: geographical unit name from website.  (User must select)
                 Website should use list of unique names to avoid selecting more than one unit
             Scenario: Business as usual, Pessimistic,  Optimistic
-            sub_scenario: Yes (defaul(t), No does the user want to consider subsidence? Only relavent for coastal)
+            sub_scenario: Yes (defaul(t), No does the user want to consider subsidence? Only relevant for coastal)
             existing_prot: Default protection standard. User can input their own or, which will trigger on-the-fly calculations
         Output:
             geogunit unit - (geogunit_103 for cities, geogunit_108 for everything else)

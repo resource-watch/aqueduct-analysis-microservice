@@ -1,3 +1,7 @@
+## 24/06/2021
+
+- Update `RWAPIMicroservicePython` to remove Control Tower support.
+
 ## 31/05/2021
 
 - Update `RWAPIMicroservicePython` to add CORS support.

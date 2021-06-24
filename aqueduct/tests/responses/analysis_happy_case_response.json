@@ -63,7 +63,7 @@
       "the_geom": "0101000020E6100000DB34B6D7824053C0CDAE7B2B12734340"
     }
   ],
-  "downloadUrl": "https://wri-rw.carto.com/api/v2/sql?q=SELECT * FROM get_aqpoints_annual_custom_test('[0, 1, 2]','[0.,0.25,0.5,1.,1.,1.,null,1.,1.,0.25,1.,1.,1.]', '[''Point(-77.007986 38.898992)'', ''Point(-46.693983 -23.568232)'', ''Point(4.318852 52.07906)'']', '[null, null, null]', '[null, null, null]', '[null, null, null]')",
+  "downloadUrl": "https://wri-rw.carto.com/api/v2/sql?q=SELECT * FROM get_aqpoints_annual_custom_test('[0, 1, 2]', '[0.,0.25,0.5,1.,1.,1.,null,1.,1.,0.25,1.,1.,1.]', '[''Point(-77.007986 38.898992)'', ''Point(-46.693983 -23.568232)'', ''Point(4.318852 52.07906)'']', '[null, null, null]', '[null, null, null]', '[null, null, null]')",
   "id": null,
   "indicator": null,
   "month": null,
