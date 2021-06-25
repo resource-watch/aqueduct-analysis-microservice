@@ -7,10 +7,9 @@ from __future__ import print_function
 import logging
 
 import geojson as geoj
-import simplejson as json
 import pandas as pd
 import re
-from flask import jsonify, request, Blueprint
+from flask import jsonify, request, Blueprint, json
 
 from aqueduct.errors import CartoError, DBError, CacheError
 from aqueduct.middleware import get_geo_by_hash, sanitize_parameters, is_microservice_or_admin

@@ -9,6 +9,7 @@ import sys
 
 import RWAPIMicroservicePython
 from flask import Flask
+from simplejson import JSONEncoder
 
 from aqueduct.config import SETTINGS
 from aqueduct.routes.api import error
@@ -41,6 +42,8 @@ app = Flask(__name__)
 
 # Routing
 app.register_blueprint(aqueduct_analysis_endpoints_v1, url_prefix='/api/v1/aqueduct/analysis')
+
+app.json_encoder = JSONEncoder
 
 RWAPIMicroservicePython.register(
     app=app,
