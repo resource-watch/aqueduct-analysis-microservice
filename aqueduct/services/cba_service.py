@@ -580,101 +580,94 @@ class CBAService(object):
         # IMPACT DATA BY MODEL
 
         # model_benefits = pd.DataFrame(index=time_series)
-        try:
-            model_benefits = pd.DataFrame(data=self.time_series, columns=['year']).set_index('year')
-            # IMPACT DATA BY MODEL
+        model_benefits = pd.DataFrame(data=self.time_series, columns=['year']).set_index('year')
+        # IMPACT DATA BY MODEL
 
-            for m in self.mods:
-                # start_time = time.time()
-                logging.debug( "------------------   Model %s starting...  ---------------" %m)
+        for m in self.mods:
+            # start_time = time.time()
+            logging.debug( "------------------   Model %s starting...  ---------------" %m)
 
-                if self.risk_analysis == "precalc":
-                    logging.debug( "------------------   precalc  ---------------" )
-                    annual_risk_pres, annual_pop_pres, annual_gdp_pres, annual_prot_pres = self.precalc_present_benefits(
-                        m)
+            if self.risk_analysis == "precalc":
+                logging.debug( "------------------   precalc  ---------------" )
+                annual_risk_pres, annual_pop_pres, annual_gdp_pres, annual_prot_pres = self.precalc_present_benefits(
+                    m)
 
-                else:
-                    logging.debug( "------------------   Calc  ---------------")
-                    annual_risk_pres, annual_pop_pres, annual_gdp_pres = self.calc_impact(m, self.prot_pres, 0)
-                    prot_pres_list = []
-                    for y in self.ys:
-                        prot_pres_list.append(self.average_prot(m, y, annual_risk_pres))
-                    prot_func_pres = self.extrap1d(interp1d(self.years, prot_pres_list))
-                    annual_prot_pres = prot_func_pres(self.time_series)  # Run timeseries through interpolation function
-                # logging.debug( m, "present done", time.time() - start_time)
-
-                # start_time = time.time()
-                # sTimetl = time.time()
-                logging.debug( "------------------   CALC2  ---------------" )
-                annual_risk_fut, annual_pop_fut, annual_gdp_fut = self.calc_impact(m, self.prot_futu, self.prot_idx_fut)
-                logging.debug( "------------------   CALC3  ---------------" )
-                logging.debug(f'[CBA, {m}]')
-                logging.debug(f'[CBA, {self.ys}]')
-                logging.debug(f'[CBA, {annual_risk_fut}]')
-                prot_fut_list = [self.average_prot(m, y, annual_risk_fut) for y in self.ys]
-                logging.debug( "------------------   CALC4  ---------------" )
-                prot_func_fut = self.extrap1d(interp1d(self.years, prot_fut_list))
-                logging.debug( "------------------   CALC5  ---------------" )
-                annual_prot_fut = prot_func_fut(self.time_series)  # Run timeseries through interpolation function
-
-                # logging.debug( m, "future  done", time.time() - start_time)
-
-                # start_time = time.time()
-                df = self.compute_benefits(m, annual_risk_pres, annual_risk_fut, annual_pop_pres, annual_pop_fut,
-                                           annual_gdp_pres, annual_gdp_fut, annual_prot_pres, annual_prot_fut)
-                model_benefits = model_benefits.join(df)
-                logging.debug( "------------------   CALC6  ---------------" )
-                # logging.debug( m, "benefits done", time.time()-start_time )
-
-                # start_time = time.time()
-
-                pop_costs = self.find_construction(m, "POPexp", self.user_rur_cost, self.user_urb_cost)
-                gdp_costs = self.find_construction(m, "Urban_Damage_v2", self.user_rur_cost, self.user_urb_cost)
-                logging.debug( "------------------   CALC7  ---------------" )
-                df_pc = self.compute_costs(m, pop_costs, "POP")
-                model_benefits = model_benefits.join(df_pc)
-                df_gc = self.compute_costs(m, gdp_costs, "GDP")
-                model_benefits = model_benefits.join(df_gc)
-                #logging.debug(m, "costs done", time.time()-start_time)
-                #logging.debug("Model %s done..." % m)
+            else:
+                logging.debug( "------------------   Calc  ---------------")
+                annual_risk_pres, annual_pop_pres, annual_gdp_pres = self.calc_impact(m, self.prot_pres, 0)
+                prot_pres_list = []
+                for y in self.ys:
+                    prot_pres_list.append(self.average_prot(m, y, annual_risk_pres))
+                prot_func_pres = self.extrap1d(interp1d(self.years, prot_pres_list))
+                annual_prot_pres = prot_func_pres(self.time_series)  # Run timeseries through interpolation function
+            # logging.debug( m, "present done", time.time() - start_time)
 
             # start_time = time.time()
-            df_final = self.run_stats(model_benefits)
-            # check benefits or cost is 0
-            if df_final.urb_benefits_avg.sum() == 0:
-                df_final[[x for x in df_final.columns if "costs" in x]] = 0
-            elif df_final.gdp_costs_avg.sum() == 0:
-                df_final[[x for x in df_final.columns if "Benefits" in x]] = 0
+            # sTimetl = time.time()
+            logging.debug( "------------------   CALC2  ---------------" )
+            annual_risk_fut, annual_pop_fut, annual_gdp_fut = self.calc_impact(m, self.prot_futu, self.prot_idx_fut)
+            logging.debug( "------------------   CALC3  ---------------" )
+            logging.debug(f'[CBA, {m}]')
+            logging.debug(f'[CBA, {self.ys}]')
+            logging.debug(f'[CBA, {annual_risk_fut}]')
+            prot_fut_list = [self.average_prot(m, y, annual_risk_fut) for y in self.ys]
+            logging.debug( "------------------   CALC4  ---------------" )
+            prot_func_fut = self.extrap1d(interp1d(self.years, prot_fut_list))
+            logging.debug( "------------------   CALC5  ---------------" )
+            annual_prot_fut = prot_func_fut(self.time_series)  # Run timeseries through interpolation function
+
+            # logging.debug( m, "future  done", time.time() - start_time)
+
+            # start_time = time.time()
+            df = self.compute_benefits(m, annual_risk_pres, annual_risk_fut, annual_pop_pres, annual_pop_fut,
+                                        annual_gdp_pres, annual_gdp_fut, annual_prot_pres, annual_prot_fut)
+            model_benefits = model_benefits.join(df)
+            logging.debug( "------------------   CALC6  ---------------" )
+            # logging.debug( m, "benefits done", time.time()-start_time )
+
+            # start_time = time.time()
+
+            pop_costs = self.find_construction(m, "POPexp", self.user_rur_cost, self.user_urb_cost)
+            gdp_costs = self.find_construction(m, "Urban_Damage_v2", self.user_rur_cost, self.user_urb_cost)
+            logging.debug( "------------------   CALC7  ---------------" )
+            df_pc = self.compute_costs(m, pop_costs, "POP")
+            model_benefits = model_benefits.join(df_pc)
+            df_gc = self.compute_costs(m, gdp_costs, "GDP")
+            model_benefits = model_benefits.join(df_gc)
+            #logging.debug(m, "costs done", time.time()-start_time)
+            #logging.debug("Model %s done..." % m)
+
+        # start_time = time.time()
+        df_final = self.run_stats(model_benefits)
+        # check benefits or cost is 0
+        if df_final.urb_benefits_avg.sum() == 0:
+            df_final[[x for x in df_final.columns if "costs" in x]] = 0
+        elif df_final.gdp_costs_avg.sum() == 0:
+            df_final[[x for x in df_final.columns if "Benefits" in x]] = 0
 
 
-            ### DETAILS
-            details = {"geogunitName": self.geogunit_name,
-                       "geogunitType": self.geogunit_type,
-                       "scenario": self.scenario,
-                       "averageProtection": self.prot_pres,
-                       "startingProtection": min(self.rps, key=lambda rp: abs(rp - self.prot_pres)),
-                       "futureProtection": self.prot_futu,
-                       "referenceYear": self.ref_year,
-                       "implementionStart": self.implementation_start,
-                       "implementionEnd": self.implementation_end,
-                       "infrastructureLifespan": self.infrastructure_life,
-                       "estimatedCosts": self.estimated_costs,
-                       "benefitsStart": self.benefits_start,
-                       "discount": self.discount_rate,
-                       "om": self.om_costs,
-                       "gdpCosts": gdp_costs.tolist()}
-            # df_final = model_benefits
-            # print( "All done! Total computation time:", time.time() - allStartTime)
-            return {
-            "meta": details,
-            "df": df_final
-        }
-        except Exception as e:
-            logging.error('[CBA analyze]: ' + str(e))
-            raise Error(message='computation failed: '+ str(e))
-
-        finally:
-            self.engine.dispose()
+        ### DETAILS
+        details = {"geogunitName": self.geogunit_name,
+                    "geogunitType": self.geogunit_type,
+                    "scenario": self.scenario,
+                    "averageProtection": self.prot_pres,
+                    "startingProtection": min(self.rps, key=lambda rp: abs(rp - self.prot_pres)),
+                    "futureProtection": self.prot_futu,
+                    "referenceYear": self.ref_year,
+                    "implementionStart": self.implementation_start,
+                    "implementionEnd": self.implementation_end,
+                    "infrastructureLifespan": self.infrastructure_life,
+                    "estimatedCosts": self.estimated_costs,
+                    "benefitsStart": self.benefits_start,
+                    "discount": self.discount_rate,
+                    "om": self.om_costs,
+                    "gdpCosts": gdp_costs.tolist()}
+        # df_final = model_benefits
+        # print( "All done! Total computation time:", time.time() - allStartTime)
+        return {
+        "meta": details,
+        "df": df_final
+    }
 
 
 class CBAICache(object):
@@ -701,62 +694,46 @@ class CBAICache(object):
         where key is a composition of the user selected params:
         "geogunit_unique_name"_"existing_prot"_"scenario"_"prot_fut"_"implementation_start_"implementation_end"_"infrastructure_life"_"benefits_start"_"ref_year"_"estimated_costs"_"discount_rate"_"om_costs"_"user_urb_cost"_"user_rur_cost"
         """
-        try:
-            myCache = sqlalchemy.Table("cache_cba", self.metadata,
-                                       Column('id', Integer, primary_key=True, unique=True),
-                                       Column('key', Text, unique=True, index=True),
-                                       Column('value', JSON),
-                                       Column('last_updated', DateTime, default=datetime.datetime.now,
-                                              onupdate=datetime.datetime.now)
-                                       )
-            myCache.create()
-        except Exception as e:
-            logging.error('[CBAICache, _createTable]: ' + str(e))
-            raise Error(message='cache table creation failed'+ str(e))
+        myCache = sqlalchemy.Table("cache_cba", self.metadata,
+                                    Column('id', Integer, primary_key=True, unique=True),
+                                    Column('key', Text, unique=True, index=True),
+                                    Column('value', JSON),
+                                    Column('last_updated', DateTime, default=datetime.datetime.now,
+                                            onupdate=datetime.datetime.now)
+                                    )
+        myCache.create()
+        
         return myCache
 
     def checkParams(self):
-        try:
-            table = self.metadata.tables['cache_cba']
+        table = self.metadata.tables['cache_cba']
 
-            logging.info('[CBAICache, checkParams]: checking params...')
-            # logging.info(self._generateKey)
-            select_st = table.select().where(table.c.key == self._generateKey)
-            res = self.engine.connect().execute(select_st).fetchone()
-            logging.info(f'[CBAICache, checkParams - result]: {res}')
-            return res
-        except Exception as e:
-            logging.error('[CBAICache, checkParams]: ' + str(e))
-            raise Error(message='Checked params failed' + str(e))
+        logging.info('[CBAICache, checkParams]: checking params...')
+        # logging.info(self._generateKey)
+        select_st = table.select().where(table.c.key == self._generateKey)
+        res = self.engine.connect().execute(select_st).fetchone()
+        logging.info(f'[CBAICache, checkParams - result]: {res}')
+        return res
 
     def insertRecord(self, key, data):
         # insert data via insert() construct
-        try:
-            table = self.metadata.tables['cache_cba']
-            ins = table.insert().values(
-                key=key,
-                value=data)
-            conn = self.engine.connect()
-            conn.execute(ins)
+        table = self.metadata.tables['cache_cba']
+        ins = table.insert().values(
+            key=key,
+            value=data)
+        conn = self.engine.connect()
+        conn.execute(ins)
 
-            return 200
-
-        except Exception as e:
-            logging.error('[CBAICache, insertRecord]: ' + str(e))
-            raise Error(message='insert record in cache table failed. \n'+ str(e))
+        return 200
 
     def updateRecord(self):
         return 0
 
     def cleanCache(self):
-        try:
-            table_drop = self.metadata.tables['cache_cba'].delete()
-            conn = self.engine.connect()
-            conn.execute(table_drop)
-            return 200
-        except Exception as e:
-            logging.error('[CBAICache, cleanCache table]: ' + str(e))
-            raise Error(message='Cache table drop has failed. \n'+ str(e))
+        table_drop = self.metadata.tables['cache_cba'].delete()
+        conn = self.engine.connect()
+        conn.execute(table_drop)
+        return 200
 
     def execute(self):
         try:
@@ -787,11 +764,8 @@ class CBAICache(object):
                 # executes the cba code to get the table, inserts it into the database and we should be ready to go
         except Exception as e:
             logging.error('[CBAICache, execute]: ')
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
-            logging.error(repr(traceback.format_exception(exc_type, exc_value,
-                                          exc_traceback)))
-            raise e
+            logging.error(e)
+            raise Error('[CBA] Computation failed: '+ str(e))
 
 
 class CBAEndService(object):
