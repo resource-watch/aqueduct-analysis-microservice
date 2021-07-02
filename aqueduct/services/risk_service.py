@@ -500,6 +500,7 @@ class RiskService(object):
         for m in self.mods:
             cc_raw, soc_raw, sub_raw, cc_soc_raw, urb_raw = [], [], [], [], []
             for y in self.ys:
+                logging.debug('[RISK SERVICE - calc_risk]: prot_press1 => ' + str(self.prot_pres))
                 dfsub_a = []
                 # 2010 DATA
                 if y == '2010':
@@ -527,11 +528,15 @@ class RiskService(object):
                     dfsub = self.select_projection_data(df_raw, "histor", modsT, "base",
                                                         y)  # Add to socieco change only list
 
+                #logging.debug(f'[RISK SERVICE - calc_risk]: {dfsub.columns}')
+                
                 if not dfsub.empty:
                     dfsub_a = pd.melt(dfsub, value_vars=dfsub.columns)
                     sub_raw.append(pd.Series(name=self.geogunit_name, index=self.rps, data=dfsub_a["value"].tolist()))
                     
                 
+
+                #logging.debug(f'[RISK SERVICE - calc_risk]: {sub_raw}')
 
             if self.sub_scenario == False:
                 sub_raw = []
@@ -539,7 +544,7 @@ class RiskService(object):
                 sub_raw.extend([dfsub for i in range(4)])
 
             #logging.debug(f'[RISK SERVICE - calc_risk]: {len(sub_raw)}, {len(sub_raw[0])}')
-            logging.debug(f'[RISK SERVICE - calc_risk]: {type(sub_raw[0])}')
+            #logging.debug(f'[RISK SERVICE - calc_risk]: {type(sub_raw[0])}')
 
             outData = self.find_impact(cc_raw, soc_raw, sub_raw, cc_soc_raw, urb_raw, m)
             model_impact = model_impact.join(outData)
@@ -609,7 +614,6 @@ class RiskService(object):
                 logging.info('[RISK, precalc]')
                 risk_data = self.precalc_risk()
             else:
-                logging.info('[RISK, calc]')
                 risk_data = self.calc_risk()
 
             return self.format_risk(risk_data)
