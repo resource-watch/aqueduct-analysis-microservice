@@ -11,10 +11,10 @@ import pandas as pd
 import re
 from flask import jsonify, request, Blueprint, json
 
-from aqueduct.errors import CartoError, DBError, CacheError
+from aqueduct.errors import CartoError, DBError, Error
 from aqueduct.middleware import get_geo_by_hash, sanitize_parameters, is_microservice_or_admin
 from aqueduct.routes.api import error
-from aqueduct.serializers import serialize_response, serialize_response_geocoding, serialize_response_cba, \
+from aqueduct.serializers import serialize_response, serialize_response_cba, \
     serialize_response_default, serialize_response_risk
 from aqueduct.services.carto_service import CartoService
 from aqueduct.services.cba_defaults_service import CBADefaultService
@@ -239,9 +239,9 @@ def get_cba_widget(widget_id, **kwargs):
         else:
             return jsonify(
                 serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200
-    except DBError as e:
+    except Error as e:
         logging.error('[ROUTER]: ' + str(e))
-        return error(status=500, detail=str(e))
+        return error(status=e.status, detail=str(e))
     except Exception as e:
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail=str(e))

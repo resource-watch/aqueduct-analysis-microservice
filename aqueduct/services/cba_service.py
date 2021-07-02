@@ -408,7 +408,10 @@ class CBAService(object):
         sco = "base" if year == '2010' else self.socio
         mdl = "wt" if year == '2010' else m
         test_rps = np.linspace(min(self.rps), max(self.rps), 999)
-        assert (len(risk_data_input)>=idx),f"the infrastructure lifetime ({self.infrastructure_life}) MUST be  between {2080 - self.implementation_start} - {2100 - self.implementation_start}"
+        try:
+            assert (len(risk_data_input) >= idx), f"the infrastructure lifetime ({self.infrastructure_life}) MUST be between {2080 - self.implementation_start} - {2100 - self.implementation_start}"
+        except AssertionError as e:
+            raise Error(message='computation failed: '+ str(e), status=400)
         real_impact = risk_data_input[int(idx)]
         # READ IN REFERENCE IMPACT
         # READ IN RAW DATA
@@ -669,10 +672,12 @@ class CBAService(object):
             "meta": details,
             "df": df_final
         }
+        except Error as e:
+            logging.error('[CBA analyze]: ' + str(e))
+            raise e
         except Exception as e:
             logging.error('[CBA analyze]: ' + str(e))
             raise Error(message='computation failed: '+ str(e))
-
         finally:
             self.engine.dispose()
 
