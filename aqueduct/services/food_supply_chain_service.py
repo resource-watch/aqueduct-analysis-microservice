@@ -64,12 +64,12 @@ class FoodSupplyChainService(object):
 
     # Indicator codes
     # indicator_dict = {
-    #         'Baseline Water Stress': 'bws_raw', ok
-    #         'Baseline Water Depletion': 'bwd_raw', ??
-    #         'Coastal Eutrophication Potential': 'cep_raw', ??
-    #         'Access to Drinking Water': 'udw_raw', ok
-    #         'Access to Sanitation': 'usa_raw', ok
-    #         'Groundwater Table Decline': 'gwd_raw' FAIL
+    #         'Baseline Water Stress': 'bws_raw'
+    #         'Baseline Water Depletion': 'bwd_raw'
+    #         'Coastal Eutrophication Potential': 'cep_raw'
+    #         'Access to Drinking Water': 'udw_raw'
+    #         'Access to Sanitation': 'usa_raw'
+    #         'Groundwater Table Decline': 'gtd_raw'
     #         }
 
     # payload is on the order of 100MB in the most useful format for
@@ -181,7 +181,7 @@ class FoodSupplyChainService(object):
         crop_selection = sorted(self.df_crops['short_name'].tolist())
 
         # INDICATOR SPECIFIC
-        if self.user_indicator == "gwd": #  Groundwater Table Decline
+        if self.user_indicator == "gtd":  #  Groundwater Table Decline
             water_unit = "AQID"
             water_name = "Aquifer ID"
         else:
@@ -262,6 +262,9 @@ class FoodSupplyChainService(object):
         # Create a column to hold threshold
         users_watersheds[desired_con] = self.user_threshold
 
+        #import pdb
+        #pdb.set_trace()
+        # interact
         # Calculate change required
         users_watersheds[raw] = users_watersheds[raw].astype(float)
         users_watersheds[desired_con] = users_watersheds[desired_con].astype(float)
@@ -283,7 +286,8 @@ class FoodSupplyChainService(object):
         df_successes.rename(columns={water_unit: water_name}, inplace=True)
 
         df_successes['row'] = df_successes['row'].astype(int)
-        df_successes['Watershed ID'] = df_successes['Watershed ID'].astype(int)
+        if 'Watershed ID' in df_successes.columns:
+          df_successes['Watershed ID'] = df_successes['Watershed ID'].astype(int)
 
         # create list of priority watersheds (exceed threshold)
         # priority_watersheds = list(set(df_successes[water_name][df_successes[change_req] > 0].tolist()))
@@ -581,7 +585,7 @@ if __name__ == '__main__':
     import sys
     import json
     if len(sys.argv) < 3:
-        print("pass in indicator as first argument: bws, bwd, cep, udw, usa, gwd")
+        print("pass in indicator as first argument: bws, bwd, cep, udw, usa, gtd")
         print("pass in threshold as second arg")
         exit()
     user_indicator = sys.argv[1]
