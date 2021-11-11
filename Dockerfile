@@ -25,7 +25,7 @@ COPY ./$NAME /opt/$NAME/$NAME
 COPY ./$NAME/tests /opt/$NAME/tests
 RUN chown -R $USER:$USER /opt/$NAME
 
-# Tell Docker we are going to use this ports
+# Tell Docker we are going to use this port
 EXPOSE 5700
 USER $USER
 

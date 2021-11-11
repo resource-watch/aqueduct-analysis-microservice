@@ -9,7 +9,9 @@ import logging
 import geojson as geoj
 import pandas as pd
 import re
+import os
 from flask import jsonify, request, Blueprint, json
+from werkzeug.utils import secure_filename
 
 from aqueduct.errors import CartoError, DBError, Error
 from aqueduct.middleware import get_geo_by_hash, sanitize_parameters, is_microservice_or_admin
@@ -19,9 +21,17 @@ from aqueduct.serializers import serialize_response, serialize_response_cba, \
 from aqueduct.services.carto_service import CartoService
 from aqueduct.services.cba_defaults_service import CBADefaultService
 from aqueduct.services.cba_service import CBAEndService, CBAICache
-
+from aqueduct.services.food_supply_chain_service import FoodSupplyChainService
 from aqueduct.services.risk_service import RiskService
 from aqueduct.validators import validate_params_cba, validate_params_cba_def, validate_params_risk, validate_wra_params
+
+UPLOAD_FOLDER = '/tmp'
+ALLOWED_EXTENSIONS = {'xlsx'}
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 aqueduct_analysis_endpoints_v1 = Blueprint('aqueduct_analysis_endpoints_v1', __name__)
 
@@ -37,34 +47,34 @@ def analyze(**kwargs):
     """ Analyze water risk data
     ---
     get:
-        summary: Allow  water risk atlas analysis. Pasing this params as 'application/json' on a Post 
-        description: Get the water risk scores for the selectec params in the locations array 
+        summary: Allow  water risk atlas analysis. Pasing this params as 'application/json' on a Post
+        description: Get the water risk scores for the selectec params in the locations array
         parameters:
             - name: wscheme
               in: query
-              description: weight scheme as defined in 
+              description: weight scheme as defined in
               type: string
               required: true
             - name: indicator
               in: query
-              description: a valid indicator that you want to analyse. The available list can be found [here]() 
+              description: a valid indicator that you want to analyse. The available list can be found [here]()
               type: string
-              required: true            
+              required: true
             - name: geostore
               in: query
               description: valid geostore
               type: string
-              required: true           
+              required: true
             - name: analysis_type
               in: query
               description: Type of analysis to perform. Allowed values `annual`, `monthly`, `projected` or `custom`
               type: string
-              required: true          
+              required: true
             - name: month
               in: query
-              description: If we have selected `monthly` as *analyssis_type* we will need to specify a month `1..12` from January to December 
+              description: If we have selected `monthly` as *analyssis_type* we will need to specify a month `1..12` from January to December
               type: integer
-              required: false            
+              required: false
             - name: year
               in: query
               description: If we have selected `projected` as *analyssis_type* we will need to specify a year, one of `2030` or `2034`. Other values from *analyssis_type* will consider year as `baseline`
@@ -74,7 +84,7 @@ def analyze(**kwargs):
               in: query
               description: If we have selected `projected` as *analyssis_type* we will need to specify one of `change_from_baseline` or `future_value`.
               type: string
-              required: false           
+              required: false
             - name: scenario
               in: query
               description: If we have selected `projected` as *analyssis_type* we will need to specify one of `optimistic`, `business_as_usual` or `pessimistic`.
@@ -89,12 +99,12 @@ def analyze(**kwargs):
               in: query
               description: location list name as the result of the [geolocation function](). The text must be formater like `"[''Location A'',''Loccation B'']"`.
               type: string
-              required: false            
+              required: false
             - name: match_address
               in: query
               description: location list name as the result of the [geolocation function](). The text must be formater like `"[''Location A'',''Loccation B'']"`.
               type: string
-              required: false            
+              required: false
             - name: ids
               in: query
               description: Ids list name. The text must be formater like `"[''Location A'',''Loccation B'']"`
@@ -111,21 +121,21 @@ def analyze(**kwargs):
     """
     try:
         geometry = geoj.loads(geoj.dumps(kwargs["sanitized_params"]["geojson"]))
-        
+
         if geometry["geometry"]["type"] != 'MultiPoint':
             return error(status=500, detail=f'Error: geostore must be of multipoint type, not {geometry["geometry"]["type"]}.')
 
         nPoints = len(geometry["geometry"]["coordinates"])
-        
+
         if nPoints > 500:
             return error(status=500, detail=f'Error: Row number should be less or equal to 500, provided: {nPoints}')
 
         point_list = [f"\'\'Point({point[0]} {point[1]})\'\'" for point in geometry["geometry"]["coordinates"]]
-        
+
         tmp = ", ".join(point_list)
-        
+
         points = f"[{tmp}]"
-        
+
         logging.info(f'[ROUTER] [ps_router.analyze]: points {points}')
 
 
@@ -149,7 +159,7 @@ def analyze(**kwargs):
             match_address = f"[{tmp}]"
         else:
             match_address = kwargs["sanitized_params"]["match_address"]
-        
+
         if kwargs["sanitized_params"]["ids"] == None:
             idsList = [str(i) for i in range(nPoints)]
             tmp = ", ".join(idsList)
@@ -175,7 +185,7 @@ def analyze(**kwargs):
     except CartoError as e:
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail=str(e))
-    
+
     except Exception as e:
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail='Generic Error')
@@ -232,7 +242,7 @@ def get_cba_widget(widget_id, **kwargs):
                 serialize_response_cba(json.loads(json.dumps(output.get_widget(widget_id), ignore_nan=True)))), 200, {
                     'Content-Disposition': 'attachment', 'filename': '{0}.json'.format(widget_id)}
         elif 'format' in request.args and request.args.get("format") == 'csv':
-            return pd.DataFrame(output.get_widget(widget_id)['data']).to_csv(), 200, {'Content-Type': 'text/csv', 
+            return pd.DataFrame(output.get_widget(widget_id)['data']).to_csv(), 200, {'Content-Type': 'text/csv',
                                                                                     'Content-Disposition': 'attachment',
                                                                                     'filename': '{0}.csv'.format(
                                                                                          widget_id)}
@@ -246,7 +256,7 @@ def get_cba_widget(widget_id, **kwargs):
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail=str(e))
 
-    
+
 
 
 @aqueduct_analysis_endpoints_v1.route('/cba/default', strict_slashes=False, methods=['GET'])
@@ -265,7 +275,7 @@ def get_cba_default(**kwargs):
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail=str(e))
 
-    
+
 
 
 @aqueduct_analysis_endpoints_v1.route('/risk/widget/<widget_id>', strict_slashes=False, methods=['GET'])
@@ -295,4 +305,43 @@ def get_risk_widget(widget_id, **kwargs):
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail=str(e))
 
-    
+
+@aqueduct_analysis_endpoints_v1.route('/food-supply-chain/<user_indicator>/<threshold>', strict_slashes=False, methods=['POST'])
+@sanitize_parameters
+# @validate_params_cba_def
+def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
+    try:
+        # check if the post request has the file part
+        if 'data' not in request.files:
+            logging.error('[ROUTER]: No input file provided')
+            return error(status=500, detail="No input file provided")
+
+        file = request.files['data']
+
+        if file.filename == '':
+            logging.error('[ROUTER]: No input file provided')
+            return error(status=500, detail="No input file name provided")
+
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            destination = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(destination)
+
+            logging.info('[ROUTER]: Analyzing supply chain. user_indicator="{}" threshold="{}" '.format(user_indicator, threshold))
+
+            logging.info('[ROUTER]: file path is {}'.format(destination))
+
+            analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=float(threshold), user_input=destination)
+            analyzer.run()
+
+            os.remove(destination)
+
+            return jsonify(analyzer.results), 200, {}
+        else:
+            return error(status=500, detail="Cannot save file {}. Check file extension".format(file.filename))
+    except AttributeError as e:
+        logging.error('[ROUTER]: ' + str(e))
+        return error(status=500, detail=str(e))
+    except Exception as e:
+        logging.error('[ROUTER]: ' + str(e))
+        return error(status=500, detail=str(e))

@@ -8,6 +8,7 @@
 Dependencies on other Microservices:
 
 - [Geostore](https://github.com/gfw-api/gfw-geostore-api)
+- [Control Tower](git@github.com:control-tower/control-tower.git)
 
 ## Getting started
 
@@ -29,28 +30,38 @@ cd aqueduct-analysis-microservice
 
 2. Copy `.env.sample` to `.env` and set the corresponding variable values
 
-```ssh
+3. Run the aqueduct.sh shell script in development mode.
+
+```shell
 ./aqueduct.sh develop
 ```
 
-3. Run the aqueduct.sh shell script in development mode.
+or with the auxillery services included:
 
-```ssh
-./aqueduct.sh develop
+```shell
+./aqueduct.sh gr_develop
 ```
 
 If this is the first time you run it, it may take a few minutes.
 
-For the DB:
-In order to populate the DB you will need to update the data as you need on the `/data`  folder. 
-You will need to connect to the postgres container. To do so:
-`docker exec -it aqueduct-postgres /bin/bash`
-To check the folder: `cd /data_import`
-To import data dump:
-`su - postgres`
-`createdb flood_v2`
-`exit`
-`pg_restore -U postgres -d flood_v2 flood_v3.sql`
+### Database init
+
+In order to populate the DB you will need to place a database dump in the
+`/data` folder and source it from within the postgres container.
+
+* Copy the dump (assuming `flood_v3.dump`) into ./data from host machine (your laptop)
+
+* Ensure the database is running (containerized)
+  docker-compose -f docker-compose-gr.yml up aqueduct-postgres
+
+* Get a shell prompt on the database container
+  docker exec -it aqueduct-postgres-gr /bin/bash
+
+**** change to the data directory
+  cd /docker-entrypoint-initdb.d
+
+* Import data
+  pg_restore -1 -U postgres -d flood_v2 flood_v3.dump
 
 ### Code structure
 
@@ -58,3 +69,18 @@ The API has been packed in a Python module (aqueduct). It creates and exposes a 
 has been divided in three different layers or submodules (Routes, Services and Models).
 
 There are also some generic submodules that manage the request validations, HTTP errors and the background tasks manager.
+
+### Deploy
+
+merge into dev
+deploy remote is the one watched by Jenkins
+git push deploy dev:dev
+https://jenkins.aws-dev.resourcewatch.org/me/my-views/view/all/
+
+### Running
+
+  * Load database (get from Todd)
+  * aqueduct.sh gr_develop
+  * curl http://localhost:5100/api/v1/aqueduct/analysis | jq is the base url. This should give you a 400.
+  * aqueduct/routes/api/v1/ps_router.py has routing information
+  * curl http://localhost:5100/api/v1/aqueduct/analysis/cba/widget/1 | jq I believe connects to change in #177628334

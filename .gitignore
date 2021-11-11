@@ -90,3 +90,6 @@ ENV/
 
 # data
 data/
+
+Aqueduct30_PFAF_ID.shp
+Aqueduct30_AQID.shp
