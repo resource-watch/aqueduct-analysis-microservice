@@ -19,7 +19,7 @@ cerberus==1.2
 geopy==1.19.0
 xlrd==1.2.0
 gunicorn==19.9.0
-eventlet==0.25.0
+eventlet==0.31.0
 apispec==3.3.0
 apispec-webframeworks==0.5.2
 pyyaml==5.3
