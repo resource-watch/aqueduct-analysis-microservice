@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y bash git gcc \
 RUN addgroup $USER && useradd -ms /bin/bash $USER -g $USER
 RUN pip install --upgrade pip
 
-RUN mkdir -p /opt/$NAME
+RUN mkdir -p /opt/$NAME /opt/$NAME/tmp
 COPY tox.ini /opt/$NAME/tox.ini
 COPY requirements.txt /opt/$NAME/requirements.txt
 COPY requirements_dev.txt /opt/$NAME/requirements_dev.txt

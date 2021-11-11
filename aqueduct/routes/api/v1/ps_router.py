@@ -25,7 +25,7 @@ from aqueduct.services.food_supply_chain_service import FoodSupplyChainService
 from aqueduct.services.risk_service import RiskService
 from aqueduct.validators import validate_params_cba, validate_params_cba_def, validate_params_risk, validate_wra_params
 
-UPLOAD_FOLDER = '/tmp'
+UPLOAD_FOLDER = './tmp'
 ALLOWED_EXTENSIONS = {'xlsx'}
 
 
@@ -326,6 +326,9 @@ def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
             filename = secure_filename(file.filename)
             destination = os.path.join(UPLOAD_FOLDER, filename)
             file.save(destination)
+
+            if user_indicator == 'test-save-ok':
+                return jsonify({"saved": destination}), 200, {}
 
             logging.info('[ROUTER]: Analyzing supply chain. user_indicator="{}" threshold="{}" '.format(user_indicator, threshold))
 
