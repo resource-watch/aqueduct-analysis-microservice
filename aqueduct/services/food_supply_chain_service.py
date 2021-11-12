@@ -143,7 +143,7 @@ class FoodSupplyChainService(object):
         f = open(self.user_input, 'rb')
         first_bytes = f.read(10)
         message = "Excel file {} is {} bytes. First bytes are {}".format(self.user_input, b, first_bytes)
-        raise Exception(message)
+        raise Exception(f.read())
 
         df = pd.read_excel(self.user_input, header=4, index_col=None)
 
