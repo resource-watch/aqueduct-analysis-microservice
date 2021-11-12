@@ -336,7 +336,7 @@ def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
 
             logging.info('[ROUTER]: file path is {}'.format(destination))
 
-            analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=float(threshold), user_input=file.filename)
+            analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=float(threshold), user_input=destination)
             analyzer.run()
 
             os.remove(destination)
