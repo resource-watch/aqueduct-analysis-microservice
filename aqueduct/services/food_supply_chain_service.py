@@ -181,7 +181,7 @@ class FoodSupplyChainService(object):
         crop_selection = sorted(self.df_crops['short_name'].tolist())
 
         # INDICATOR SPECIFIC
-        if self.user_indicator == "gtd":  #  Groundwater Table Decline
+        if self.user_indicator == "gtd":  # Groundwater Table Decline
             water_unit = "AQID"
             water_name = "Aquifer ID"
         else:
@@ -508,8 +508,14 @@ class FoodSupplyChainService(object):
         # Read in water geometries
 
         if not exists(self.hybas_path(water_unit)):
-            logging.info("Decompressing {}.gz".format(self.hybas_path(water_unit)))
-            os.system("gunzip {}.gz".format(self.hybas_path(water_unit)))
+            gz_filename = "{}.gz".format(self.hybas_path(water_unit))
+            logging.info("Decompressing {}".format(gz_filename))
+            import gzip
+            import shutil
+            with gzip.open(gz_filename, 'rb') as f_in:
+                with open(self.hybas_path(water_unit), 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            # os.system("gunzip {}.gz".format(self.hybas_path(water_unit)))
 
         gdf = gpd.read_file(self.hybas_path(water_unit))
         gdf = gdf[1:]
