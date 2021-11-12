@@ -106,7 +106,7 @@ class FoodSupplyChainService(object):
                 value = None
             if new_key is None:
                 if key.endswith("% Change Required"):
-                    new_key = 'bwd_pcr'
+                    new_key = 'pcr'
                 elif key.endswith("Desired Condition"):
                     new_key = 'dc'
                 elif key.endswith("Raw Value"):
