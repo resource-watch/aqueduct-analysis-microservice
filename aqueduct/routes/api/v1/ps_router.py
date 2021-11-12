@@ -10,6 +10,7 @@ import geojson as geoj
 import pandas as pd
 import re
 import os
+import traceback
 from flask import jsonify, request, Blueprint, json
 from werkzeug.utils import secure_filename
 
@@ -347,4 +348,8 @@ def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
         return error(status=500, detail=str(e))
     except Exception as e:
         logging.error('[ROUTER]: ' + str(e))
-        return error(status=500, detail=str(e))
+        tb = ''.join(traceback.format_tb(e.__traceback__))
+        message = str(e)
+        payload = {"tb": tb, "message": message}
+        return jsonify(payload), 500, {}
+        # return error(status=500, detail=str(e))

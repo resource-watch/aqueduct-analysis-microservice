@@ -515,7 +515,6 @@ class FoodSupplyChainService(object):
             with gzip.open(gz_filename, 'rb') as f_in:
                 with open(self.hybas_path(water_unit), 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
-            # os.system("gunzip {}.gz".format(self.hybas_path(water_unit)))
 
         gdf = gpd.read_file(self.hybas_path(water_unit))
         gdf = gdf[1:]
@@ -590,6 +589,8 @@ class FoodSupplyChainService(object):
 if __name__ == '__main__':
     import sys
     import json
+    import pdb
+
     if len(sys.argv) < 3:
         print("pass in indicator as first argument: bws, bwd, cep, udw, usa, gtd")
         print("pass in threshold as second arg")
