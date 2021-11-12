@@ -22,31 +22,31 @@ services:
       - ./aqueduct:/opt/aqueduct/aqueduct
     depends_on:
       - aqueduct-postgres
-      - gfw_geostore_api
+      #- gfw_geostore_api
 
   # Clone https://github.com/greenriver/gfw-geostore-api up one directory
-  gfw_geostore_api:
-    build: ../gfw-geostore-api
-    expose:
-      - "3100"
-    ports:
-      - "3100:3100"
-    container_name: gfw-geostore-api-develop-gr
-    env_file:
-      - ../gfw-geostore-api/dev.env
-    environment:
-      PORT: 3100
-      NODE_ENV: dev
-      NODE_PATH: app/src
-      API_VERSION: v1
-      CT_REGISTER_MODE: auto
-      MONGO_PORT_27017_TCP_ADDR: mongo
-      FASTLY_ENABLED: "false"
-    command: develop
-    depends_on:
-      - mongo
-    volumes:
-      - ../gfw-geostore-api/app:/opt/gfw-geostore-api/app
+  #gfw_geostore_api:
+  #  build: ../gfw-geostore-api
+  #  expose:
+  #    - "3100"
+  #  ports:
+  #    - "3100:3100"
+  #  container_name: gfw-geostore-api-develop-gr
+  #  env_file:
+  #    - ../gfw-geostore-api/dev.env
+  #  environment:
+  #    PORT: 3100
+  #    NODE_ENV: dev
+  #    NODE_PATH: app/src
+  #    API_VERSION: v1
+  #    CT_REGISTER_MODE: auto
+  #    MONGO_PORT_27017_TCP_ADDR: mongo
+  #    FASTLY_ENABLED: "false"
+  #  command: develop
+  #  depends_on:
+  #    - mongo
+  #  volumes:
+  #    - ../gfw-geostore-api/app:/opt/gfw-geostore-api/app
 
   # Clone https://github.com/greenriver/control-tower up one directory
   # I've been told this is being phased out.

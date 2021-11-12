@@ -197,7 +197,10 @@ class FoodSupplyChainService(object):
         # REMOVE POTENTIAL WHITESPACE FROM TEXT FIELDS
         clean_columns = ['State/Province', 'Country', 'Radius Unit', 'Material Type']
         for c in clean_columns:
-            df[c] = df[c].str.strip()  # Remove extra whitespaces
+            # import pdb
+            # pdb.set_trace()
+            if str(df[c].dtype) == 'object':
+                df[c] = df[c].str.strip()  # Remove extra whitespaces
             df[c].replace('None', np.nan, inplace=True)  # Turn "None" into np.nan
 
         # CROP NAME LOOKUP TABLE
@@ -603,6 +606,9 @@ if __name__ == '__main__':
         exit()
     user_indicator = sys.argv[1]
     user_threshold = float(sys.argv[2])
-    analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=user_threshold, user_input='aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx')
+    #user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
+    #user_input = 'aqueduct/services/supply_chain_data/no.state.xlsx'
+    user_input = 'aqueduct/services/supply_chain_data/supply_chain_test2.xlsx'
+    analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=user_threshold, user_input=user_input)
     analyzer.run()
     print(json.dumps(analyzer.results))
