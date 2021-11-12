@@ -327,10 +327,10 @@ def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
             filename = secure_filename(file.filename)
             destination = os.path.join(UPLOAD_FOLDER, filename)
 
-            file.save(destination)
+            file.save(destination, 1024*1024*5)
 
             if user_indicator == 'test-save-ok':
-                return jsonify({"saved": destination}), 200, {}
+                return jsonify({"saved": destination, "content-type": file.content_type, "content-length": file.content_length}), 200, {}
 
             logging.info('[ROUTER]: Analyzing supply chain. user_indicator="{}" threshold="{}" '.format(user_indicator, threshold))
 
