@@ -326,6 +326,7 @@ def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             destination = os.path.join(UPLOAD_FOLDER, filename)
+
             file.save(destination)
 
             if user_indicator == 'test-save-ok':
@@ -335,7 +336,7 @@ def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
 
             logging.info('[ROUTER]: file path is {}'.format(destination))
 
-            analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=float(threshold), user_input=destination)
+            analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=float(threshold), user_input=file.filename)
             analyzer.run()
 
             os.remove(destination)
