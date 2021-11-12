@@ -139,6 +139,10 @@ class FoodSupplyChainService(object):
         self.hybas_path = "aqueduct/services/supply_chain_data/Aqueduct30_{}.shp".format
 
     def run(self):
+        b = os.path.getsize(self.user_input)
+        message = "excel file {} is {} bytes".format(self.user_input, b)
+        raise Exception(message)
+
         df = pd.read_excel(self.user_input, header=4, index_col=None)
 
         # Create a row index that matches excel files
