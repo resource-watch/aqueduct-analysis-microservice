@@ -139,6 +139,12 @@ class FoodSupplyChainService(object):
         self.hybas_path = "aqueduct/services/supply_chain_data/Aqueduct30_{}.shp".format
 
     def run(self):
+        # b = os.path.getsize(self.user_input)
+        # f = open(self.user_input, 'rb')
+        # first_bytes = f.read(50)
+        # message = "Excel file {} is {} bytes. First bytes are {}".format(self.user_input, b, first_bytes)
+        # raise Exception(message)
+
         df = pd.read_excel(self.user_input, header=4, index_col=None)
 
         # Create a row index that matches excel files
@@ -181,7 +187,7 @@ class FoodSupplyChainService(object):
         crop_selection = sorted(self.df_crops['short_name'].tolist())
 
         # INDICATOR SPECIFIC
-        if self.user_indicator == "gtd":  #  Groundwater Table Decline
+        if self.user_indicator == "gtd":  # Groundwater Table Decline
             water_unit = "AQID"
             water_name = "Aquifer ID"
         else:
@@ -191,7 +197,10 @@ class FoodSupplyChainService(object):
         # REMOVE POTENTIAL WHITESPACE FROM TEXT FIELDS
         clean_columns = ['State/Province', 'Country', 'Radius Unit', 'Material Type']
         for c in clean_columns:
-            df[c] = df[c].str.strip()  # Remove extra whitespaces
+            # import pdb
+            # pdb.set_trace()
+            if str(df[c].dtype) == 'object':
+                df[c] = df[c].str.strip()  # Remove extra whitespaces
             df[c].replace('None', np.nan, inplace=True)  # Turn "None" into np.nan
 
         # CROP NAME LOOKUP TABLE
@@ -508,8 +517,13 @@ class FoodSupplyChainService(object):
         # Read in water geometries
 
         if not exists(self.hybas_path(water_unit)):
-            logging.info("Decompressing {}.gz".format(self.hybas_path(water_unit)))
-            os.system("gunzip {}.gz".format(self.hybas_path(water_unit)))
+            gz_filename = "{}.gz".format(self.hybas_path(water_unit))
+            logging.info("Decompressing {}".format(gz_filename))
+            import gzip
+            import shutil
+            with gzip.open(gz_filename, 'rb') as f_in:
+                with open(self.hybas_path(water_unit), 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
 
         gdf = gpd.read_file(self.hybas_path(water_unit))
         gdf = gdf[1:]
@@ -584,12 +598,17 @@ class FoodSupplyChainService(object):
 if __name__ == '__main__':
     import sys
     import json
+    import pdb
+
     if len(sys.argv) < 3:
         print("pass in indicator as first argument: bws, bwd, cep, udw, usa, gtd")
         print("pass in threshold as second arg")
         exit()
     user_indicator = sys.argv[1]
     user_threshold = float(sys.argv[2])
-    analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=user_threshold, user_input='aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx')
+    #user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
+    #user_input = 'aqueduct/services/supply_chain_data/no.state.xlsx'
+    user_input = 'aqueduct/services/supply_chain_data/supply_chain_test2.xlsx'
+    analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=user_threshold, user_input=user_input)
     analyzer.run()
     print(json.dumps(analyzer.results))

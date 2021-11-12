@@ -10,6 +10,7 @@ import geojson as geoj
 import pandas as pd
 import re
 import os
+import traceback
 from flask import jsonify, request, Blueprint, json
 from werkzeug.utils import secure_filename
 
@@ -25,7 +26,7 @@ from aqueduct.services.food_supply_chain_service import FoodSupplyChainService
 from aqueduct.services.risk_service import RiskService
 from aqueduct.validators import validate_params_cba, validate_params_cba_def, validate_params_risk, validate_wra_params
 
-UPLOAD_FOLDER = '/tmp'
+UPLOAD_FOLDER = './tmp'
 ALLOWED_EXTENSIONS = {'xlsx'}
 
 
@@ -325,7 +326,11 @@ def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             destination = os.path.join(UPLOAD_FOLDER, filename)
+
             file.save(destination)
+
+            if user_indicator == 'test-save-ok':
+                return jsonify({"saved": destination}), 200, {}
 
             logging.info('[ROUTER]: Analyzing supply chain. user_indicator="{}" threshold="{}" '.format(user_indicator, threshold))
 
@@ -344,4 +349,8 @@ def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
         return error(status=500, detail=str(e))
     except Exception as e:
         logging.error('[ROUTER]: ' + str(e))
-        return error(status=500, detail=str(e))
+        tb = ''.join(traceback.format_tb(e.__traceback__))
+        message = str(e)
+        payload = {"tb": tb, "message": message}
+        return jsonify(payload), 500, {}
+        # return error(status=500, detail=str(e))
