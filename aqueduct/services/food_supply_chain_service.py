@@ -96,14 +96,17 @@ class FoodSupplyChainService(object):
       'Watershed ID': 'wid'
       }
 
-    def abbreviate_payload(self, payload):
+    def prepare_payload(self, payload):
         new_payload = {}
 
         for key in payload:
             new_key = self.output_lookup.get(key)
+            value = payload[key]
+            if pd.isna(value):
+                value = None
             if new_key is None:
                 if key.endswith("% Change Required"):
-                    new_key = 'bwd_pcr'
+                    new_key = 'pcr'
                 elif key.endswith("Desired Condition"):
                     new_key = 'dc'
                 elif key.endswith("Raw Value"):
@@ -112,9 +115,9 @@ class FoodSupplyChainService(object):
                     new_key = 's'
                 else:
                     new_key = key
-                new_payload[new_key] = payload[key]
+                new_payload[new_key] = value
             else:
-                new_payload[new_key] = payload[key]
+                new_payload[new_key] = value
         return new_payload
 
     def __init__(self, user_input, user_indicator='bwd', user_threshold=0.25):
@@ -301,8 +304,8 @@ class FoodSupplyChainService(object):
         # create list of priority watersheds (exceed threshold)
         # priority_watersheds = list(set(df_successes[water_name][df_successes[change_req] > 0].tolist()))
 
-        self.results['locations'] = list(map(self.abbreviate_payload, df_successes.to_dict('records')))
-        self.results['errors'] = list(map(self.abbreviate_payload, df_errorlog.to_dict('records')))
+        self.results['locations'] = list(map(self.prepare_payload, df_successes.to_dict('records')))
+        self.results['errors'] = list(map(self.prepare_payload, df_errorlog.to_dict('records')))
         self.results['indicator'] = self.user_indicator
         # self.results['all_waterunits'] = sourcing_watersheds
         # self.results['priority_waterunits'] = priority_watersheds

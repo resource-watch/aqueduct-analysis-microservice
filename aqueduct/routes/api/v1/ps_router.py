@@ -11,6 +11,7 @@ import pandas as pd
 import re
 import os
 import traceback
+import base64
 from flask import jsonify, request, Blueprint, json
 from werkzeug.utils import secure_filename
 
@@ -27,7 +28,7 @@ from aqueduct.services.risk_service import RiskService
 from aqueduct.validators import validate_params_cba, validate_params_cba_def, validate_params_risk, validate_wra_params
 
 UPLOAD_FOLDER = './tmp'
-ALLOWED_EXTENSIONS = {'xlsx'}
+ALLOWED_EXTENSIONS = {'xlsx', 'b64'}
 
 
 def allowed_file(filename):
@@ -328,6 +329,17 @@ def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
             destination = os.path.join(UPLOAD_FOLDER, filename)
 
             file.save(destination, 1024*1024*5)
+
+            # Something is corrupting excel files. I cannot figure out what's
+            # doing it. Large csv and text files do not get corrupted. The file
+            # extension isn't the problem either.
+            if destination.endswith('b64'):
+                logging.error('[ROUTER]: base64 decoding uploaded file')
+                fin = open(destination, "r")
+                xlsx = base64.b64decode(fin.read())
+                fin.close()
+                fout = open(destination, "wb")
+                fout.write(xlsx)
 
             if user_indicator == 'test-save-ok':
                 return jsonify({"saved": destination, "content-type": file.content_type, "content-length": file.content_length}), 200, {}
