@@ -63,6 +63,11 @@ spec:
                 secretKeyRef:
                   key: AQUEDUCT_POSTGRES_URL
                   name: dbsecrets
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  key: REDIS_URL
+                  name: dbsecrets
             - name: AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
