@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: aqueduct-analysis-supply-chain-worker
+  name: aqueduct-analysis-supply-chain-worker
+  namespace: aqueduct
+spec:
+  progressDeadlineSeconds: 2147483647
+  replicas: 1
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      name: aqueduct-analysis-supply-chain-worker
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: aqueduct-analysis-supply-chain-worker
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: type
+                    operator: In
+                    values:
+                      - apps
+      containers:
+        - args:
+            - python3
+            - aqueduct/workers/supply-chain-worker.py
+          env:
+            - name: ENVIRONMENT
+              value: production
+            - name: LOGGER_LEVEL
+              value: DEBUG
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  key: REDIS_URL
+                  name: dbsecrets
+          image: gfwdockerhub/aqueduct-analysis
+          imagePullPolicy: Always
+          name: aqueduct-analysis-supply-chain-worker
+          resources:
+            requests:
+              cpu: "0"
+              memory: "0"
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+        - name: regcred
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: { }
+      terminationGracePeriodSeconds: 30

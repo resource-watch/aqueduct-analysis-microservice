@@ -5,6 +5,7 @@ node {
   // Variables
   def tokens = "${env.JOB_NAME}".tokenize('/')
   def appName = tokens[0]
+  def workerName = "${tokens[0]}-supply-chain-worker"
   def dockerUsername = "${DOCKER_WRI_USERNAME}"
   def imageTag = "${dockerUsername}/${appName}:${env.BRANCH_NAME}.${env.BUILD_NUMBER}"
 
@@ -43,7 +44,8 @@ node {
           sh("echo Deploying to DEV cluster")
           sh("kubectl config use-context ${KUBECTL_CONTEXT_PREFIX}_${CLOUD_PROJECT_NAME}_${CLOUD_PROJECT_ZONE}_${KUBE_DEV_CLUSTER}")
           sh("kubectl apply -f k8s/dev/")
-          sh("kubectl set image deployment ${appName} ${appName}=${imageTag} --record  --namespace=aqueduct")
+          sh("kubectl set image deployment ${appName} ${appName}=${imageTag} --record --namespace=aqueduct")
+          sh("kubectl set image deployment ${workerName} ${workerName}=${imageTag} --record --namespace=aqueduct")
           break
 
         // Roll out to staging
@@ -52,6 +54,7 @@ node {
           sh("kubectl config use-context ${KUBECTL_CONTEXT_PREFIX}_${CLOUD_PROJECT_NAME}_${CLOUD_PROJECT_ZONE}_${KUBE_STAGING_CLUSTER}")
           sh("kubectl apply -f k8s/staging/")
           sh("kubectl set image deployment ${appName} ${appName}=${imageTag} --record  --namespace=aqueduct")
+          sh("kubectl set image deployment ${workerName} ${workerName}=${imageTag} --record --namespace=aqueduct")
           break
 
         // Roll out to production
@@ -81,6 +84,7 @@ node {
             sh("kubectl config use-context ${KUBECTL_CONTEXT_PREFIX}_${CLOUD_PROJECT_NAME}_${CLOUD_PROJECT_ZONE}_${KUBE_PROD_CLUSTER}")
             sh("kubectl apply -f k8s/production/")
             sh("kubectl set image deployment ${appName} ${appName}=${imageTag} --record  --namespace=aqueduct")
+            sh("kubectl set image deployment ${workerName} ${workerName}=${imageTag} --record --namespace=aqueduct")
           } else {
             sh("echo NOT DEPLOYED")
             currentBuild.result = 'SUCCESS'

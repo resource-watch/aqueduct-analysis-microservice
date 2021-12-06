@@ -14,9 +14,11 @@ services:
       POSTGRES_URL: postgresql://postgres@postgres:5432/flood
       GATEWAY_URL: http://mymachine:9000
       LOCAL_URL: http://mymachine:5700
+      REDIS_URL: redis://supply-chain-redis-test
     command: test
     depends_on:
       - postgres
+      - supply-chain-worker-test
 
   postgres:
     image: postgres:9.6.12
@@ -25,3 +27,17 @@ services:
       - "5432"
     environment:
       POSTGRES_DB: flood
+
+  supply-chain-worker-test:
+    build: .
+    container_name: aqueduct_analysis-supply-chain-worker-test
+    environment:
+      REDIS_URL: redis://supply-chain-redis-test
+    command: ["python3", "aqueduct/workers/supply-chain-worker.py"]
+    depends_on:
+      - supply-chain-redis-test
+
+  supply-chain-redis-test:
+    container_name: supply-chain-redis-test
+    image: redis:5-alpine
+    expose: ["6379"]
