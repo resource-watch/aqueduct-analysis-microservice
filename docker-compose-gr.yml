@@ -2,6 +2,8 @@ version: "3.8"
 
 services:
   develop:
+    networks:
+      - microservice
     build: .
     ports:
       - "5100:5100"
@@ -17,12 +19,36 @@ services:
       CT_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjU4MjBhZDk0NjlhMDI4Nzk4MmY0Y2QxOCIsInByb3ZpZGVyIjoibG9jYWwiLCJwcm92aWRlcklkIjpudWxsLCJlbWFpbCI6InNlcmdpby5nb3JkaWxsb0B2aXp6dWFsaXR5LmNvbSIsInJvbGUiOiJBRE1JTiIsImNyZWF0ZWRBdCI6IjIwMTYtMTEtMDdUMTY6MzY6MzYuODY4WiIsImV4dHJhVXNlckRhdGEiOnsiYXBwcyI6WyJnZnciLCJwcmVwIiwiYXF1ZWR1Y3QiLCJmb3Jlc3QtYXRsYXMiLCJydyIsImRhdGE0c2RnIl19fQ.3GzuhG8wD4gI5Fo6NTqHC_Dq6ChKPPWXygga2mAuKZw
       API_VERSION: v1
       POSTGRES_URL: postgresql+psycopg2://postgres:postgres@aqueduct-postgres:5432/flood_v2
+      REDIS_URL: redis://supply-chain-redis
     command: develop
     volumes:
       - ./aqueduct:/opt/aqueduct/aqueduct
     depends_on:
-      - aqueduct-postgres
+      #- aqueduct-postgres
+      - supply-chain-redis
       #- gfw_geostore_api
+
+  supply-chain-worker:
+    networks:
+      - microservice
+    build: .
+    env_file:
+       - .env
+    container_name: aqueduct_analysis_supply-chain-worker
+    environment:
+      REDIS_URL: redis://supply-chain-redis
+    command: ["python3", "aqueduct/workers/supply-chain-worker.py"]
+    depends_on:
+      - supply-chain-redis
+
+  supply-chain-redis:
+    container_name: supply-chain-redis
+    networks:
+      - microservice
+    image: redis:5-alpine
+    expose: ["6379"]
+    ports: ["6379"]
+
 
   # Clone https://github.com/greenriver/gfw-geostore-api up one directory
   #gfw_geostore_api:
@@ -50,52 +76,52 @@ services:
 
   # Clone https://github.com/greenriver/control-tower up one directory
   # I've been told this is being phased out.
-  control-tower:
-    build: ../control-tower
-    expose:
-      - "9000"
-    ports:
-      - "9000:9000"
-    container_name: control-tower-gr
-    env_file:
-      - ../control-tower/dev.env
-    command: develop
-    depends_on:
-      - mongo
-      - redis
-    volumes:
-#      - ./app:/opt/control-tower/app
-      - /var/run/docker.sock:/var/run/docker.sock
+  #control-tower:
+  #  build: ../control-tower
+  #  expose:
+  #    - "9000"
+  #  ports:
+  #    - "9000:9000"
+  #  container_name: control-tower-gr
+  #  env_file:
+  #    - ../control-tower/dev.env
+  #  command: develop
+  #  depends_on:
+  #    - mongo
+  #    - redis
+  #  volumes:
+  #    # - ./app:/opt/control-tower/app
+  #    - /var/run/docker.sock:/var/run/docker.sock
 
-  mongo:
-    image: mongo:3.4
-    container_name: gfw-geostore-mon-gr
-    command: --smallfiles
-    ports:
-      - "27017"
-    volumes:
-      - $HOME/docker/data/gfw-geostore-api:/data/db
+  #mongo:
+  #  image: mongo:3.4
+  #  container_name: gfw-geostore-mon-gr
+  #  command: --smallfiles
+  #  ports:
+  #    - "27017"
+  #  volumes:
+  #    - $HOME/docker/data/gfw-geostore-api:/data/db
 
-  redis:
-    image: redis
-    container_name: control-tower-redis-gr
-    ports:
-      - "16379:6379"
+  #redis:
+  #  image: redis
+  #  container_name: control-tower-redis-gr
+  #  ports:
+  #    - "16379:6379"
 
-  aqueduct-postgres:
-    image: postgres:9.6.19
-    container_name: aqueduct-postgres-gr
-    expose:
-      - "5432"
-    #ports:
-    #  - "5432:5432"
-    environment:
-      POSTGRES_DB: flood_v2
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - dbdata:/var/lib/postgresql/data
-      - ./data:/docker-entrypoint-initdb.d/
+  #aqueduct-postgres:
+  #  image: postgres:9.6.19
+  #  container_name: aqueduct-postgres-gr
+  #  expose:
+  #    - "5432"
+  #  #ports:
+  #  #  - "5432:5432"
+  #  environment:
+  #    POSTGRES_DB: flood_v2
+  #    POSTGRES_USER: postgres
+  #    POSTGRES_PASSWORD: postgres
+  #  volumes:
+  #    - dbdata:/var/lib/postgresql/data
+  #    - ./data:/docker-entrypoint-initdb.d/
 
   ## Only if you want to connect to db and don't have a db inspector
   # pgadmin-aq:

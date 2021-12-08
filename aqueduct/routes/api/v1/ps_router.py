@@ -308,6 +308,9 @@ def get_risk_widget(widget_id, **kwargs):
         return error(status=500, detail=str(e))
 
 
+# job_token=$(curl  -F 'data=@./aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx' http://localhost:5100/api/v1/aqueduct/analysis/food-supply-chain/bwd/0.25 | jq -r '.job_token')
+# echo $job_token
+# curl http://localhost:5100/api/v1/aqueduct/analysis/food-supply-chain/$job_token | jq
 @aqueduct_analysis_endpoints_v1.route('/food-supply-chain/<user_indicator>/<threshold>', strict_slashes=False, methods=['POST'])
 @sanitize_parameters
 # @validate_params_cba_def
@@ -349,13 +352,34 @@ def get_supply_chain_analysis(user_indicator, threshold, **kwargs):
             logging.info('[ROUTER]: file path is {}'.format(destination))
 
             analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=float(threshold), user_input=destination)
-            analyzer.run()
+            analyzer.enqueue()
 
             os.remove(destination)
 
-            return jsonify(analyzer.results), 200, {}
+            return jsonify(analyzer.results()), 200, {}
         else:
             return error(status=500, detail="Cannot save file {}. Check file extension".format(file.filename))
+    except AttributeError as e:
+        logging.error('[ROUTER]: ' + str(e))
+        return error(status=500, detail=str(e))
+    except Exception as e:
+        logging.error('[ROUTER]: ' + str(e))
+        tb = ''.join(traceback.format_tb(e.__traceback__))
+        message = str(e)
+        payload = {"tb": tb, "message": message}
+        return jsonify(payload), 500, {}
+        # return error(status=500, detail=str(e))
+
+@aqueduct_analysis_endpoints_v1.route('/food-supply-chain/<job_token>', strict_slashes=False, methods=['GET'])
+@sanitize_parameters
+# @validate_params_cba_def
+def get_supply_chain_analysis_result(job_token, **kwargs):
+    try:
+        logging.info('[ROUTER]: Getting status/results. job_token="{}"'.format(job_token))
+
+        analyzer = FoodSupplyChainService(job_token=job_token)
+
+        return jsonify(analyzer.results()), 200, {}
     except AttributeError as e:
         logging.error('[ROUTER]: ' + str(e))
         return error(status=500, detail=str(e))

@@ -2,8 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    name: aqueduct-analysis
-  name: aqueduct-analysis
+    name: aqueduct-analysis-supply-chain-worker
+  name: aqueduct-analysis-supply-chain-worker
   namespace: aqueduct
 spec:
   progressDeadlineSeconds: 2147483647
@@ -11,7 +11,7 @@ spec:
   revisionHistoryLimit: 0
   selector:
     matchLabels:
-      name: aqueduct-analysis
+      name: aqueduct-analysis-supply-chain-worker
   strategy:
     rollingUpdate:
       maxSurge: 1
@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       labels:
-        name: aqueduct-analysis
+        name: aqueduct-analysis-supply-chain-worker
     spec:
       affinity:
         nodeAffinity:
@@ -33,52 +33,21 @@ spec:
                       - apps
       containers:
         - args:
-            - start
+            - python3
+            - aqueduct/workers/supply-chain-worker.py
           env:
-            - name: PORT
-              value: "5700"
             - name: ENVIRONMENT
-              value: staging
+              value: development
             - name: LOGGER_LEVEL
               value: DEBUG
-            - name: LOCAL_URL
-              value: http://aqueduct-analysis.aqueduct.svc.cluster.local:5700
-            - name: GATEWAY_URL
-              valueFrom:
-                secretKeyRef:
-                  key: GATEWAY_URL
-                  name: mssecrets
-            - name: MICROSERVICE_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  key: MICROSERVICE_TOKEN
-                  name: mssecrets
-            - name: CARTODB_USER
-              valueFrom:
-                secretKeyRef:
-                  key: CARTODB_USER
-                  name: mssecrets
-            - name: POSTGRES_URL
-              valueFrom:
-                secretKeyRef:
-                  key: AQUEDUCT_POSTGRES_URL
-                  name: dbsecrets
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
                   key: REDIS_URL
                   name: dbsecrets
-            - name: AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY
-              valueFrom:
-                secretKeyRef:
-                  key: AQUEDUCT_GOOGLE_PLACES_PRIVATE_KEY
-                  name: appsecrets
           image: gfwdockerhub/aqueduct-analysis
           imagePullPolicy: Always
-          name: aqueduct-analysis
-          ports:
-            - containerPort: 5700
-              protocol: TCP
+          name: aqueduct-analysis-supply-chain-worker
           resources:
             requests:
               cpu: "0"

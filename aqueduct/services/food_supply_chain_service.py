@@ -25,6 +25,10 @@ import time
 import logging
 from os.path import exists
 import os
+import redis
+import json
+import hashlib
+from urllib.parse import urlparse
 
 warnings.filterwarnings('ignore')
 
@@ -120,14 +124,13 @@ class FoodSupplyChainService(object):
                 new_payload[new_key] = value
         return new_payload
 
-    def __init__(self, user_input, user_indicator='bwd', user_threshold=0.25):
+    def __init__(self, user_input=None, user_indicator='bwd', user_threshold=0.25, job_token=None):
         self.analysis_time = time.time()
         # Inputs from User
         self.user_input = user_input  # Uploaded file
         self.user_indicator = user_indicator  # Indicator Selection (from blue panel on tool)
         self.user_threshold = user_threshold  # Desired State thresholds (from blue panel on tool)
-
-        self.results = {}
+        self.job_token = job_token
 
         # -----------
         # INPUT FILES
@@ -141,6 +144,62 @@ class FoodSupplyChainService(object):
         # INDICATOR SPECIFIC GEOMETRY (WATERSHEDS OR AQUIFERS)
         self.hybas_path = "aqueduct/services/supply_chain_data/Aqueduct30_{}.shp".format
 
+        redis_url = os.environ.get('REDIS_URL')
+
+        if redis_url:
+            uri = urlparse(redis_url)
+            redis_host = uri.hostname
+            redis_port = uri.port
+            logging.info("host:  {}".format(redis_host))
+            if not redis_port:
+                redis_port = 6379
+            self.redis = redis.Redis(host=redis_host, port=int(redis_port), db=3)
+        else:
+            raise Exception("You must specify a redis url in the environment")
+
+    def enqueue(self):
+        content = open(self.user_input, mode='rb').read() # ', encoding='ascii-8bit').read()
+        md5sum = hashlib.md5(content).hexdigest()
+        self.job_token = '-'.join([md5sum, self.user_indicator, str(self.user_threshold)])
+        logging.info("redis key is {}".format(self.job_token))
+
+        self.redis.hmset(self.job_token, {"user_indicator": self.user_indicator, "user_threshold": self.user_threshold, "content": content, "status": "enqueued", "percent_complete": 5, "results": json.dumps({})})
+        self.redis.expire(self.job_token, 60*60)
+        self.redis.rpush("job_queue", self.job_token)
+        # https://github.com/redis/redis-py
+        # https://redis.io/commands/hmset
+        return self.job_token
+
+    def done(self):
+        return self.ready() or self.failed()
+
+    def ready(self):
+        return self.current_status() == "ready"
+
+    def failed(self):
+        return self.current_status() == "failed"
+
+    def current_status(self):
+        return self.redis.hget(self.job_token, "status").decode('utf-8')
+
+    def results(self):
+        payload = {}
+        payload['results'] = json.loads(self.redis.hget(self.job_token, "results"))
+        payload['status'] = self.current_status()
+        payload['job_token'] = self.job_token
+        payload['percent_complete'] = int(self.redis.hget(self.job_token, "percent_complete"))
+        return payload
+
+    def set_percent_complete(self, pct):
+        self.redis.hset(self.job_token, "percent_complete", pct)
+
+    def pop_and_do_work():
+        service = FoodSupplyChainService()
+        service.job_token = service.redis.rpop("job_queue")
+        if service.job_token:
+            logging.info("Working on job {}".format(service.job_token))
+            service.run()
+
     def run(self):
         # b = os.path.getsize(self.user_input)
         # f = open(self.user_input, 'rb')
@@ -148,7 +207,17 @@ class FoodSupplyChainService(object):
         # message = "Excel file {} is {} bytes. First bytes are {}".format(self.user_input, b, first_bytes)
         # raise Exception(message)
 
-        df = pd.read_excel(self.user_input, header=4, index_col=None)
+        content = self.redis.hget(self.job_token, "content")
+        # serialized. Only one at a time.
+        fout = open("data.xlsx", 'wb')
+        fout.write(content)
+        fout.close()
+
+        self.redis.hset(self.job_token, "status", "running")
+        self.set_percent_complete(5)
+
+        df = pd.read_excel("data.xlsx", header=4, index_col=None)
+        self.set_percent_complete(10)
 
         # Create a row index that matches excel files
         df['row'] = range(6, len(df)+6)
@@ -158,18 +227,22 @@ class FoodSupplyChainService(object):
         # Placeholder to read in CARTO AQUEDUCT DATABASE. This will need to update
         # TDB: df_aq = gpd.read_file(self.aq_path, layer = "annual")
         df_aq = gpd.read_file(self.aq_path)
+        self.set_percent_complete(15)
 
         # READ IN STANDARD INPUTS
         # IFPRI crop names and ID codes
         self.df_crops = pd.read_csv(self.croplist_path, index_col=0, header=0)
+        self.set_percent_complete(20)
 
         # Read in GADM Admin 1 and 0 place names (encoding, should retain
         # non-english characters)
         self.df_admnames = pd.read_csv(self.adm_path, encoding='utf-8-sig')
+        self.set_percent_complete(25)
 
         # Make sure lists are lists, not strings
         self.df_admnames['PFAF_ID'] = self.df_admnames['PFAF_ID'].apply(lambda x: ast.literal_eval(x))
         self.df_admnames['AQID'] = self.df_admnames['AQID'].apply(lambda x: ast.literal_eval(x))
+        self.set_percent_complete(30)
 
         # ----------
         # CLEAN DATA
@@ -188,6 +261,7 @@ class FoodSupplyChainService(object):
         # Crops (for now, use all crops in import file. But leaving the ability
         # to filter by crop in the future)
         crop_selection = sorted(self.df_crops['short_name'].tolist())
+        self.set_percent_complete(35)
 
         # INDICATOR SPECIFIC
         if self.user_indicator == "gtd":  # Groundwater Table Decline
@@ -206,11 +280,14 @@ class FoodSupplyChainService(object):
                 df[c] = df[c].str.strip()  # Remove extra whitespaces
             df[c].replace('None', np.nan, inplace=True)  # Turn "None" into np.nan
 
+        self.set_percent_complete(40)
+
         # CROP NAME LOOKUP TABLE
 
         # Create lookup dictionary of crop names to crop IDs using IFPRI
         # definitions
         crop_dict = self.df_crops.set_index('full_name')['short_name'].to_dict()
+        self.set_percent_complete(45)
 
         # Add alternatives that might appear
         crop_dict.update(self.crop_fixes)
@@ -234,17 +311,20 @@ class FoodSupplyChainService(object):
         # ----------------------------------
         # Categorize location type
         self.df_2['Select_By'] = self.df_2.apply(lambda x: self.find_selection_type(x), axis=1)
+        self.set_percent_complete(50)
 
         # CREATE ERROR LOG
         self.df_locfail = self.df_2[self.df_2['Select_By'].isna()]
         self.df_locfail['Error'] = 'Missing Location'
         self.df_locfail.drop(['SPAM_code', 'Select_By'], axis=1, inplace=True)
         self.df_locfail["row"] = self.df_locfail.index
+        self.set_percent_complete(55)
 
         loc_time = time.time()
         df_waterunits, df_errorlog = self.find_locations(water_unit)
         logging.info("Locations ready in {} seconds".format(time.time() - loc_time))
         loc_time = time.time()
+        self.set_percent_complete(60)
 
         # --------------
         # FIND LOCATIONS
@@ -262,11 +342,13 @@ class FoodSupplyChainService(object):
 
         # Pull raw value and label
         users_watersheds = users_watersheds.filter([water_unit.lower(), indicator_selection, indicator_abb.lower() + "_label"])
+        self.set_percent_complete(65)
 
         # rename raw and score columns
         users_watersheds.rename(columns={water_unit.lower(): water_unit,
                                          indicator_selection: raw,
                                          indicator_abb.lower() + "_label": score}, inplace=True)
+        self.set_percent_complete(80)
 
         # Drop duplicates
         users_watersheds.drop_duplicates(inplace=True)
@@ -282,11 +364,13 @@ class FoodSupplyChainService(object):
         users_watersheds[desired_con] = users_watersheds[desired_con].astype(float)
         users_watersheds[change_req] = ((users_watersheds[raw] - users_watersheds[desired_con]) / users_watersheds[raw])
         users_watersheds[change_req] = np.where(users_watersheds[raw] < users_watersheds[desired_con], 0, users_watersheds[change_req])
+        self.set_percent_complete(85)
 
         # Format columns
         users_watersheds[raw] = (users_watersheds[raw] * 100).astype(int)
         users_watersheds[desired_con] = (users_watersheds[desired_con] * 100).astype(int)
         users_watersheds[change_req] = (users_watersheds[change_req] * 100).astype(int)
+        self.set_percent_complete(90)
 
         # Tried this to get rid of NaN values.
         # users_watersheds[change_req] = np.where(pd.isna(users_watersheds[change_req]), None, users_watersheds[change_req])
@@ -296,6 +380,7 @@ class FoodSupplyChainService(object):
         users_watersheds[water_unit] = users_watersheds[water_unit].astype(int)
         df_successes = pd.merge(df_waterunits, users_watersheds, how='left', left_on=water_unit, right_on=water_unit)
         df_successes.rename(columns={water_unit: water_name}, inplace=True)
+        self.set_percent_complete(95)
 
         df_successes['row'] = df_successes['row'].astype(int)
         if 'Watershed ID' in df_successes.columns:
@@ -304,11 +389,16 @@ class FoodSupplyChainService(object):
         # create list of priority watersheds (exceed threshold)
         # priority_watersheds = list(set(df_successes[water_name][df_successes[change_req] > 0].tolist()))
 
-        self.results['locations'] = list(map(self.prepare_payload, df_successes.to_dict('records')))
-        self.results['errors'] = list(map(self.prepare_payload, df_errorlog.to_dict('records')))
-        self.results['indicator'] = self.user_indicator
-        # self.results['all_waterunits'] = sourcing_watersheds
-        # self.results['priority_waterunits'] = priority_watersheds
+        results = {}
+        results['locations'] = list(map(self.prepare_payload, df_successes.to_dict('records')))
+        results['errors'] = list(map(self.prepare_payload, df_errorlog.to_dict('records')))
+        results['indicator'] = self.user_indicator
+        # results['all_waterunits'] = sourcing_watersheds
+        # results['priority_waterunits'] = priority_watersheds
+
+        self.redis.hset(self.job_token, "results", json.dumps(results))
+        self.redis.hset(self.job_token, "status", "ready")
+        self.set_percent_complete(100)
 
         logging.info("Analysis Time: {} seconds".format(time.time() - self.analysis_time))
 
@@ -597,21 +687,33 @@ class FoodSupplyChainService(object):
         return df_sourced, df_fails
 
 
-
+# from within dev container
+# python3 ./aqueduct/services/food_supply_chain_service.py cep 0.5
 if __name__ == '__main__':
     import sys
-    import json
     import pdb
 
     if len(sys.argv) < 3:
         print("pass in indicator as first argument: bws, bwd, cep, udw, usa, gtd")
         print("pass in threshold as second arg")
         exit()
+
     user_indicator = sys.argv[1]
     user_threshold = float(sys.argv[2])
-    #user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
-    #user_input = 'aqueduct/services/supply_chain_data/no.state.xlsx'
+    # user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
+    # user_input = 'aqueduct/services/supply_chain_data/no.state.xlsx'
     user_input = 'aqueduct/services/supply_chain_data/supply_chain_test2.xlsx'
     analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=user_threshold, user_input=user_input)
-    analyzer.run()
-    print(json.dumps(analyzer.results))
+    analyzer.enqueue()
+    # worker container should handle this
+    # analyzer.run()
+    job_token = analyzer.results()['job_token']
+    print("job_token = {}".format(job_token))
+
+    print("popping work")
+    FoodSupplyChainService.pop_and_do_work()
+
+    print("Getting results")
+    analyzer2 = FoodSupplyChainService(job_token=job_token)
+
+    print(analyzer2.results())

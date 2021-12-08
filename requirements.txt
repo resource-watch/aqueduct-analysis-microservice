@@ -1,3 +1,4 @@
+redis==4.0.2
 numpy==1.19.5
 scipy==1.5.4
 fuzzywuzzy==0.18.0
