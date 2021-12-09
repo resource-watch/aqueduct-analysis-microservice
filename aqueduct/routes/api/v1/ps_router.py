@@ -308,9 +308,11 @@ def get_risk_widget(widget_id, **kwargs):
         return error(status=500, detail=str(e))
 
 
-# job_token=$(curl  -F 'data=@./aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx' http://localhost:5100/api/v1/aqueduct/analysis/food-supply-chain/bwd/0.25 | jq -r '.job_token')
+# uri=https://staging-api.resourcewatch.org/aqueduct/analysis/food-supply-chain
+# uri=http://localhost:5100/api/v1/aqueduct/analysis/food-supply-chain
+# job_token=$(curl  -F 'data=@./aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx' $uri/cep/0.125 | jq -r '.job_token')
 # echo $job_token
-# curl http://localhost:5100/api/v1/aqueduct/analysis/food-supply-chain/$job_token | jq
+# curl $uri/$job_token | jq
 @aqueduct_analysis_endpoints_v1.route('/food-supply-chain/<user_indicator>/<threshold>', strict_slashes=False, methods=['POST'])
 @sanitize_parameters
 # @validate_params_cba_def

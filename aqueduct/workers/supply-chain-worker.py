@@ -6,6 +6,6 @@ import time
 import logging
 
 while True:
-    logging.debug("Checking for work")
+    logging.info("Checking for work")
     FoodSupplyChainService.pop_and_do_work()
     time.sleep(5)

@@ -37,7 +37,8 @@ services:
     container_name: aqueduct_analysis_supply-chain-worker
     environment:
       REDIS_URL: redis://supply-chain-redis
-    command: ["python3", "aqueduct/workers/supply-chain-worker.py"]
+    command: ["worker"]
+    #["python3", "aqueduct/workers/supply-chain-worker.py"]
     depends_on:
       - supply-chain-redis
 

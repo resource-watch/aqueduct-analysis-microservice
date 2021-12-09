@@ -14,6 +14,10 @@ case "$1" in
         echo "Running Start"
         exec gunicorn -c gunicorn.py aqueduct:app
         ;;
+    worker)
+        echo "Running worker"
+        exec python aqueduct/workers/supply-chain-worker.py
+        ;;
     *)
         exec "$@"
 esac

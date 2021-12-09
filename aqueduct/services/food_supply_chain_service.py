@@ -184,10 +184,19 @@ class FoodSupplyChainService(object):
 
     def results(self):
         payload = {}
-        payload['results'] = json.loads(self.redis.hget(self.job_token, "results"))
-        payload['status'] = self.current_status()
         payload['job_token'] = self.job_token
-        payload['percent_complete'] = int(self.redis.hget(self.job_token, "percent_complete"))
+
+        results = self.redis.hget(self.job_token, "results")
+
+        if results:
+            payload['results'] = json.loads(results)
+            payload['status'] = self.current_status()
+            payload['percent_complete'] = int(self.redis.hget(self.job_token, "percent_complete"))
+        else:
+            payload['results'] = {}
+            payload['status'] = "invalid-job-token"
+            payload['percent_complete'] = 0
+
         return payload
 
     def set_percent_complete(self, pct):
