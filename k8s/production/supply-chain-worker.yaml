@@ -33,8 +33,7 @@ spec:
                       - apps
       containers:
         - args:
-            - python3
-            - aqueduct/workers/supply-chain-worker.py
+            - worker
           env:
             - name: ENVIRONMENT
               value: production
