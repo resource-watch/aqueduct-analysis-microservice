@@ -386,7 +386,10 @@ def get_supply_chain_analysis_result(job_token, **kwargs):
         return jsonify(analyzer.results()), 200, {}
     except AttributeError as e:
         logging.error('[ROUTER]: ' + str(e))
-        return error(status=500, detail=str(e))
+        tb = ''.join(traceback.format_tb(e.__traceback__))
+        message = str(e)
+        payload = {"tb": tb, "message": message}
+        return jsonify(payload), 500, {}
     except Exception as e:
         logging.error('[ROUTER]: ' + str(e))
         tb = ''.join(traceback.format_tb(e.__traceback__))
