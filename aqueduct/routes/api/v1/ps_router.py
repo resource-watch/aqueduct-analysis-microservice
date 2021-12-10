@@ -383,7 +383,7 @@ def get_supply_chain_analysis_result(job_token, **kwargs):
 
         analyzer = FoodSupplyChainService(job_token=job_token)
 
-        return jsonify(analyzer.results()), 200, {}
+        return jsonify(analyzer.results(fake_payload=True)), 200, {}
     except AttributeError as e:
         logging.error('[ROUTER]: ' + str(e))
         tb = ''.join(traceback.format_tb(e.__traceback__))

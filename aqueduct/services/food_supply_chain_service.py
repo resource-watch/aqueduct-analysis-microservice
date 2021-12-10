@@ -182,7 +182,7 @@ class FoodSupplyChainService(object):
     def current_status(self):
         return self.redis.hget(self.job_token, "status").decode('utf-8')
 
-    def results(self):
+    def results(self, fake_payload=False):
         payload = {}
         payload['job_token'] = self.job_token
 
@@ -191,6 +191,12 @@ class FoodSupplyChainService(object):
         if results:
             payload['results'] = json.loads(results)
             payload['status'] = self.current_status()
+
+            # testing theory of size being the issue. Still want to parse the
+            # json above since I think that isn't the problem
+            if fake_payload and payload['status'] == "ready":
+                payload['results'] = {"big_but_not_huge": "x"*250000}
+
             payload['percent_complete'] = int(self.redis.hget(self.job_token, "percent_complete"))
         else:
             payload['results'] = {}
