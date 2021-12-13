@@ -145,6 +145,8 @@ class FoodSupplyChainService(object):
         # INDICATOR SPECIFIC GEOMETRY (WATERSHEDS OR AQUIFERS)
         self.hybas_path = "aqueduct/services/supply_chain_data/Aqueduct30_{}.shp".format
 
+        self.bucket = os.environ.get('S3_BUCKET_NAME')
+
         redis_url = os.environ.get('REDIS_URL')
 
         if redis_url:
@@ -416,14 +418,8 @@ class FoodSupplyChainService(object):
         # results['all_waterunits'] = sourcing_watersheds
         # results['priority_waterunits'] = priority_watersheds
 
-        bucket = os.environ.get('S3_BUCKET')
-        if bucket:
-            s3 = boto3.resource('s3')
-            key = "food-supply-chain/{}".format(self.job_token)
-            s3.Bucket(bucket).put_object(Key=key, Body=json.dumps(results))
-            #s3_url = "https://s3......."
-            # or maybe just store nothing. we can make the url in the response method?
-            self.redis.hset(self.job_token, "results", json.dumps({"s3_url": s3_url}))
+        if self.bucket:
+            self.upload_results(results)
         else:
             self.redis.hset(self.job_token, "results", json.dumps(results))
 
@@ -431,6 +427,33 @@ class FoodSupplyChainService(object):
         self.set_percent_complete(100)
 
         logging.info("Analysis Time: {} seconds".format(time.time() - self.analysis_time))
+
+    def upload_results(self, results):
+        session = boto3.session.Session()
+        s3 = None
+
+        if os.environ.get("ENDPOINT_URL"):
+            s3 = session.client(
+                 service_name='s3',
+                 aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+                 aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+                 endpoint_url=os.environ.get("ENDPOINT_URL")
+            )
+        else:
+            s3 = boto3.resource('s3')
+
+        key = "food-supply-chain/{}".format(self.job_token)
+
+        s3.put_object(Bucket=self.bucket, Key=key, Body=json.dumps(results))
+
+        # Generate the URL to get 'key-name' from 'bucket-name'
+        s3_url = s3.generate_presigned_url(
+                 ClientMethod='get_object',
+                 ExpiresIn=3600,
+                 Params={'Bucket': self.bucket, 'Key': key}
+        )
+
+        self.redis.hset(self.job_token, "results", json.dumps({"s3_url": s3_url}))
 
     # Define whether location will use point + radius, state, or country to
     # select watersheds
@@ -738,8 +761,11 @@ if __name__ == '__main__':
     job_token = analyzer.results()['job_token']
     print("job_token = {}".format(job_token))
 
-    print("popping work")
-    FoodSupplyChainService.pop_and_do_work()
+    #print("popping work")
+    #FoodSupplyChainService.pop_and_do_work()
+
+    print("testing s3 upload")
+    analyzer.upload_results({"apples": "yum"})
 
     print("Getting results")
     analyzer2 = FoodSupplyChainService(job_token=job_token)

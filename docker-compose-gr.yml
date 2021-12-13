@@ -20,6 +20,11 @@ services:
       API_VERSION: v1
       POSTGRES_URL: postgresql+psycopg2://postgres:postgres@aqueduct-postgres:5432/flood_v2
       REDIS_URL: redis://supply-chain-redis
+      ENDPOINT_URL: http://aq-localstack:4566
+      AWS_REGION: us-east-1
+      S3_BUCKET_NAME: test-bucket
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
     command: develop
     volumes:
       - ./aqueduct:/opt/aqueduct/aqueduct
@@ -37,10 +42,35 @@ services:
     container_name: aqueduct_analysis_supply-chain-worker
     environment:
       REDIS_URL: redis://supply-chain-redis
+      ENDPOINT_URL: http://aq-localstack:4566
+      AWS_REGION: us-east-1
+      S3_BUCKET_NAME: test-bucket
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
     command: ["worker"]
     #["python3", "aqueduct/workers/supply-chain-worker.py"]
     depends_on:
+      - localstack
       - supply-chain-redis
+
+  localstack:
+    networks:
+      - microservice
+    container_name: "${LOCALSTACK_DOCKER_NAME-aq-localstack}"
+    image: localstack/localstack
+    #network_mode: bridge
+    #ports:
+    #  - "127.0.0.1:4566:4566"
+    #  - "127.0.0.1:4571:4571"
+    environment:
+      - SERVICES=${SERVICES-s3}
+      - DEBUG=${DEBUG- }
+      - DATA_DIR=${DATA_DIR- }
+      - LAMBDA_EXECUTOR=${LAMBDA_EXECUTOR- }
+      - HOST_TMP_FOLDER=${TMPDIR:-/tmp/}localstack
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    #volumes:
+    #  - "${TMPDIR:-/tmp}/localstack:/tmp/localstack"
 
   supply-chain-redis:
     container_name: supply-chain-redis
