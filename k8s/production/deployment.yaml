@@ -56,6 +56,21 @@ spec:
                 secretKeyRef:
                   key: CARTODB_USER
                   name: mssecrets
+            - name: S3_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  key: AQUEDUCT_S3_BUCKET_NAME
+                  name: appsecrets
+            - name: S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  key: AQUEDUCT_S3_ACCESS_KEY_ID
+                  name: appsecrets
+            - name: S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: AQUEDUCT_S3_SECRET_ACCESS_KEY
+                  name: appsecrets
             - name: POSTGRES_URL
               valueFrom:
                 secretKeyRef:
