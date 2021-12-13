@@ -29,6 +29,7 @@ import redis
 import json
 import hashlib
 from urllib.parse import urlparse
+import boto3
 
 warnings.filterwarnings('ignore')
 
@@ -144,6 +145,8 @@ class FoodSupplyChainService(object):
         # INDICATOR SPECIFIC GEOMETRY (WATERSHEDS OR AQUIFERS)
         self.hybas_path = "aqueduct/services/supply_chain_data/Aqueduct30_{}.shp".format
 
+        self.bucket = os.environ.get('S3_BUCKET_NAME')
+
         redis_url = os.environ.get('REDIS_URL')
 
         if redis_url:
@@ -182,7 +185,7 @@ class FoodSupplyChainService(object):
     def current_status(self):
         return self.redis.hget(self.job_token, "status").decode('utf-8')
 
-    def results(self, fake_payload=False):
+    def results(self):
         payload = {}
         payload['job_token'] = self.job_token
 
@@ -191,11 +194,15 @@ class FoodSupplyChainService(object):
         if results:
             payload['results'] = json.loads(results)
             payload['status'] = self.current_status()
+            # payload['base64_encoded_results'] = False
+            # payload['gzip_compressed_results'] = False
 
-            # testing theory of size being the issue. Still want to parse the
-            # json above since I think that isn't the problem
-            if fake_payload and payload['status'] == "ready":
-                payload['results'] = {"big_but_not_huge": "x"*250000}
+            # if len(payload['results']) > 9500000:
+            #     payload['base64_encoded_results'] = True
+            #     payload['gzip_compressed_results'] = True
+            #     compressed = bz2.BZ2Compressor().compress(payload['results'])
+            #     encoded = base64.b64encode(compressed)
+            #     payload['results'] = encoded
 
             payload['percent_complete'] = int(self.redis.hget(self.job_token, "percent_complete"))
         else:
@@ -411,11 +418,42 @@ class FoodSupplyChainService(object):
         # results['all_waterunits'] = sourcing_watersheds
         # results['priority_waterunits'] = priority_watersheds
 
-        self.redis.hset(self.job_token, "results", json.dumps(results))
+        if self.bucket:
+            self.upload_results(results)
+        else:
+            self.redis.hset(self.job_token, "results", json.dumps(results))
+
         self.redis.hset(self.job_token, "status", "ready")
         self.set_percent_complete(100)
 
         logging.info("Analysis Time: {} seconds".format(time.time() - self.analysis_time))
+
+    def upload_results(self, results):
+        session = boto3.session.Session()
+        s3 = None
+
+        if os.environ.get("ENDPOINT_URL"):
+            s3 = session.client(
+                 service_name='s3',
+                 aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+                 aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+                 endpoint_url=os.environ.get("ENDPOINT_URL")
+            )
+        else:
+            s3 = boto3.resource('s3')
+
+        key = "food-supply-chain/{}".format(self.job_token)
+
+        s3.put_object(Bucket=self.bucket, Key=key, Body=json.dumps(results))
+
+        # Generate the URL to get 'key-name' from 'bucket-name'
+        s3_url = s3.generate_presigned_url(
+                 ClientMethod='get_object',
+                 ExpiresIn=3600,
+                 Params={'Bucket': self.bucket, 'Key': key}
+        )
+
+        self.redis.hset(self.job_token, "results", json.dumps({"s3_url": s3_url}))
 
     # Define whether location will use point + radius, state, or country to
     # select watersheds
@@ -715,9 +753,7 @@ if __name__ == '__main__':
 
     user_indicator = sys.argv[1]
     user_threshold = float(sys.argv[2])
-    # user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
-    # user_input = 'aqueduct/services/supply_chain_data/no.state.xlsx'
-    user_input = 'aqueduct/services/supply_chain_data/supply_chain_test2.xlsx'
+    user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
     analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=user_threshold, user_input=user_input)
     analyzer.enqueue()
     # worker container should handle this
@@ -725,8 +761,11 @@ if __name__ == '__main__':
     job_token = analyzer.results()['job_token']
     print("job_token = {}".format(job_token))
 
-    print("popping work")
-    FoodSupplyChainService.pop_and_do_work()
+    #print("popping work")
+    #FoodSupplyChainService.pop_and_do_work()
+
+    print("testing s3 upload")
+    analyzer.upload_results({"apples": "yum"})
 
     print("Getting results")
     analyzer2 = FoodSupplyChainService(job_token=job_token)
