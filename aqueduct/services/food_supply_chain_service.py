@@ -440,7 +440,11 @@ class FoodSupplyChainService(object):
                  endpoint_url=os.environ.get("ENDPOINT_URL")
             )
         else:
-            s3 = boto3.resource('s3')
+            s3 = session.client(
+                 service_name='s3',
+                 aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+                 aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            )
 
         key = "food-supply-chain/{}".format(self.job_token)
 
@@ -741,7 +745,7 @@ class FoodSupplyChainService(object):
 
 
 # from within dev container
-# python3 ./aqueduct/services/food_supply_chain_service.py cep 0.5
+# python3 ./aqueduct/services/food_supply_chain_service.py cep 0.5 test-bucket
 if __name__ == '__main__':
     import sys
     import pdb
@@ -749,23 +753,37 @@ if __name__ == '__main__':
     if len(sys.argv) < 3:
         print("pass in indicator as first argument: bws, bwd, cep, udw, usa, gtd")
         print("pass in threshold as second arg")
+        print("pass in bucket at third arg if you want to create it")
         exit()
+
+    if sys.argv[3]:
+        session = boto3.session.Session()
+        s3 = session.client(
+             service_name='s3',
+             aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+             aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+             endpoint_url=os.environ.get("ENDPOINT_URL")
+        )
+        try:
+            print("Making bucket {} if it doesn't exist".format(sys.argv[3]))
+            s3.create_bucket(Bucket=sys.argv[3])
+        except Exception as e:
+            print(str(e))
 
     user_indicator = sys.argv[1]
     user_threshold = float(sys.argv[2])
     user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
     analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=user_threshold, user_input=user_input)
     analyzer.enqueue()
-    # worker container should handle this
-    # analyzer.run()
+
     job_token = analyzer.results()['job_token']
     print("job_token = {}".format(job_token))
 
-    #print("popping work")
-    #FoodSupplyChainService.pop_and_do_work()
+    # print("testing s3 upload")
+    # analyzer.upload_results({"apples": "yum"})
 
-    print("testing s3 upload")
-    analyzer.upload_results({"apples": "yum"})
+    print("popping work")
+    FoodSupplyChainService.pop_and_do_work()
 
     print("Getting results")
     analyzer2 = FoodSupplyChainService(job_token=job_token)
