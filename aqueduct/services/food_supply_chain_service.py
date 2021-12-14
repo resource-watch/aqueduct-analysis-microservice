@@ -443,10 +443,10 @@ class FoodSupplyChainService(object):
             s3 = session.client(
                  service_name='s3',
                  aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-                 aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+                 aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
             )
 
-        key = "food-supply-chain/{}".format(self.job_token)
+        key = "food-supply-chain/{}".format(self.job_token.decode('utf-8'))
 
         s3.put_object(Bucket=self.bucket, Key=key, Body=json.dumps(results))
 
