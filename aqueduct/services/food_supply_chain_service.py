@@ -125,7 +125,7 @@ class FoodSupplyChainService(object):
                 new_payload[new_key] = value
         return new_payload
 
-    def __init__(self, user_input=None, user_indicator='bwd', user_threshold=0.25, job_token=None):
+    def __init__(self, user_input=None, user_indicator=None, user_threshold=None, job_token=None):
         self.analysis_time = time.time()
         # Inputs from User
         self.user_input = user_input  # Uploaded file
@@ -188,6 +188,8 @@ class FoodSupplyChainService(object):
     def results(self):
         payload = {}
         payload['job_token'] = self.job_token
+        payload['user_indicator'] = self.redis.hget(self.job_token, "user_indicator").decode('utf-8')
+        payload['user_threshold'] = float(self.redis.hget(self.job_token, "user_threshold"))
 
         results = self.redis.hget(self.job_token, "results")
 
@@ -228,6 +230,9 @@ class FoodSupplyChainService(object):
         # first_bytes = f.read(50)
         # message = "Excel file {} is {} bytes. First bytes are {}".format(self.user_input, b, first_bytes)
         # raise Exception(message)
+
+        self.user_indicator = self.redis.hget(self.job_token, "user_indicator").decode('utf-8')
+        self.user_threshold = float(self.redis.hget(self.job_token, "user_threshold"))
 
         content = self.redis.hget(self.job_token, "content")
         # serialized. Only one at a time.
