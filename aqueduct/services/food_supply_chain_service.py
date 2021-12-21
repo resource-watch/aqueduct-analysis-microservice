@@ -191,6 +191,7 @@ class FoodSupplyChainService(object):
         payload['job_token'] = self.job_token
         payload['user_indicator'] = self.redis.hget(self.job_token, "user_indicator").decode('utf-8')
         payload['user_threshold'] = float(self.redis.hget(self.job_token, "user_threshold"))
+        payload['queue_length'] = int(self.redis.llen("job_queue"))
 
         results = self.redis.hget(self.job_token, "results")
 
@@ -242,7 +243,7 @@ class FoodSupplyChainService(object):
         fout.close()
 
         self.redis.hset(self.job_token, "status", "running")
-        self.set_percent_complete(5)
+        self.set_percent_complete(6)
 
         df = pd.read_excel("data.xlsx", header=4, index_col=None)
         self.set_percent_complete(10)
