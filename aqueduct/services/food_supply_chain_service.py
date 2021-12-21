@@ -98,7 +98,8 @@ class FoodSupplyChainService(object):
       'Radius Unit': 'ru',
       'row': 'rn',
       'State/Province': 'st',
-      'Watershed ID': 'wid'
+      'Watershed ID': 'wid',
+      'Aquifer ID': 'aid'
       }
 
     def prepare_payload(self, payload):
