@@ -686,47 +686,53 @@ class FoodSupplyChainService(object):
             with gzip.open(gz_filename, 'rb') as f_in:
                 with open(self.hybas_path(water_unit), 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
-
-        gdf = gpd.read_file(self.hybas_path(water_unit))
-        gdf = gdf[1:]
-        gdf.rename(columns={water_unit.lower(): water_unit.upper()}, inplace=True)
-
+        # - - - - - - - - - - - CHECK THAT ANALYSIS NEEDS POINTS - - - - - - - - - - - #
         # SELECT POINT LOCATIONS
         df_points = self.df_2[self.df_2['Select_By'] == 'point']
 
-        # CLEAN DATA
-        # Make sure coordinates are floats. Drop rows where encoding fails
-        df_points['Latitude'] = pd.to_numeric(df_points['Latitude'], errors='coerce')  # Make sure latitudes are floats
-        df_points['Longitude'] = pd.to_numeric(df_points['Longitude'], errors='coerce')  # Make sure latitudes are floats
+        if len(df_points) > 0:
+            gdf = gpd.read_file(self.hybas_path(water_unit))
+            gdf = gdf[1:]
+            gdf.rename(columns={water_unit.lower(): water_unit.upper()}, inplace=True)
 
-        # CREATE ERROR LOG
-        df_ptfail = df_points[(df_points['Longitude'].isna()) | (df_points['Latitude'].isna())]
-        df_ptfail['Error'] = 'Non-numeric coordinates'
-        df_ptfail.drop(['SPAM_code', 'Select_By'], axis=1, inplace=True)
-        df_ptfail["row"] = df_ptfail.index
+            # CLEAN DATA
+            # Make sure coordinates are floats. Drop rows where encoding fails
+            df_points['Latitude'] = pd.to_numeric(df_points['Latitude'], errors='coerce')  # Make sure latitudes are floats
+            df_points['Longitude'] = pd.to_numeric(df_points['Longitude'], errors='coerce')  # Make sure latitudes are floats
 
-        # DROP BAD COORDINATES - - - - - - - - - - - #
-        df_points.dropna(subset=['Latitude', 'Longitude'], inplace=True)
-        # For any point row with missing radius OR radius units, set radius = 100km
-        df_points['Radius'][(df_points['Radius'].isna()) | (df_points['Radius Unit'].isna())] = 100
-        df_points['Radius Unit'][(df_points['Radius Unit'].isna())] = 'km'
+            # CREATE ERROR LOG
+            df_ptfail = df_points[(df_points['Longitude'].isna()) | (df_points['Latitude'].isna())]
+            df_ptfail['Error'] = 'Non-numeric coordinates'
+            df_ptfail.drop(['SPAM_code', 'Select_By'], axis=1, inplace=True)
+            df_ptfail["row"] = df_ptfail.index
 
-        # FIND WATERSHEDS
-        # Convert Radius into decimal degree value
-        df_points['Buffer'] = df_points.apply(lambda x: self.clean_buffer(x), axis=1)
+            # DROP BAD COORDINATES - - - - - - - - - - - #
+            df_points.dropna(subset=['Latitude', 'Longitude'], inplace=True)
+            # For any point row with missing radius OR radius units, set radius = 100km
+            df_points['Radius'][(df_points['Radius'].isna()) | (df_points['Radius Unit'].isna())] = 100
+            df_points['Radius Unit'][(df_points['Radius Unit'].isna())] = 'km'
 
-        # Create XY from coordinates
-        df_points['geometry'] = df_points.apply(lambda row: Point(float(row.Longitude), row.Latitude), axis=1)
-        buffered = df_points.filter(["Buffer", 'geometry', 'id'])
-        buffered['geometry'] = buffered.apply(lambda x: x.geometry.buffer(x.Buffer), axis=1)
-        buffered = gpd.GeoDataFrame(buffered, geometry=buffered.geometry)
+            # FIND WATERSHEDS
+            # Convert Radius into decimal degree value
+            df_points['Buffer'] = df_points.apply(lambda x: self.clean_buffer(x), axis=1)
 
-        # Find allbasins within every buffer
-        pts_hy6 = gpd.sjoin(buffered, gdf, how="left", op='intersects')
-        pts_basins = pts_hy6.groupby(['row'])[water_unit].agg(list).to_frame()
+            # Create XY from coordinates
+            df_points['geometry'] = df_points.apply(lambda row: Point(float(row.Longitude), row.Latitude), axis=1)
+            buffered = df_points.filter(["Buffer", 'geometry', 'id'])
+            buffered['geometry'] = buffered.apply(lambda x: x.geometry.buffer(x.Buffer), axis=1)
+            buffered = gpd.GeoDataFrame(buffered, geometry=buffered.geometry)
 
-        # Set name to uppercase
-        pts_basins.columns = [water_unit.upper()]
+            # Find allbasins within every buffer
+            pts_hy6 = gpd.sjoin(buffered, gdf, how="left", op='intersects')
+            pts_basins = pts_hy6.groupby(['row'])[water_unit].agg(list).to_frame()
+
+            # Set name to uppercase
+            pts_basins.columns = [water_unit.upper()]
+        # - - - - - - - - - - - IF NOT POINTS GIVEN, CREATE BLANKS - - - - - - - - - - - #
+        else:
+            pts_basins = pd.DataFrame(columns=ad0_basins.columns)
+            df_ptfail = pd.DataFrame(columns=df_ad0fail.columns)
+
         logging.info("Points found in {} seconds".format(time.time() - stime1))
 
         # -------
