@@ -370,6 +370,8 @@ class FoodSupplyChainService(object):
             string_sourcing_watersheds = [str(int(x)) for x in sourcing_watersheds]
             users_watersheds = df_aq[df_aq[water_unit.lower()].isin(string_sourcing_watersheds)]
 
+            self.set_percent_complete(69)
+
             # Pull raw value and label
             users_watersheds = users_watersheds.filter([water_unit.lower(), indicator_selection, indicator_abb.lower() + "_label"])
             self.set_percent_complete(70)
@@ -745,6 +747,7 @@ class FoodSupplyChainService(object):
             self.set_percent_complete(63)
             pts_basins = pd.DataFrame(columns=ad0_basins.columns)
             df_ptfail = pd.DataFrame(columns=df_ad0fail.columns)
+            return pts_basins, df_ptfail
 
         logging.info("Points found in {} seconds".format(time.time() - stime1))
 
