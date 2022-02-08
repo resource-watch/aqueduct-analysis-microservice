@@ -354,7 +354,7 @@ class FoodSupplyChainService(object):
             df_waterunits, df_errorlog = self.find_locations(water_unit)
             logging.info("Locations ready in {} seconds".format(time.time() - loc_time))
             loc_time = time.time()
-            self.set_percent_complete(64)
+            self.set_percent_complete(68)
 
             # --------------
             # FIND LOCATIONS
@@ -372,7 +372,7 @@ class FoodSupplyChainService(object):
 
             # Pull raw value and label
             users_watersheds = users_watersheds.filter([water_unit.lower(), indicator_selection, indicator_abb.lower() + "_label"])
-            self.set_percent_complete(65)
+            self.set_percent_complete(70)
 
             # rename raw and score columns
             users_watersheds.rename(columns={water_unit.lower(): water_unit,
@@ -758,6 +758,9 @@ class FoodSupplyChainService(object):
         # # Find cropped sourced in each watershed
         df_sourcing = pd.merge(df_basinsexplode, self.df_2.filter(['Location ID', 'SPAM_code']), how='left', left_on='row',
                                right_index=True)
+
+        self.set_percent_complete(64)
+
         # Add IFPRI production data to see what's actually grown
         df_sourced = pd.merge(df_sourcing, df_prod, how='left', left_on=[water_unit, 'SPAM_code'],
                               right_on=[water_unit, 'SPAM_code'])
@@ -765,10 +768,15 @@ class FoodSupplyChainService(object):
         # Add full crop name
         df_sourced = pd.merge(df_sourced, self.df_crops.filter(["full_name", "short_name"]).set_index("short_name"), how='left',
                               left_on="SPAM_code", right_index=True)
+
+        self.set_percent_complete(65)
+
         # Clean columns
         df_sourced.drop(['grown_yn', 'SPAM_code'], axis=1, inplace=True)
         df_sourced = df_sourced[['row', 'Location ID', water_unit, 'full_name', 'IFPRI_production_MT']]
         df_sourced.rename(columns={"full_name": "Crop_Name"}, inplace=True)
+
+        self.set_percent_complete(66)
 
         df_fails = pd.concat([self.df_cropfail, self.df_locfail, df_ptfail, df_ad0fail, df_ad1fail])
 
