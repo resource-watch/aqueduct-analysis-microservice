@@ -315,6 +315,7 @@ def get_risk_widget(widget_id, **kwargs):
 # job_token=$(curl -F 'data=@./aqueduct/services/supply_chain_data/test.xlsx.b64' $uri/bwd/0.53 | jq -r '.job_token')
 # job_token=$(curl -F 'data=@./aqueduct/services/supply_chain_data/test.xlsx.b64' $uri/bwd/0.94 | jq -r '.job_token')
 # job_token=$(curl -F 'data=@./aqueduct/services/supply_chain_data/test.xlsx.b64' $uri/gtd/0.92 | jq -r '.job_token')
+# job_token=$(curl -F 'data=@./aqueduct/services/supply_chain_data/just.countries.xlsx.b64' $uri/gtd/0.92 | jq -r '.job_token')
 # echo $job_token
 # curl $uri/$job_token | jq
 @aqueduct_analysis_endpoints_v1.route('/food-supply-chain/<user_indicator>/<threshold>', strict_slashes=False, methods=['POST'])
