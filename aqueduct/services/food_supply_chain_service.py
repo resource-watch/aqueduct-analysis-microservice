@@ -354,7 +354,7 @@ class FoodSupplyChainService(object):
             df_waterunits, df_errorlog = self.find_locations(water_unit)
             logging.info("Locations ready in {} seconds".format(time.time() - loc_time))
             loc_time = time.time()
-            self.set_percent_complete(60)
+            self.set_percent_complete(64)
 
             # --------------
             # FIND LOCATIONS
@@ -601,6 +601,8 @@ class FoodSupplyChainService(object):
         # Create a binary variable. Crops are grown if at least 10 MT are produced
         df_prod['grown_yn'] = np.where(df_prod['IFPRI_production_MT'] >= 10, 1, 0)
 
+        self.set_percent_complete(56)
+
         # ---------
         # COUNTRIES
         # ---------
@@ -638,6 +640,7 @@ class FoodSupplyChainService(object):
         df_ad0fail["row"] = df_ad0fail.index
 
         logging.info("Countries found in {} seconds".format(time.time() - stime1))
+        self.set_percent_complete(57)
 
         # ------
         # STATES
@@ -670,6 +673,7 @@ class FoodSupplyChainService(object):
         df_ad1fail["row"] = df_ad1fail.index
 
         logging.info("States found in {} seconds".format(time.time() - stime1))
+        self.set_percent_complete(58)
 
         # ------
         # POINTS
@@ -690,6 +694,8 @@ class FoodSupplyChainService(object):
         # SELECT POINT LOCATIONS
         df_points = self.df_2[self.df_2['Select_By'] == 'point']
 
+        self.set_percent_complete(59)
+
         if len(df_points) > 0:
             gdf = gpd.read_file(self.hybas_path(water_unit))
             gdf = gdf[1:]
@@ -706,6 +712,8 @@ class FoodSupplyChainService(object):
             df_ptfail.drop(['SPAM_code', 'Select_By'], axis=1, inplace=True)
             df_ptfail["row"] = df_ptfail.index
 
+            self.set_percent_complete(60)
+
             # DROP BAD COORDINATES - - - - - - - - - - - #
             df_points.dropna(subset=['Latitude', 'Longitude'], inplace=True)
             # For any point row with missing radius OR radius units, set radius = 100km
@@ -715,6 +723,8 @@ class FoodSupplyChainService(object):
             # FIND WATERSHEDS
             # Convert Radius into decimal degree value
             df_points['Buffer'] = df_points.apply(lambda x: self.clean_buffer(x), axis=1)
+
+            self.set_percent_complete(61)
 
             # Create XY from coordinates
             df_points['geometry'] = df_points.apply(lambda row: Point(float(row.Longitude), row.Latitude), axis=1)
@@ -726,10 +736,13 @@ class FoodSupplyChainService(object):
             pts_hy6 = gpd.sjoin(buffered, gdf, how="left", op='intersects')
             pts_basins = pts_hy6.groupby(['row'])[water_unit].agg(list).to_frame()
 
+            self.set_percent_complete(62)
+
             # Set name to uppercase
             pts_basins.columns = [water_unit.upper()]
         # - - - - - - - - - - - IF NOT POINTS GIVEN, CREATE BLANKS - - - - - - - - - - - #
         else:
+            self.set_percent_complete(63)
             pts_basins = pd.DataFrame(columns=ad0_basins.columns)
             df_ptfail = pd.DataFrame(columns=df_ad0fail.columns)
 
