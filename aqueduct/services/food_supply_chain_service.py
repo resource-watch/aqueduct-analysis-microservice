@@ -388,8 +388,6 @@ class FoodSupplyChainService(object):
             # Create a column to hold threshold
             users_watersheds[desired_con] = self.user_threshold
 
-            #import pdb
-            #pdb.set_trace()
             # interact
             # Calculate change required
             users_watersheds[raw] = users_watersheds[raw].astype(float)
@@ -698,6 +696,8 @@ class FoodSupplyChainService(object):
 
         self.set_percent_complete(59)
 
+        print("There are {} points".format(len(df_points)))
+
         if len(df_points) > 0:
             gdf = gpd.read_file(self.hybas_path(water_unit))
             gdf = gdf[1:]
@@ -747,7 +747,8 @@ class FoodSupplyChainService(object):
             self.set_percent_complete(63)
             pts_basins = pd.DataFrame(columns=ad0_basins.columns)
             df_ptfail = pd.DataFrame(columns=df_ad0fail.columns)
-            return pts_basins, df_ptfail
+            pts_basins["row"] = -999
+            return pts_basins, pd.concat([df_ptfail])
 
         logging.info("Points found in {} seconds".format(time.time() - stime1))
 
@@ -786,7 +787,7 @@ class FoodSupplyChainService(object):
         return df_sourced, df_fails
 
 
-# from within dev container
+# docker-compose -f docker-compose-gr.yml run develop bash
 # python3 ./aqueduct/services/food_supply_chain_service.py cep 0.5 test-bucket
 if __name__ == '__main__':
     import sys
