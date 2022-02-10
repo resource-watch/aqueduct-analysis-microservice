@@ -36,7 +36,7 @@ services:
   supply-chain-worker:
     networks:
       - microservice
-    image: supply-chain-worker:0.8
+    image: supply-chain-worker:0.10
     build: .
     env_file:
        - .env

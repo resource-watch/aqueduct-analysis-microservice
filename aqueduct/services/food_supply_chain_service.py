@@ -354,7 +354,7 @@ class FoodSupplyChainService(object):
             df_waterunits, df_errorlog = self.find_locations(water_unit)
             logging.info("Locations ready in {} seconds".format(time.time() - loc_time))
             loc_time = time.time()
-            self.set_percent_complete(60)
+            self.set_percent_complete(68)
 
             # --------------
             # FIND LOCATIONS
@@ -370,9 +370,11 @@ class FoodSupplyChainService(object):
             string_sourcing_watersheds = [str(int(x)) for x in sourcing_watersheds]
             users_watersheds = df_aq[df_aq[water_unit.lower()].isin(string_sourcing_watersheds)]
 
+            self.set_percent_complete(69)
+
             # Pull raw value and label
             users_watersheds = users_watersheds.filter([water_unit.lower(), indicator_selection, indicator_abb.lower() + "_label"])
-            self.set_percent_complete(65)
+            self.set_percent_complete(70)
 
             # rename raw and score columns
             users_watersheds.rename(columns={water_unit.lower(): water_unit,
@@ -386,8 +388,6 @@ class FoodSupplyChainService(object):
             # Create a column to hold threshold
             users_watersheds[desired_con] = self.user_threshold
 
-            #import pdb
-            #pdb.set_trace()
             # interact
             # Calculate change required
             users_watersheds[raw] = users_watersheds[raw].astype(float)
@@ -601,6 +601,8 @@ class FoodSupplyChainService(object):
         # Create a binary variable. Crops are grown if at least 10 MT are produced
         df_prod['grown_yn'] = np.where(df_prod['IFPRI_production_MT'] >= 10, 1, 0)
 
+        self.set_percent_complete(56)
+
         # ---------
         # COUNTRIES
         # ---------
@@ -638,6 +640,7 @@ class FoodSupplyChainService(object):
         df_ad0fail["row"] = df_ad0fail.index
 
         logging.info("Countries found in {} seconds".format(time.time() - stime1))
+        self.set_percent_complete(57)
 
         # ------
         # STATES
@@ -670,6 +673,7 @@ class FoodSupplyChainService(object):
         df_ad1fail["row"] = df_ad1fail.index
 
         logging.info("States found in {} seconds".format(time.time() - stime1))
+        self.set_percent_complete(58)
 
         # ------
         # POINTS
@@ -686,47 +690,66 @@ class FoodSupplyChainService(object):
             with gzip.open(gz_filename, 'rb') as f_in:
                 with open(self.hybas_path(water_unit), 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
-
-        gdf = gpd.read_file(self.hybas_path(water_unit))
-        gdf = gdf[1:]
-        gdf.rename(columns={water_unit.lower(): water_unit.upper()}, inplace=True)
-
+        # - - - - - - - - - - - CHECK THAT ANALYSIS NEEDS POINTS - - - - - - - - - - - #
         # SELECT POINT LOCATIONS
         df_points = self.df_2[self.df_2['Select_By'] == 'point']
 
-        # CLEAN DATA
-        # Make sure coordinates are floats. Drop rows where encoding fails
-        df_points['Latitude'] = pd.to_numeric(df_points['Latitude'], errors='coerce')  # Make sure latitudes are floats
-        df_points['Longitude'] = pd.to_numeric(df_points['Longitude'], errors='coerce')  # Make sure latitudes are floats
+        self.set_percent_complete(59)
 
-        # CREATE ERROR LOG
-        df_ptfail = df_points[(df_points['Longitude'].isna()) | (df_points['Latitude'].isna())]
-        df_ptfail['Error'] = 'Non-numeric coordinates'
-        df_ptfail.drop(['SPAM_code', 'Select_By'], axis=1, inplace=True)
-        df_ptfail["row"] = df_ptfail.index
+        print("There are {} points".format(len(df_points)))
 
-        # DROP BAD COORDINATES - - - - - - - - - - - #
-        df_points.dropna(subset=['Latitude', 'Longitude'], inplace=True)
-        # For any point row with missing radius OR radius units, set radius = 100km
-        df_points['Radius'][(df_points['Radius'].isna()) | (df_points['Radius Unit'].isna())] = 100
-        df_points['Radius Unit'][(df_points['Radius Unit'].isna())] = 'km'
+        if len(df_points) > 0:
+            gdf = gpd.read_file(self.hybas_path(water_unit))
+            gdf = gdf[1:]
+            gdf.rename(columns={water_unit.lower(): water_unit.upper()}, inplace=True)
 
-        # FIND WATERSHEDS
-        # Convert Radius into decimal degree value
-        df_points['Buffer'] = df_points.apply(lambda x: self.clean_buffer(x), axis=1)
+            # CLEAN DATA
+            # Make sure coordinates are floats. Drop rows where encoding fails
+            df_points['Latitude'] = pd.to_numeric(df_points['Latitude'], errors='coerce')  # Make sure latitudes are floats
+            df_points['Longitude'] = pd.to_numeric(df_points['Longitude'], errors='coerce')  # Make sure latitudes are floats
 
-        # Create XY from coordinates
-        df_points['geometry'] = df_points.apply(lambda row: Point(float(row.Longitude), row.Latitude), axis=1)
-        buffered = df_points.filter(["Buffer", 'geometry', 'id'])
-        buffered['geometry'] = buffered.apply(lambda x: x.geometry.buffer(x.Buffer), axis=1)
-        buffered = gpd.GeoDataFrame(buffered, geometry=buffered.geometry)
+            # CREATE ERROR LOG
+            df_ptfail = df_points[(df_points['Longitude'].isna()) | (df_points['Latitude'].isna())]
+            df_ptfail['Error'] = 'Non-numeric coordinates'
+            df_ptfail.drop(['SPAM_code', 'Select_By'], axis=1, inplace=True)
+            df_ptfail["row"] = df_ptfail.index
 
-        # Find allbasins within every buffer
-        pts_hy6 = gpd.sjoin(buffered, gdf, how="left", op='intersects')
-        pts_basins = pts_hy6.groupby(['row'])[water_unit].agg(list).to_frame()
+            self.set_percent_complete(60)
 
-        # Set name to uppercase
-        pts_basins.columns = [water_unit.upper()]
+            # DROP BAD COORDINATES - - - - - - - - - - - #
+            df_points.dropna(subset=['Latitude', 'Longitude'], inplace=True)
+            # For any point row with missing radius OR radius units, set radius = 100km
+            df_points['Radius'][(df_points['Radius'].isna()) | (df_points['Radius Unit'].isna())] = 100
+            df_points['Radius Unit'][(df_points['Radius Unit'].isna())] = 'km'
+
+            # FIND WATERSHEDS
+            # Convert Radius into decimal degree value
+            df_points['Buffer'] = df_points.apply(lambda x: self.clean_buffer(x), axis=1)
+
+            self.set_percent_complete(61)
+
+            # Create XY from coordinates
+            df_points['geometry'] = df_points.apply(lambda row: Point(float(row.Longitude), row.Latitude), axis=1)
+            buffered = df_points.filter(["Buffer", 'geometry', 'id'])
+            buffered['geometry'] = buffered.apply(lambda x: x.geometry.buffer(x.Buffer), axis=1)
+            buffered = gpd.GeoDataFrame(buffered, geometry=buffered.geometry)
+
+            # Find allbasins within every buffer
+            pts_hy6 = gpd.sjoin(buffered, gdf, how="left", op='intersects')
+            pts_basins = pts_hy6.groupby(['row'])[water_unit].agg(list).to_frame()
+
+            self.set_percent_complete(62)
+
+            # Set name to uppercase
+            pts_basins.columns = [water_unit.upper()]
+        # - - - - - - - - - - - IF NOT POINTS GIVEN, CREATE BLANKS - - - - - - - - - - - #
+        else:
+            self.set_percent_complete(63)
+            pts_basins = pd.DataFrame(columns=ad0_basins.columns)
+            df_ptfail = pd.DataFrame(columns=df_ad0fail.columns)
+            pts_basins["row"] = -999
+            return pts_basins, pd.concat([df_ptfail])
+
         logging.info("Points found in {} seconds".format(time.time() - stime1))
 
         # -------
@@ -739,6 +762,9 @@ class FoodSupplyChainService(object):
         # # Find cropped sourced in each watershed
         df_sourcing = pd.merge(df_basinsexplode, self.df_2.filter(['Location ID', 'SPAM_code']), how='left', left_on='row',
                                right_index=True)
+
+        self.set_percent_complete(64)
+
         # Add IFPRI production data to see what's actually grown
         df_sourced = pd.merge(df_sourcing, df_prod, how='left', left_on=[water_unit, 'SPAM_code'],
                               right_on=[water_unit, 'SPAM_code'])
@@ -746,17 +772,22 @@ class FoodSupplyChainService(object):
         # Add full crop name
         df_sourced = pd.merge(df_sourced, self.df_crops.filter(["full_name", "short_name"]).set_index("short_name"), how='left',
                               left_on="SPAM_code", right_index=True)
+
+        self.set_percent_complete(65)
+
         # Clean columns
         df_sourced.drop(['grown_yn', 'SPAM_code'], axis=1, inplace=True)
         df_sourced = df_sourced[['row', 'Location ID', water_unit, 'full_name', 'IFPRI_production_MT']]
         df_sourced.rename(columns={"full_name": "Crop_Name"}, inplace=True)
+
+        self.set_percent_complete(66)
 
         df_fails = pd.concat([self.df_cropfail, self.df_locfail, df_ptfail, df_ad0fail, df_ad1fail])
 
         return df_sourced, df_fails
 
 
-# from within dev container
+# docker-compose -f docker-compose-gr.yml run develop bash
 # python3 ./aqueduct/services/food_supply_chain_service.py cep 0.5 test-bucket
 if __name__ == '__main__':
     import sys
