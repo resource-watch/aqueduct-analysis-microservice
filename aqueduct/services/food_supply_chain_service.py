@@ -749,7 +749,8 @@ class FoodSupplyChainService(object):
             pts_basins = pd.DataFrame(columns=ad0_basins.columns)
             df_ptfail = pd.DataFrame(columns=df_ad0fail.columns)
             df_ptfail["row"] = df_ptfail.index
-            pts_basins["row"] = pts_basins.index
+            ad0_basins["row"] = ad0_basins.index
+            ad1_basins["row"] = ad1_basins.index
 
         logging.info("Points found in {} seconds".format(time.time() - stime1))
 
