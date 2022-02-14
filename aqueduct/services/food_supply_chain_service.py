@@ -354,7 +354,7 @@ class FoodSupplyChainService(object):
             df_waterunits, df_errorlog = self.find_locations(water_unit)
             logging.info("Locations ready in {} seconds".format(time.time() - loc_time))
             loc_time = time.time()
-            self.set_percent_complete(68)
+            self.set_percent_complete(75)
 
             # --------------
             # FIND LOCATIONS
@@ -370,11 +370,11 @@ class FoodSupplyChainService(object):
             string_sourcing_watersheds = [str(int(x)) for x in sourcing_watersheds]
             users_watersheds = df_aq[df_aq[water_unit.lower()].isin(string_sourcing_watersheds)]
 
-            self.set_percent_complete(69)
+            self.set_percent_complete(78)
 
             # Pull raw value and label
             users_watersheds = users_watersheds.filter([water_unit.lower(), indicator_selection, indicator_abb.lower() + "_label"])
-            self.set_percent_complete(70)
+            self.set_percent_complete(79)
 
             # rename raw and score columns
             users_watersheds.rename(columns={water_unit.lower(): water_unit,
@@ -436,6 +436,7 @@ class FoodSupplyChainService(object):
 
             logging.info("Analysis Time: {} seconds".format(time.time() - self.analysis_time))
         except Exception as e:
+            # logging.fatal(e.back)
             self.redis.hset(self.job_token, "status", "error")
             self.redis.hset(self.job_token, "results", json.dumps({"error": str(e)}))
 
@@ -568,7 +569,7 @@ class FoodSupplyChainService(object):
         rs = [len(r) for r in vals]
         # create repeating combo of field per watershed
         a = np.repeat(sc2[user_id], rs)
-        explode = pd.DataFrame(np.column_stack((a, np.concatenate(vals))), columns = [user_id, pf_id])
+        explode = pd.DataFrame(np.column_stack((a, np.concatenate(vals))), columns=[user_id, pf_id])
         explode.drop_duplicates(subset=[pf_id, user_id], inplace=True)
         return explode
 
@@ -747,8 +748,8 @@ class FoodSupplyChainService(object):
             self.set_percent_complete(63)
             pts_basins = pd.DataFrame(columns=ad0_basins.columns)
             df_ptfail = pd.DataFrame(columns=df_ad0fail.columns)
-            pts_basins["row"] = -999
-            return pts_basins, pd.concat([df_ptfail])
+            df_ptfail["row"] = df_ptfail.index
+            pts_basins["row"] = pts_basins.index
 
         logging.info("Points found in {} seconds".format(time.time() - stime1))
 
@@ -759,11 +760,12 @@ class FoodSupplyChainService(object):
         df_basins = pd.concat([pts_basins, ad0_basins, ad1_basins])
         # # Explode data for every row has a unique row # + sourcing watershed ID
         df_basinsexplode = self.explode_data(df_basins, 'row', water_unit)
+        self.set_percent_complete(67)
         # # Find cropped sourced in each watershed
         df_sourcing = pd.merge(df_basinsexplode, self.df_2.filter(['Location ID', 'SPAM_code']), how='left', left_on='row',
                                right_index=True)
 
-        self.set_percent_complete(64)
+        self.set_percent_complete(70)
 
         # Add IFPRI production data to see what's actually grown
         df_sourced = pd.merge(df_sourcing, df_prod, how='left', left_on=[water_unit, 'SPAM_code'],
@@ -773,14 +775,14 @@ class FoodSupplyChainService(object):
         df_sourced = pd.merge(df_sourced, self.df_crops.filter(["full_name", "short_name"]).set_index("short_name"), how='left',
                               left_on="SPAM_code", right_index=True)
 
-        self.set_percent_complete(65)
+        self.set_percent_complete(73)
 
         # Clean columns
         df_sourced.drop(['grown_yn', 'SPAM_code'], axis=1, inplace=True)
         df_sourced = df_sourced[['row', 'Location ID', water_unit, 'full_name', 'IFPRI_production_MT']]
         df_sourced.rename(columns={"full_name": "Crop_Name"}, inplace=True)
 
-        self.set_percent_complete(66)
+        self.set_percent_complete(75)
 
         df_fails = pd.concat([self.df_cropfail, self.df_locfail, df_ptfail, df_ad0fail, df_ad1fail])
 
@@ -792,6 +794,8 @@ class FoodSupplyChainService(object):
 if __name__ == '__main__':
     import sys
     import pdb
+
+    logging.basicConfig(stream=sys.stdout, filemode="w", level=logging.INFO)
 
     if len(sys.argv) < 3:
         print("pass in indicator as first argument: bws, bwd, cep, udw, usa, gtd")
@@ -815,7 +819,8 @@ if __name__ == '__main__':
 
     user_indicator = sys.argv[1]
     user_threshold = float(sys.argv[2])
-    user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
+    #user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
+    user_input = 'aqueduct/services/supply_chain_data/just.countries.xlsx'
     analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=user_threshold, user_input=user_input)
     analyzer.enqueue()
 
