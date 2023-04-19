@@ -554,7 +554,7 @@ class RiskService(object):
 
         assets = self.find_assets()
         df_risk = df_ratio.loc[self.geogunit_name]
-        df_risk = df_risk.append(assets.T)
+        df_risk = df_risk.append(assets.T[0]).to_frame()
 
         # 2010 data
         colFormat = '{:s}_{:s}_{:s}_{:s}_{:s}'.format
