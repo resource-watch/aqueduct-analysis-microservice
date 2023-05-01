@@ -7,7 +7,7 @@ Levenshtein==0.16.0
 geopandas==0.9.0
 rtree==0.9.7
 simplejson==3.16.0
-Flask==1.1.1
+Flask==2.3.2
 RWAPIMicroservicePython==1.0.0
 requests==2.22.0
 geojson==1.3.5
