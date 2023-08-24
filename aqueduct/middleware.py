@@ -60,7 +60,7 @@ def get_geo_by_hash(func):
         geostore = kwargs["sanitized_params"]["geostore"]
         logging.info(f'[middleware]: {geostore}')
         try:
-            geojson = GeostoreService.get(geostore)
+            geojson = GeostoreService.get(geostore, request.headers.get("x-api-key"))
             kwargs["sanitized_params"]["geojson"] = geojson
         except GeostoreNotFound as e:
             return error(status=404, detail='Geostore not found: {}'.format(e.message))
