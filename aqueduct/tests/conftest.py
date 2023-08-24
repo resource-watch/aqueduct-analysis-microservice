@@ -15,7 +15,6 @@ def client():
     if not os.getenv("MICROSERVICE_TOKEN"):
         raise Exception("MICROSERVICE_TOKEN needs to be set")
 
-    # app = aqueduct.app
     app.config["TESTING"] = True
     client = app.test_client()
 
