@@ -93,14 +93,11 @@ def validate_wra_params(func):
         kwargs.update(rArgs)
         logging.debug(f"[MIDDLEWARE - ws scheme]: {kwargs}")
         logging.debug(f"[VALIDATOR - wra_weights]: {kwargs}")
-        print("func args 3", kwargs)
         validator = Validator(validation_schema, allow_unknown=True)
 
         if not validator.validate(kwargs):
-            print("func args 2", kwargs)
             return error(status=400, detail=validator.errors)
         kwargs["sanitized_params"] = validator.normalized(kwargs)
-        print("func args 2", kwargs)
         return func(*args, **kwargs)
 
     return wrapper
