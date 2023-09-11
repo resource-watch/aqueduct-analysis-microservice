@@ -1,4 +1,4 @@
-pytest
+pytest==7.4.0
 pytest-cov==2.8.1
 pytest-mock==1.11.1
 codecov==2.1.13
