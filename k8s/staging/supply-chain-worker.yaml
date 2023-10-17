@@ -44,8 +44,6 @@ spec:
                 secretKeyRef:
                   key: REDIS_URL
                   name: dbsecrets
-            - name: AWS_REGION
-              value: us-east-1
             - name: S3_BUCKET_NAME
               valueFrom:
                 secretKeyRef:
