@@ -44,8 +44,6 @@ spec:
                 secretKeyRef:
                   key: REDIS_URL
                   name: dbsecrets
-            - name: AWS_REGION
-              value: us-east-1
             - name: S3_BUCKET_NAME
               valueFrom:
                 secretKeyRef:
@@ -61,6 +59,16 @@ spec:
                 secretKeyRef:
                   key: AQUEDUCT_S3_SECRET_ACCESS_KEY
                   name: appsecrets
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  key: AWS_REGION
+                  name: mssecrets
+            - name: REQUIRE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: REQUIRE_API_KEY
+                  name: mssecrets
           image: gfwdockerhub/aqueduct-analysis
           imagePullPolicy: Always
           name: aqueduct-analysis-supply-chain-worker

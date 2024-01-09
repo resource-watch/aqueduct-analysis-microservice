@@ -17,7 +17,7 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 from shapely.geometry import Point
-from fuzzywuzzy import process
+from thefuzz import process
 import warnings
 import ast
 from itertools import chain
@@ -31,41 +31,40 @@ import hashlib
 from urllib.parse import urlparse
 import boto3
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 
 class FoodSupplyChainService(object):
-
     # -----------------------
     # BACKGROUND DICTIONARIES
     # -----------------------
     # Fix crops names
     crop_fixes = {
-        'corn': 'maiz',
-        'canola': 'rape',
-        'canola oil': 'rape',
-        'flaxseed': 'ofib',
-        'oats': 'ocer',
-        'rye': 'ocer',
-        'palm': 'oilp',
-        'sorghum grain': 'sorg',
-        'soy': 'soyb',
-        'soya': 'soyb',
-        'soyabean': 'soyb',
-        'soybean meal': 'soyb',
-        'soyabeans': 'soyb',
-        'soybeans': 'soyb',
-        'sugar cane': 'sugc',
-        'tapioca': 'cass'
-        }
+        "corn": "maiz",
+        "canola": "rape",
+        "canola oil": "rape",
+        "flaxseed": "ofib",
+        "oats": "ocer",
+        "rye": "ocer",
+        "palm": "oilp",
+        "sorghum grain": "sorg",
+        "soy": "soyb",
+        "soya": "soyb",
+        "soyabean": "soyb",
+        "soybean meal": "soyb",
+        "soyabeans": "soyb",
+        "soybeans": "soyb",
+        "sugar cane": "sugc",
+        "tapioca": "cass",
+    }
 
     # Fix country names
     country_fixes = {
         "Ivory Coast": "Côte d'Ivoire",
         "US": "United States",
         "USA": "United States",
-        "UK": "United Kingdom"
-        }
+        "UK": "United Kingdom",
+    }
 
     # Indicator codes
     # indicator_dict = {
@@ -80,27 +79,27 @@ class FoodSupplyChainService(object):
     # payload is on the order of 100MB in the most useful format for
     # consumption by the front-end, so abbreviating keys
     output_lookup = {
-      'Annual Spend': 'as',
-      '* % Change Required': 'pcr',
-      '* Desired Condition': 'dc',
-      '* Raw Value': 'rv',
-      '* Score': 's',
-      'Country': 'cy',
-      'Crop_Name': 'cn',
-      'Error': 'e',
-      'IFPRI_production_MT': 'ip',
-      'Latitude': 'lat',
-      'Location ID': 'lid',
-      'Longitude': 'lng',
-      'Material Type': 'mt',
-      'Material Volume (MT)': 'mv',
-      'Radius': 'ra',
-      'Radius Unit': 'ru',
-      'row': 'rn',
-      'State/Province': 'st',
-      'Watershed ID': 'wid',
-      'Aquifer ID': 'aid'
-      }
+        "Annual Spend": "as",
+        "* % Change Required": "pcr",
+        "* Desired Condition": "dc",
+        "* Raw Value": "rv",
+        "* Score": "s",
+        "Country": "cy",
+        "Crop_Name": "cn",
+        "Error": "e",
+        "IFPRI_production_MT": "ip",
+        "Latitude": "lat",
+        "Location ID": "lid",
+        "Longitude": "lng",
+        "Material Type": "mt",
+        "Material Volume (MT)": "mv",
+        "Radius": "ra",
+        "Radius Unit": "ru",
+        "row": "rn",
+        "State/Province": "st",
+        "Watershed ID": "wid",
+        "Aquifer ID": "aid",
+    }
 
     def prepare_payload(self, payload):
         new_payload = {}
@@ -112,13 +111,13 @@ class FoodSupplyChainService(object):
                 value = None
             if new_key is None:
                 if key.endswith("% Change Required"):
-                    new_key = 'pcr'
+                    new_key = "pcr"
                 elif key.endswith("Desired Condition"):
-                    new_key = 'dc'
+                    new_key = "dc"
                 elif key.endswith("Raw Value"):
-                    new_key = 'rv'
+                    new_key = "rv"
                 elif key.endswith("Score"):
-                    new_key = 's'
+                    new_key = "s"
                 else:
                     new_key = key
                 new_payload[new_key] = value
@@ -126,29 +125,35 @@ class FoodSupplyChainService(object):
                 new_payload[new_key] = value
         return new_payload
 
-    def __init__(self, user_input=None, user_indicator=None, user_threshold=None, job_token=None):
+    def __init__(
+        self, user_input=None, user_indicator=None, user_threshold=None, job_token=None
+    ):
         self.analysis_time = time.time()
         # Inputs from User
         self.user_input = user_input  # Uploaded file
-        self.user_indicator = user_indicator  # Indicator Selection (from blue panel on tool)
-        self.user_threshold = user_threshold  # Desired State thresholds (from blue panel on tool)
+        self.user_indicator = (
+            user_indicator  # Indicator Selection (from blue panel on tool)
+        )
+        self.user_threshold = (
+            user_threshold  # Desired State thresholds (from blue panel on tool)
+        )
         self.job_token = job_token
 
         # -----------
         # INPUT FILES
         # ----------
-        self.croplist_path = 'aqueduct/services/supply_chain_data/inputs_ifpri_croplist.csv'  # Full crop names and SPAM_code ID
-        self.adm_path = 'aqueduct/services/supply_chain_data/inputs_admin_names.csv'  # GADM v3.6 Administative names for levels 1 & 0
+        self.croplist_path = "aqueduct/services/supply_chain_data/inputs_ifpri_croplist.csv"  # Full crop names and SPAM_code ID
+        self.adm_path = "aqueduct/services/supply_chain_data/inputs_admin_names.csv"  # GADM v3.6 Administative names for levels 1 & 0
 
         # Aqueduct geospatial data. Replace with Carto
-        self.aq_path = 'aqueduct/services/supply_chain_data/inputs_aqueduct30.csv'
+        self.aq_path = "aqueduct/services/supply_chain_data/inputs_aqueduct30.csv"
 
         # INDICATOR SPECIFIC GEOMETRY (WATERSHEDS OR AQUIFERS)
         self.hybas_path = "aqueduct/services/supply_chain_data/Aqueduct30_{}.shp".format
 
-        self.bucket = os.environ.get('S3_BUCKET_NAME')
+        self.bucket = os.environ.get("S3_BUCKET_NAME")
 
-        redis_url = os.environ.get('REDIS_URL')
+        redis_url = os.environ.get("REDIS_URL")
 
         if redis_url:
             uri = urlparse(redis_url)
@@ -162,13 +167,27 @@ class FoodSupplyChainService(object):
             raise Exception("You must specify a redis url in the environment")
 
     def enqueue(self):
-        content = open(self.user_input, mode='rb').read() # ', encoding='ascii-8bit').read()
+        content = open(
+            self.user_input, mode="rb"
+        ).read()  # ', encoding='ascii-8bit').read()
         md5sum = hashlib.md5(content).hexdigest()
-        self.job_token = '-'.join([md5sum, self.user_indicator, str(self.user_threshold)])
+        self.job_token = "-".join(
+            [md5sum, self.user_indicator, str(self.user_threshold)]
+        )
         logging.info("redis key is {}".format(self.job_token))
 
-        self.redis.hmset(self.job_token, {"user_indicator": self.user_indicator, "user_threshold": self.user_threshold, "content": content, "status": "enqueued", "percent_complete": 5, "results": json.dumps({})})
-        self.redis.expire(self.job_token, 60*60)
+        self.redis.hmset(
+            self.job_token,
+            {
+                "user_indicator": self.user_indicator,
+                "user_threshold": self.user_threshold,
+                "content": content,
+                "status": "enqueued",
+                "percent_complete": 5,
+                "results": json.dumps({}),
+            },
+        )
+        self.redis.expire(self.job_token, 60 * 60)
         self.redis.rpush("job_queue", self.job_token)
         # https://github.com/redis/redis-py
         # https://redis.io/commands/hmset
@@ -184,20 +203,24 @@ class FoodSupplyChainService(object):
         return self.current_status() == "failed"
 
     def current_status(self):
-        return self.redis.hget(self.job_token, "status").decode('utf-8')
+        return self.redis.hget(self.job_token, "status").decode("utf-8")
 
     def results(self):
         payload = {}
-        payload['job_token'] = self.job_token
-        payload['user_indicator'] = self.redis.hget(self.job_token, "user_indicator").decode('utf-8')
-        payload['user_threshold'] = float(self.redis.hget(self.job_token, "user_threshold"))
-        payload['queue_length'] = int(self.redis.llen("job_queue"))
+        payload["job_token"] = self.job_token
+        payload["user_indicator"] = self.redis.hget(
+            self.job_token, "user_indicator"
+        ).decode("utf-8")
+        payload["user_threshold"] = float(
+            self.redis.hget(self.job_token, "user_threshold")
+        )
+        payload["queue_length"] = int(self.redis.llen("job_queue"))
 
         results = self.redis.hget(self.job_token, "results")
 
         if results:
-            payload['results'] = json.loads(results)
-            payload['status'] = self.current_status()
+            payload["results"] = json.loads(results)
+            payload["status"] = self.current_status()
             # payload['base64_encoded_results'] = False
             # payload['gzip_compressed_results'] = False
 
@@ -208,11 +231,13 @@ class FoodSupplyChainService(object):
             #     encoded = base64.b64encode(compressed)
             #     payload['results'] = encoded
 
-            payload['percent_complete'] = int(self.redis.hget(self.job_token, "percent_complete"))
+            payload["percent_complete"] = int(
+                self.redis.hget(self.job_token, "percent_complete")
+            )
         else:
-            payload['results'] = {}
-            payload['status'] = "invalid-job-token"
-            payload['percent_complete'] = 0
+            payload["results"] = {}
+            payload["status"] = "invalid-job-token"
+            payload["percent_complete"] = 0
 
         return payload
 
@@ -234,12 +259,16 @@ class FoodSupplyChainService(object):
             # message = "Excel file {} is {} bytes. First bytes are {}".format(self.user_input, b, first_bytes)
             # raise Exception(message)
 
-            self.user_indicator = self.redis.hget(self.job_token, "user_indicator").decode('utf-8')
-            self.user_threshold = float(self.redis.hget(self.job_token, "user_threshold"))
+            self.user_indicator = self.redis.hget(
+                self.job_token, "user_indicator"
+            ).decode("utf-8")
+            self.user_threshold = float(
+                self.redis.hget(self.job_token, "user_threshold")
+            )
 
             content = self.redis.hget(self.job_token, "content")
             # serialized. Only one at a time.
-            fout = open("data.xlsx", 'wb')
+            fout = open("data.xlsx", "wb")
             fout.write(content)
             fout.close()
 
@@ -250,8 +279,8 @@ class FoodSupplyChainService(object):
             self.set_percent_complete(10)
 
             # Create a row index that matches excel files
-            df['row'] = range(6, len(df)+6)
-            df.set_index('row', inplace=True)
+            df["row"] = range(6, len(df) + 6)
+            df.set_index("row", inplace=True)
 
             # READ IN CARTO INPUTS
             # Placeholder to read in CARTO AQUEDUCT DATABASE. This will need to update
@@ -266,12 +295,16 @@ class FoodSupplyChainService(object):
 
             # Read in GADM Admin 1 and 0 place names (encoding, should retain
             # non-english characters)
-            self.df_admnames = pd.read_csv(self.adm_path, encoding='utf-8-sig')
+            self.df_admnames = pd.read_csv(self.adm_path, encoding="utf-8-sig")
             self.set_percent_complete(25)
 
             # Make sure lists are lists, not strings
-            self.df_admnames['PFAF_ID'] = self.df_admnames['PFAF_ID'].apply(lambda x: ast.literal_eval(x))
-            self.df_admnames['AQID'] = self.df_admnames['AQID'].apply(lambda x: ast.literal_eval(x))
+            self.df_admnames["PFAF_ID"] = self.df_admnames["PFAF_ID"].apply(
+                lambda x: ast.literal_eval(x)
+            )
+            self.df_admnames["AQID"] = self.df_admnames["AQID"].apply(
+                lambda x: ast.literal_eval(x)
+            )
             self.set_percent_complete(30)
 
             # ----------
@@ -279,8 +312,8 @@ class FoodSupplyChainService(object):
             # ----------
             # TRANSLATE USER SELECTIONS INTO ANALYSIS-READY INPUTS
             # Aqueduct Indicators
-            #indicator_selection = self.indicator_dict.get(self.user_indicator)
-            #indicator_abb = indicator_selection[0:3].upper()
+            # indicator_selection = self.indicator_dict.get(self.user_indicator)
+            # indicator_abb = indicator_selection[0:3].upper()
             indicator_selection = self.user_indicator + "_raw"
             indicator_abb = self.user_indicator
 
@@ -290,7 +323,7 @@ class FoodSupplyChainService(object):
 
             # Crops (for now, use all crops in import file. But leaving the ability
             # to filter by crop in the future)
-            crop_selection = sorted(self.df_crops['short_name'].tolist())
+            crop_selection = sorted(self.df_crops["short_name"].tolist())
             self.set_percent_complete(35)
 
             # INDICATOR SPECIFIC
@@ -302,13 +335,18 @@ class FoodSupplyChainService(object):
                 water_name = "Watershed ID"
 
             # REMOVE POTENTIAL WHITESPACE FROM TEXT FIELDS
-            clean_columns = ['State/Province', 'Country', 'Radius Unit', 'Material Type']
+            clean_columns = [
+                "State/Province",
+                "Country",
+                "Radius Unit",
+                "Material Type",
+            ]
             for c in clean_columns:
                 # import pdb
                 # pdb.set_trace()
-                if str(df[c].dtype) == 'object':
+                if str(df[c].dtype) == "object":
                     df[c] = df[c].str.strip()  # Remove extra whitespaces
-                df[c].replace('None', np.nan, inplace=True)  # Turn "None" into np.nan
+                df[c].replace("None", np.nan, inplace=True)  # Turn "None" into np.nan
 
             self.set_percent_complete(40)
 
@@ -316,7 +354,7 @@ class FoodSupplyChainService(object):
 
             # Create lookup dictionary of crop names to crop IDs using IFPRI
             # definitions
-            crop_dict = self.df_crops.set_index('full_name')['short_name'].to_dict()
+            crop_dict = self.df_crops.set_index("full_name")["short_name"].to_dict()
             self.set_percent_complete(45)
 
             # Add alternatives that might appear
@@ -324,29 +362,33 @@ class FoodSupplyChainService(object):
 
             # Match user crops to IFPRI crops
             # Create Crop ID using IFPRI crop name lookup dictionary
-            df['SPAM_code'] = df['Material Type'].apply(lambda x: crop_dict.get(x.lower()))
+            df["SPAM_code"] = df["Material Type"].apply(
+                lambda x: crop_dict.get(x.lower())
+            )
 
             # Drop rows without crop IDs
-            self.df_2 = df[df['SPAM_code'].isin(crop_selection)]
+            self.df_2 = df[df["SPAM_code"].isin(crop_selection)]
 
             # CREATE ERROR LOG
             # List of crops that failed
-            self.df_cropfail = df[df['SPAM_code'].isna()]
-            self.df_cropfail['Error'] = 'Invalid Material Type'
-            self.df_cropfail.drop(['SPAM_code'], axis=1, inplace=True)
+            self.df_cropfail = df[df["SPAM_code"].isna()]
+            self.df_cropfail["Error"] = "Invalid Material Type"
+            self.df_cropfail.drop(["SPAM_code"], axis=1, inplace=True)
             self.df_cropfail["row"] = self.df_cropfail.index
 
             # ----------------------------------
             # FIND LOCATIONS BASED ON WATER UNIT
             # ----------------------------------
             # Categorize location type
-            self.df_2['Select_By'] = self.df_2.apply(lambda x: self.find_selection_type(x), axis=1)
+            self.df_2["Select_By"] = self.df_2.apply(
+                lambda x: self.find_selection_type(x), axis=1
+            )
             self.set_percent_complete(50)
 
             # CREATE ERROR LOG
-            self.df_locfail = self.df_2[self.df_2['Select_By'].isna()]
-            self.df_locfail['Error'] = 'Missing Location'
-            self.df_locfail.drop(['SPAM_code', 'Select_By'], axis=1, inplace=True)
+            self.df_locfail = self.df_2[self.df_2["Select_By"].isna()]
+            self.df_locfail["Error"] = "Missing Location"
+            self.df_locfail.drop(["SPAM_code", "Select_By"], axis=1, inplace=True)
             self.df_locfail["row"] = self.df_locfail.index
             self.set_percent_complete(55)
 
@@ -360,26 +402,39 @@ class FoodSupplyChainService(object):
             # FIND LOCATIONS
             # --------------
             # Create formated column names for output
-            raw = '{} Raw Value'.format(indicator_abb)
-            score = '{} Score'.format(indicator_abb)
-            desired_con = '{} Desired Condition'.format(indicator_abb)
-            change_req = '{} % Change Required'.format(indicator_abb)
+            raw = "{} Raw Value".format(indicator_abb)
+            score = "{} Score".format(indicator_abb)
+            desired_con = "{} Desired Condition".format(indicator_abb)
+            change_req = "{} % Change Required".format(indicator_abb)
 
             # Filter Aqueduct data by sourcing watersheds and selected indicator
             sourcing_watersheds = list(set(df_waterunits[water_unit].tolist()))
             string_sourcing_watersheds = [str(int(x)) for x in sourcing_watersheds]
-            users_watersheds = df_aq[df_aq[water_unit.lower()].isin(string_sourcing_watersheds)]
+            users_watersheds = df_aq[
+                df_aq[water_unit.lower()].isin(string_sourcing_watersheds)
+            ]
 
             self.set_percent_complete(78)
 
             # Pull raw value and label
-            users_watersheds = users_watersheds.filter([water_unit.lower(), indicator_selection, indicator_abb.lower() + "_label"])
+            users_watersheds = users_watersheds.filter(
+                [
+                    water_unit.lower(),
+                    indicator_selection,
+                    indicator_abb.lower() + "_label",
+                ]
+            )
             self.set_percent_complete(79)
 
             # rename raw and score columns
-            users_watersheds.rename(columns={water_unit.lower(): water_unit,
-                                             indicator_selection: raw,
-                                             indicator_abb.lower() + "_label": score}, inplace=True)
+            users_watersheds.rename(
+                columns={
+                    water_unit.lower(): water_unit,
+                    indicator_selection: raw,
+                    indicator_abb.lower() + "_label": score,
+                },
+                inplace=True,
+            )
             self.set_percent_complete(80)
 
             # Drop duplicates
@@ -392,14 +447,24 @@ class FoodSupplyChainService(object):
             # Calculate change required
             users_watersheds[raw] = users_watersheds[raw].astype(float)
             users_watersheds[desired_con] = users_watersheds[desired_con].astype(float)
-            users_watersheds[change_req] = ((users_watersheds[raw] - users_watersheds[desired_con]) / users_watersheds[raw])
-            users_watersheds[change_req] = np.where(users_watersheds[raw] < users_watersheds[desired_con], 0, users_watersheds[change_req])
+            users_watersheds[change_req] = (
+                users_watersheds[raw] - users_watersheds[desired_con]
+            ) / users_watersheds[raw]
+            users_watersheds[change_req] = np.where(
+                users_watersheds[raw] < users_watersheds[desired_con],
+                0,
+                users_watersheds[change_req],
+            )
             self.set_percent_complete(85)
 
             # Format columns
             users_watersheds[raw] = (users_watersheds[raw] * 100).astype(int)
-            users_watersheds[desired_con] = (users_watersheds[desired_con] * 100).astype(int)
-            users_watersheds[change_req] = (users_watersheds[change_req] * 100).astype(int)
+            users_watersheds[desired_con] = (
+                users_watersheds[desired_con] * 100
+            ).astype(int)
+            users_watersheds[change_req] = (users_watersheds[change_req] * 100).astype(
+                int
+            )
             self.set_percent_complete(90)
 
             # Tried this to get rid of NaN values.
@@ -408,21 +473,31 @@ class FoodSupplyChainService(object):
             # Merge with user's OG data
             df_waterunits[water_unit] = df_waterunits[water_unit].astype(int)
             users_watersheds[water_unit] = users_watersheds[water_unit].astype(int)
-            df_successes = pd.merge(df_waterunits, users_watersheds, how='left', left_on=water_unit, right_on=water_unit)
+            df_successes = pd.merge(
+                df_waterunits,
+                users_watersheds,
+                how="left",
+                left_on=water_unit,
+                right_on=water_unit,
+            )
             df_successes.rename(columns={water_unit: water_name}, inplace=True)
             self.set_percent_complete(95)
 
-            df_successes['row'] = df_successes['row'].astype(int)
-            if 'Watershed ID' in df_successes.columns:
-              df_successes['Watershed ID'] = df_successes['Watershed ID'].astype(int)
+            df_successes["row"] = df_successes["row"].astype(int)
+            if "Watershed ID" in df_successes.columns:
+                df_successes["Watershed ID"] = df_successes["Watershed ID"].astype(int)
 
             # create list of priority watersheds (exceed threshold)
             # priority_watersheds = list(set(df_successes[water_name][df_successes[change_req] > 0].tolist()))
 
             results = {}
-            results['locations'] = list(map(self.prepare_payload, df_successes.to_dict('records')))
-            results['errors'] = list(map(self.prepare_payload, df_errorlog.to_dict('records')))
-            results['indicator'] = self.user_indicator
+            results["locations"] = list(
+                map(self.prepare_payload, df_successes.to_dict("records"))
+            )
+            results["errors"] = list(
+                map(self.prepare_payload, df_errorlog.to_dict("records"))
+            )
+            results["indicator"] = self.user_indicator
             # results['all_waterunits'] = sourcing_watersheds
             # results['priority_waterunits'] = priority_watersheds
 
@@ -434,43 +509,44 @@ class FoodSupplyChainService(object):
             self.redis.hset(self.job_token, "status", "ready")
             self.set_percent_complete(100)
 
-            logging.info("Analysis Time: {} seconds".format(time.time() - self.analysis_time))
+            logging.info(
+                "Analysis Time: {} seconds".format(time.time() - self.analysis_time)
+            )
         except Exception as e:
             # logging.fatal(e.back)
             self.redis.hset(self.job_token, "status", "error")
             self.redis.hset(self.job_token, "results", json.dumps({"error": str(e)}))
 
     def upload_results(self, results):
-            session = boto3.session.Session()
-            s3 = None
+        session = boto3.session.Session()
+        s3 = None
 
-            if os.environ.get("ENDPOINT_URL"):
-                s3 = session.client(
-                     service_name='s3',
-                     aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-                     aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
-                     endpoint_url=os.environ.get("ENDPOINT_URL")
-                )
-            else:
-                s3 = session.client(
-                     service_name='s3',
-                     aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-                     aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
-                )
-
-            key = "food-supply-chain/{}".format(self.job_token.decode('utf-8'))
-
-            s3.put_object(Bucket=self.bucket, Key=key, Body=json.dumps(results))
-
-            # Generate the URL to get 'key-name' from 'bucket-name'
-            s3_url = s3.generate_presigned_url(
-                     ClientMethod='get_object',
-                     ExpiresIn=3600,
-                     Params={'Bucket': self.bucket, 'Key': key}
+        if os.environ.get("ENDPOINT_URL"):
+            s3 = session.client(
+                service_name="s3",
+                aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+                aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+                endpoint_url=os.environ.get("ENDPOINT_URL"),
+            )
+        else:
+            s3 = session.client(
+                service_name="s3",
+                aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+                aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
             )
 
-            self.redis.hset(self.job_token, "results", json.dumps({"s3_url": s3_url}))
+        key = "food-supply-chain/{}".format(self.job_token.decode("utf-8"))
 
+        s3.put_object(Bucket=self.bucket, Key=key, Body=json.dumps(results))
+
+        # Generate the URL to get 'key-name' from 'bucket-name'
+        s3_url = s3.generate_presigned_url(
+            ClientMethod="get_object",
+            ExpiresIn=3600,
+            Params={"Bucket": self.bucket, "Key": key},
+        )
+
+        self.redis.hset(self.job_token, "results", json.dumps({"s3_url": s3_url}))
 
     # Define whether location will use point + radius, state, or country to
     # select watersheds
@@ -480,13 +556,15 @@ class FoodSupplyChainService(object):
         :return: location type (point, state, country, none)
         """
         # If coordiantes exist, location type is point
-        if isinstance(row['Latitude'], float) and np.isnan(row['Latitude'])==False:
+        if isinstance(row["Latitude"], float) and np.isnan(row["Latitude"]) == False:
             select_by = "point"
         # If state exists WITH country name, location type is state
-        elif (isinstance(row['State/Province'], str) == True) & (isinstance(row['Country'], str) == True):
+        elif (isinstance(row["State/Province"], str) == True) & (
+            isinstance(row["Country"], str) == True
+        ):
             select_by = "state"
         # If neither of those are true, and a country name exists, location type is country
-        elif isinstance(row['Country'], str) == True:
+        elif isinstance(row["Country"], str) == True:
             select_by = "country"
         # Else, no location type given. These will be dropped from the analysis
         else:
@@ -501,16 +579,28 @@ class FoodSupplyChainService(object):
         :return: buffer radius in decimal degrees
         """
         val = row.Radius  # Find the radius value
-        unit = str(row['Radius Unit']).lower()  # Find the radius units
+        unit = str(row["Radius Unit"]).lower()  # Find the radius units
         try:
             float_val = float(val)  # Turn value to floast
             if float_val == 0.0:  # If radius is 0, set to NA
                 new_val = np.nan
-            elif unit in ['miles', 'mile']:  # If units are in miles, convert to KM (multiple by 1.609), then to degrees (divide by 111)
+            elif unit in [
+                "miles",
+                "mile",
+            ]:  # If units are in miles, convert to KM (multiple by 1.609), then to degrees (divide by 111)
                 new_val = float_val * 1.609 / 111.0
-            elif unit in ['m', 'met', 'meter', 'meters']:  # If units are in meters, convert to KM then to degrees (divide by 111)
+            elif unit in [
+                "m",
+                "met",
+                "meter",
+                "meters",
+            ]:  # If units are in meters, convert to KM then to degrees (divide by 111)
                 new_val = (float_val / 1000) / 111.0
-            elif unit in ['km', 'kilometer', 'kilometers']:  # If units are in kilometers, convert to degrees (divide by 111)
+            elif unit in [
+                "km",
+                "kilometer",
+                "kilometers",
+            ]:  # If units are in kilometers, convert to degrees (divide by 111)
                 new_val = float_val / 111.0
             else:  # Else, return Null radius, report as error
                 new_val = np.nan
@@ -542,10 +632,12 @@ class FoodSupplyChainService(object):
         s = df_2[key2].tolist()
 
         m = df_1[key1].apply(lambda x: process.extract(x, s, limit=limit))
-        df_1['matches'] = m
+        df_1["matches"] = m
 
-        m2 = df_1['matches'].apply(lambda x: ', '.join([i[0] for i in x if i[1] >= threshold]))
-        df_1['matches'] = m2
+        m2 = df_1["matches"].apply(
+            lambda x: ", ".join([i[0] for i in x if i[1] >= threshold])
+        )
+        df_1["matches"] = m2
 
         return df_1
 
@@ -569,7 +661,9 @@ class FoodSupplyChainService(object):
         rs = [len(r) for r in vals]
         # create repeating combo of field per watershed
         a = np.repeat(sc2[user_id], rs)
-        explode = pd.DataFrame(np.column_stack((a, np.concatenate(vals))), columns=[user_id, pf_id])
+        explode = pd.DataFrame(
+            np.column_stack((a, np.concatenate(vals))), columns=[user_id, pf_id]
+        )
         explode.drop_duplicates(subset=[pf_id, user_id], inplace=True)
         return explode
 
@@ -581,9 +675,13 @@ class FoodSupplyChainService(object):
         """
         # INDICATOR SPECIFIC
         if water_unit == "AQID":
-            ifpri_path = 'aqueduct/services/supply_chain_data/inputs_ifpri_production_aqid.csv'
+            ifpri_path = (
+                "aqueduct/services/supply_chain_data/inputs_ifpri_production_aqid.csv"
+            )
         else:
-            ifpri_path = 'aqueduct/services/supply_chain_data/inputs_ifpri_production_pfaf.csv'
+            ifpri_path = (
+                "aqueduct/services/supply_chain_data/inputs_ifpri_production_pfaf.csv"
+            )
 
         # ---------------
         # CROP PRODUCTION
@@ -592,15 +690,17 @@ class FoodSupplyChainService(object):
         df_ifpri = pd.read_csv(ifpri_path, index_col=0, header=0)
         df_ifpri.columns = [x.lower() for x in df_ifpri]
         # Filter by irrigation selection
-        df_if = df_ifpri[[x for x in df_ifpri.columns if self.irrigation_selection in x]]
+        df_if = df_ifpri[
+            [x for x in df_ifpri.columns if self.irrigation_selection in x]
+        ]
         # Remove irrigation suffix
         df_if.columns = [x.replace(self.irrigation_selection, "") for x in df_if]
         # Melt dataframe so every row is unique watershed + crop combo
         df_prod = pd.melt(df_if, ignore_index=False)
         # Rename columns
-        df_prod.columns = ['SPAM_code', "IFPRI_production_MT"]
+        df_prod.columns = ["SPAM_code", "IFPRI_production_MT"]
         # Create a binary variable. Crops are grown if at least 10 MT are produced
-        df_prod['grown_yn'] = np.where(df_prod['IFPRI_production_MT'] >= 10, 1, 0)
+        df_prod["grown_yn"] = np.where(df_prod["IFPRI_production_MT"] >= 10, 1, 0)
 
         self.set_percent_complete(56)
 
@@ -609,35 +709,51 @@ class FoodSupplyChainService(object):
         # ---------
         stime1 = time.time()
         # Select Country and State location types
-        df_ad = self.df_2[(self.df_2['Select_By'] == 'country') | (self.df_2['Select_By'] == 'state')]
+        df_ad = self.df_2[
+            (self.df_2["Select_By"] == "country") | (self.df_2["Select_By"] == "state")
+        ]
         # Apply automatic fix to select country names
-        df_ad['Country'][df_ad['Country'].isin(self.country_fixes)] = df_ad['Country'][
-            df_ad['Country'].isin(self.country_fixes)].apply(lambda x: self.country_fixes.get(x.strip()))
+        df_ad["Country"][df_ad["Country"].isin(self.country_fixes)] = df_ad["Country"][
+            df_ad["Country"].isin(self.country_fixes)
+        ].apply(lambda x: self.country_fixes.get(x.strip()))
         # Create country-to-water lookup
-        ad0hys = self.df_admnames.filter(['GID_0', water_unit])
+        ad0hys = self.df_admnames.filter(["GID_0", water_unit])
         # Group GID_0 lists together
-        ad0hys = ad0hys.groupby(['GID_0'])[water_unit].agg(list).to_frame()
+        ad0hys = ad0hys.groupby(["GID_0"])[water_unit].agg(list).to_frame()
         # Unnest the lists
-        ad0hys[water_unit] = ad0hys[water_unit].apply(lambda x: list(chain.from_iterable(x)))
+        ad0hys[water_unit] = ad0hys[water_unit].apply(
+            lambda x: list(chain.from_iterable(x))
+        )
         # Create GADM country names lookup
-        gdf0 = self.df_admnames.filter(['GID_0', 'NAME_0']).drop_duplicates()
+        gdf0 = self.df_admnames.filter(["GID_0", "NAME_0"]).drop_duplicates()
         # - - - - - - - - - - - MATCH USER NAME TO GADM NAME - - - - - - - - - - - #
-        df_adm = self.fuzzy_merge(df_ad.reset_index(), gdf0, 'Country', 'NAME_0', threshold=85)
-        df_adm.rename(columns={'matches': 'Country_clean'}, inplace=True)
-        df_adm = pd.merge(df_adm, gdf0, how='left', left_on='Country_clean', right_on='NAME_0')
-        df_adm['Country_clean'].replace('', np.nan, inplace=True)
+        df_adm = self.fuzzy_merge(
+            df_ad.reset_index(), gdf0, "Country", "NAME_0", threshold=85
+        )
+        df_adm.rename(columns={"matches": "Country_clean"}, inplace=True)
+        df_adm = pd.merge(
+            df_adm, gdf0, how="left", left_on="Country_clean", right_on="NAME_0"
+        )
+        df_adm["Country_clean"].replace("", np.nan, inplace=True)
         # Filter by GID_0
-        ad0_ids = df_adm[['row', 'GID_0']][
-            (df_adm['Select_By'] == 'country') & (~df_adm['Country_clean'].isna())].set_index('row')
+        ad0_ids = df_adm[["row", "GID_0"]][
+            (df_adm["Select_By"] == "country") & (~df_adm["Country_clean"].isna())
+        ].set_index("row")
         # - - - - - - - - - - - LINK WATERSHED ID BASED ON GADM NAME- - - - - - - - - - - #
-        ad0_basins = pd.merge(ad0_ids, ad0hys, how='left', left_on='GID_0', right_index=True)
-        ad0_basins.drop(['GID_0'], axis=1, inplace=True)
+        ad0_basins = pd.merge(
+            ad0_ids, ad0hys, how="left", left_on="GID_0", right_index=True
+        )
+        ad0_basins.drop(["GID_0"], axis=1, inplace=True)
 
         # # # - - - - - - - - - - - CREATE ERROR LOG - - - - - - - - - - - #
-        df_ad0fail = df_adm[df_adm['Country_clean'].isna()]
-        df_ad0fail['Error'] = 'Country name did not match lookup table'
-        df_ad0fail.set_index('row', inplace=True)
-        df_ad0fail.drop(['SPAM_code', 'Select_By', 'Country_clean', 'GID_0', 'NAME_0'], axis=1, inplace=True)
+        df_ad0fail = df_adm[df_adm["Country_clean"].isna()]
+        df_ad0fail["Error"] = "Country name did not match lookup table"
+        df_ad0fail.set_index("row", inplace=True)
+        df_ad0fail.drop(
+            ["SPAM_code", "Select_By", "Country_clean", "GID_0", "NAME_0"],
+            axis=1,
+            inplace=True,
+        )
         df_ad0fail["row"] = df_ad0fail.index
 
         logging.info("Countries found in {} seconds".format(time.time() - stime1))
@@ -647,30 +763,40 @@ class FoodSupplyChainService(object):
         # STATES
         # ------
         stime1 = time.time()
-        ad1hys = self.df_admnames.filter(['GID_1', water_unit]).set_index('GID_1')
+        ad1hys = self.df_admnames.filter(["GID_1", water_unit]).set_index("GID_1")
         # Seperate out state location types
-        df_ad1 = df_adm[df_adm['Select_By'] == 'state']
+        df_ad1 = df_adm[df_adm["Select_By"] == "state"]
         # - - - - - - - - - - - CREATE STATE NAME (State, Country) - - - - - - - - - - - #
         # Create full state name include cleaned country name for match
-        df_ad1['state_full'] = df_ad1['State/Province'] + ", " + df_ad1['Country_clean']
+        df_ad1["state_full"] = df_ad1["State/Province"] + ", " + df_ad1["Country_clean"]
         # - - - - - - - - - - - MATCH USER NAME TO GADM NAME - - - - - - - - - - - #
         # Perform fuzzy match
-        df_ad1m = self.fuzzy_merge(df_ad1, self.df_admnames, 'state_full', 'state_full', threshold=90)
-        df_ad1m.rename(columns={'matches': 'State_clean'}, inplace=True)
-        df_ad1m = pd.merge(df_ad1m, self.df_admnames.filter(['GID_1', 'state_full']), how='left',
-                           left_on=['State_clean'], right_on=['state_full'])
-        df_ad1m['State_clean'].replace('', np.nan, inplace=True)
-        ad1_ids = df_ad1m[['row', 'GID_1']][(df_ad1m['Select_By'] == 'state') & (~df_ad1m['State_clean'].isna())].set_index(
-            'row')
+        df_ad1m = self.fuzzy_merge(
+            df_ad1, self.df_admnames, "state_full", "state_full", threshold=90
+        )
+        df_ad1m.rename(columns={"matches": "State_clean"}, inplace=True)
+        df_ad1m = pd.merge(
+            df_ad1m,
+            self.df_admnames.filter(["GID_1", "state_full"]),
+            how="left",
+            left_on=["State_clean"],
+            right_on=["state_full"],
+        )
+        df_ad1m["State_clean"].replace("", np.nan, inplace=True)
+        ad1_ids = df_ad1m[["row", "GID_1"]][
+            (df_ad1m["Select_By"] == "state") & (~df_ad1m["State_clean"].isna())
+        ].set_index("row")
         # # - - - - - - - - - - - LINK WATERSHED ID - - - - - - - - - - - #
-        ad1_basins = pd.merge(ad1_ids, ad1hys, how='left', left_on='GID_1', right_index=True)
-        ad1_basins.drop(['GID_1'], axis=1, inplace=True)
+        ad1_basins = pd.merge(
+            ad1_ids, ad1hys, how="left", left_on="GID_1", right_index=True
+        )
+        ad1_basins.drop(["GID_1"], axis=1, inplace=True)
 
         # # # - - - - - - - - - - - CREATE ERROR LOG - - - - - - - - - - - #
-        df_ad1fail = df_ad1m[df_ad1m['State_clean'].isna()]
-        df_ad1fail.set_index('row', inplace=True)
+        df_ad1fail = df_ad1m[df_ad1m["State_clean"].isna()]
+        df_ad1fail.set_index("row", inplace=True)
         df_ad1fail = df_ad1fail.iloc[:, 0:7]
-        df_ad1fail['Error'] = 'State name did not match lookup table'
+        df_ad1fail["Error"] = "State name did not match lookup table"
         df_ad1fail["row"] = df_ad1fail.index
 
         logging.info("States found in {} seconds".format(time.time() - stime1))
@@ -688,12 +814,13 @@ class FoodSupplyChainService(object):
             logging.info("Decompressing {}".format(gz_filename))
             import gzip
             import shutil
-            with gzip.open(gz_filename, 'rb') as f_in:
-                with open(self.hybas_path(water_unit), 'wb') as f_out:
+
+            with gzip.open(gz_filename, "rb") as f_in:
+                with open(self.hybas_path(water_unit), "wb") as f_out:
                     shutil.copyfileobj(f_in, f_out)
         # - - - - - - - - - - - CHECK THAT ANALYSIS NEEDS POINTS - - - - - - - - - - - #
         # SELECT POINT LOCATIONS
-        df_points = self.df_2[self.df_2['Select_By'] == 'point']
+        df_points = self.df_2[self.df_2["Select_By"] == "point"]
 
         self.set_percent_complete(59)
 
@@ -706,38 +833,52 @@ class FoodSupplyChainService(object):
 
             # CLEAN DATA
             # Make sure coordinates are floats. Drop rows where encoding fails
-            df_points['Latitude'] = pd.to_numeric(df_points['Latitude'], errors='coerce')  # Make sure latitudes are floats
-            df_points['Longitude'] = pd.to_numeric(df_points['Longitude'], errors='coerce')  # Make sure latitudes are floats
+            df_points["Latitude"] = pd.to_numeric(
+                df_points["Latitude"], errors="coerce"
+            )  # Make sure latitudes are floats
+            df_points["Longitude"] = pd.to_numeric(
+                df_points["Longitude"], errors="coerce"
+            )  # Make sure latitudes are floats
 
             # CREATE ERROR LOG
-            df_ptfail = df_points[(df_points['Longitude'].isna()) | (df_points['Latitude'].isna())]
-            df_ptfail['Error'] = 'Non-numeric coordinates'
-            df_ptfail.drop(['SPAM_code', 'Select_By'], axis=1, inplace=True)
+            df_ptfail = df_points[
+                (df_points["Longitude"].isna()) | (df_points["Latitude"].isna())
+            ]
+            df_ptfail["Error"] = "Non-numeric coordinates"
+            df_ptfail.drop(["SPAM_code", "Select_By"], axis=1, inplace=True)
             df_ptfail["row"] = df_ptfail.index
 
             self.set_percent_complete(60)
 
             # DROP BAD COORDINATES - - - - - - - - - - - #
-            df_points.dropna(subset=['Latitude', 'Longitude'], inplace=True)
+            df_points.dropna(subset=["Latitude", "Longitude"], inplace=True)
             # For any point row with missing radius OR radius units, set radius = 100km
-            df_points['Radius'][(df_points['Radius'].isna()) | (df_points['Radius Unit'].isna())] = 100
-            df_points['Radius Unit'][(df_points['Radius Unit'].isna())] = 'km'
+            df_points["Radius"][
+                (df_points["Radius"].isna()) | (df_points["Radius Unit"].isna())
+            ] = 100
+            df_points["Radius Unit"][(df_points["Radius Unit"].isna())] = "km"
 
             # FIND WATERSHEDS
             # Convert Radius into decimal degree value
-            df_points['Buffer'] = df_points.apply(lambda x: self.clean_buffer(x), axis=1)
+            df_points["Buffer"] = df_points.apply(
+                lambda x: self.clean_buffer(x), axis=1
+            )
 
             self.set_percent_complete(61)
 
             # Create XY from coordinates
-            df_points['geometry'] = df_points.apply(lambda row: Point(float(row.Longitude), row.Latitude), axis=1)
-            buffered = df_points.filter(["Buffer", 'geometry', 'id'])
-            buffered['geometry'] = buffered.apply(lambda x: x.geometry.buffer(x.Buffer), axis=1)
+            df_points["geometry"] = df_points.apply(
+                lambda row: Point(float(row.Longitude), row.Latitude), axis=1
+            )
+            buffered = df_points.filter(["Buffer", "geometry", "id"])
+            buffered["geometry"] = buffered.apply(
+                lambda x: x.geometry.buffer(x.Buffer), axis=1
+            )
             buffered = gpd.GeoDataFrame(buffered, geometry=buffered.geometry)
 
             # Find allbasins within every buffer
-            pts_hy6 = gpd.sjoin(buffered, gdf, how="left", op='intersects')
-            pts_basins = pts_hy6.groupby(['row'])[water_unit].agg(list).to_frame()
+            pts_hy6 = gpd.sjoin(buffered, gdf, how="left", op="intersects")
+            pts_basins = pts_hy6.groupby(["row"])[water_unit].agg(list).to_frame()
 
             self.set_percent_complete(62)
 
@@ -760,39 +901,58 @@ class FoodSupplyChainService(object):
         # Combine all basins together
         df_basins = pd.concat([pts_basins, ad0_basins, ad1_basins])
         # # Explode data for every row has a unique row # + sourcing watershed ID
-        df_basinsexplode = self.explode_data(df_basins, 'row', water_unit)
+        df_basinsexplode = self.explode_data(df_basins, "row", water_unit)
         self.set_percent_complete(67)
         # # Find cropped sourced in each watershed
-        df_sourcing = pd.merge(df_basinsexplode, self.df_2.filter(['Location ID', 'SPAM_code']), how='left', left_on='row',
-                               right_index=True)
+        df_sourcing = pd.merge(
+            df_basinsexplode,
+            self.df_2.filter(["Location ID", "SPAM_code"]),
+            how="left",
+            left_on="row",
+            right_index=True,
+        )
 
         self.set_percent_complete(70)
 
         # Add IFPRI production data to see what's actually grown
-        df_sourced = pd.merge(df_sourcing, df_prod, how='left', left_on=[water_unit, 'SPAM_code'],
-                              right_on=[water_unit, 'SPAM_code'])
+        df_sourced = pd.merge(
+            df_sourcing,
+            df_prod,
+            how="left",
+            left_on=[water_unit, "SPAM_code"],
+            right_on=[water_unit, "SPAM_code"],
+        )
         df_sourced = df_sourced[df_sourced.grown_yn == 1]
         # Add full crop name
-        df_sourced = pd.merge(df_sourced, self.df_crops.filter(["full_name", "short_name"]).set_index("short_name"), how='left',
-                              left_on="SPAM_code", right_index=True)
+        df_sourced = pd.merge(
+            df_sourced,
+            self.df_crops.filter(["full_name", "short_name"]).set_index("short_name"),
+            how="left",
+            left_on="SPAM_code",
+            right_index=True,
+        )
 
         self.set_percent_complete(73)
 
         # Clean columns
-        df_sourced.drop(['grown_yn', 'SPAM_code'], axis=1, inplace=True)
-        df_sourced = df_sourced[['row', 'Location ID', water_unit, 'full_name', 'IFPRI_production_MT']]
+        df_sourced.drop(["grown_yn", "SPAM_code"], axis=1, inplace=True)
+        df_sourced = df_sourced[
+            ["row", "Location ID", water_unit, "full_name", "IFPRI_production_MT"]
+        ]
         df_sourced.rename(columns={"full_name": "Crop_Name"}, inplace=True)
 
         self.set_percent_complete(75)
 
-        df_fails = pd.concat([self.df_cropfail, self.df_locfail, df_ptfail, df_ad0fail, df_ad1fail])
+        df_fails = pd.concat(
+            [self.df_cropfail, self.df_locfail, df_ptfail, df_ad0fail, df_ad1fail]
+        )
 
         return df_sourced, df_fails
 
 
 # docker-compose -f docker-compose-gr.yml run develop bash
 # python3 ./aqueduct/services/food_supply_chain_service.py cep 0.5 test-bucket
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
     import pdb
 
@@ -807,10 +967,10 @@ if __name__ == '__main__':
     if sys.argv[3]:
         session = boto3.session.Session()
         s3 = session.client(
-             service_name='s3',
-             aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-             aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
-             endpoint_url=os.environ.get("ENDPOINT_URL")
+            service_name="s3",
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            endpoint_url=os.environ.get("ENDPOINT_URL"),
         )
         try:
             print("Making bucket {} if it doesn't exist".format(sys.argv[3]))
@@ -820,12 +980,16 @@ if __name__ == '__main__':
 
     user_indicator = sys.argv[1]
     user_threshold = float(sys.argv[2])
-    #user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
-    user_input = 'aqueduct/services/supply_chain_data/just.countries.xlsx'
-    analyzer = FoodSupplyChainService(user_indicator=user_indicator, user_threshold=user_threshold, user_input=user_input)
+    # user_input = 'aqueduct/services/supply_chain_data/template_supply_chain_v20210701_example2.xlsx'
+    user_input = "aqueduct/services/supply_chain_data/just.countries.xlsx"
+    analyzer = FoodSupplyChainService(
+        user_indicator=user_indicator,
+        user_threshold=user_threshold,
+        user_input=user_input,
+    )
     analyzer.enqueue()
 
-    job_token = analyzer.results()['job_token']
+    job_token = analyzer.results()["job_token"]
     print("job_token = {}".format(job_token))
 
     # print("testing s3 upload")
