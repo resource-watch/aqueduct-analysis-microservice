@@ -357,15 +357,12 @@ class CBAService(object):
                                          self.engine).values[0]
             ####-------------------------
             # NEW CODE
-            if user_urb == None:
-
+            
+            if user_urb != None:
                 ppp_itl, con_itl = pd.read_sql_query(
                     "SELECT avg(ppp_mer_rate_2005_index) mean_1, avg(construction_cost_index*7) mean_2 FROM lookup_construction_factors_geogunit_108 where fid_aque in ({0}) ".format(
                         ', '.join(map(str, self.fids))), self.engine).values[0]
-
-                costList.append((cost_itl * con_itl)/ ppp_itl)
-            else:
-                costList.append((cost_itl)/ppp_itl)
+                costList.append((cost_itl * user_urb)/ ppp_itl)
             ####-------------------------
         totalCost = sum(costList)
         return totalCost
@@ -393,10 +390,9 @@ class CBAService(object):
         # If the user did not input a cost, use the local cost and PPP conversion to find total cost. 7 million is a standard factor cost
 
         if user_urb == None:
-            cost_urb = urb_dimensions * 7e6
-            cost = cost_urb
+            cost = None
         else:
-            cost_urb = urb_dimensions * user_urb * 1e6
+            cost_urb = urb_dimensions * 1e6
             cost = cost_urb
         return cost
 
