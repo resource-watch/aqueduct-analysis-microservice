@@ -114,23 +114,23 @@ class CBAService(object):
             read_prot), self.engine, index_col='id')
 
         # PROTECTION STANDARDS and RISK ANALYSIS TYPE
-        if self.existing_prot == None:
-            risk_analysis = "precalc"
-            # Hardwire in the protection standards for the Netherlands
-            if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands',
-                                 'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands',
-                                 'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands',
-                                 'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands',
-                                 'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
-                prot_pres = 1000
-                logging.info('!!!!!!!!!!!!!!!!!')
-            else:
-                # Average prot standard for a whole unit (i.e. country)
-                prot_name = "_".join(["Urban_Damage_v2", '2010', scen_abb, "PROT_avg"]).lower()
-                prot_pres = df_prot.loc[geogunit_name, prot_name]
-        else:
-            risk_analysis = "calc"
+        prot_name = "_".join(["Urban_Damage_v2", '2010', scen_abb, "PROT_avg"]).lower()
+        prot_pres_check = df_prot.loc[geogunit_name, prot_name]
+
+        if geogunit_name in ['Noord-Brabant, Netherlands', 'Zeeland, Netherlands', 'Zeeuwse meren, Netherlands',
+                            'Zuid-Holland, Netherlands', 'Drenthe, Netherlands', 'Flevoland, Netherlands',
+                            'Friesland, Netherlands', 'Gelderland, Netherlands', 'Groningen, Netherlands',
+                            'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands',
+                            'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
+            prot_pres_check = 1000
+            
+        if prot_pres_check == self.existing_prot:
             prot_pres = self.existing_prot
+            risk_analysis = "precalc"
+            
+        else:
+            prot_pres = self.existing_prot
+            risk_analysis = "calc"
 
         if self.prot_futu == None:
             logging.info(prot_pres)
@@ -811,8 +811,8 @@ class CBAEndService(object):
         cumOut = fOutput.sum()
 
         # npv = None
-        avoidedGdp = round(fOutput.loc[self.data['meta']['implementionEnd']:].gdp_benefits_avg.sum())
-        avoidedPop = round(fOutput.loc[self.data['meta']['implementionEnd']:].pop_benefits_avg.sum())
+        avoidedGdp = round(fOutput.loc[self.data['meta']['benefitsStart']:].gdp_benefits_avg.sum())
+        avoidedPop = round(fOutput.loc[self.data['meta']['benefitsStart']:].pop_benefits_avg.sum())
         bcr = round((cumOut['gdp_costs_avg'] / cumOut['urb_benefits_avg']), 5   )
 
         return {'widgetId': 'table', 'chart_type': 'table', 'meta': self.data['meta'],
