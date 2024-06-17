@@ -123,7 +123,6 @@ class CBAService(object):
                             'IJsselmeer, Netherlands', 'Limburg, Netherlands', 'Noord-Holland, Netherlands',
                             'Overijssel, Netherlands', 'Utrecht, Netherlands', "Netherlands"]:
             prot_pres_check = 1000
-            
 
         logging.info("****************************")
         logging.info("existing_prot")
@@ -131,6 +130,7 @@ class CBAService(object):
         logging.info("prot_pres_check")
         logging.info(prot_pres_check)
         logging.info("****************************")
+        
         if prot_pres_check == self.existing_prot:
             prot_pres = self.existing_prot
             risk_analysis = "precalc"
