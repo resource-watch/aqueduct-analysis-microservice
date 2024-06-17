@@ -131,7 +131,11 @@ class CBAService(object):
         logging.info(prot_pres_check)
         logging.info("****************************")
 
+<<<<<<< HEAD
         if self.existing_prot != None and prot_pres_check == float(self.existing_prot):
+=======
+        if int(prot_pres_check) == self.existing_prot:
+>>>>>>> fix: prot_pres_check is converted to integet and then compared
             prot_pres = self.existing_prot
             risk_analysis = "precalc"
             
