@@ -48,7 +48,13 @@ app.json_encoder = JSONEncoder
 RWAPIMicroservicePython.register(
     app=app,
     gateway_url=os.getenv('GATEWAY_URL'),
-    token=os.getenv('MICROSERVICE_TOKEN')
+    token=os.getenv('MICROSERVICE_TOKEN'),
+    aws_cloud_watch_logging_enabled=(
+        os.getenv("AWS_CLOUD_WATCH_LOGGING_ENABLED", "True").lower() == "true"
+    ),
+    aws_cloud_watch_log_stream_name=SETTINGS.get("service", {}).get("name"),
+    aws_region=os.getenv("AWS_REGION"),
+    require_api_key=(os.getenv("REQUIRE_API_KEY", "False").lower() == "true"),
 )
 
 

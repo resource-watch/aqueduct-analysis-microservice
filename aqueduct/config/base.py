@@ -7,6 +7,7 @@ SETTINGS = {
         'level': os.getenv('LOGGER_LEVEL') or 'DEBUG'
     },
     'service': {
+        'name': 'Aqueduct Analysis Microservice',
         'port': os.getenv('PORT')
     },
     'carto': {
