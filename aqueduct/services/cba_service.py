@@ -131,7 +131,7 @@ class CBAService(object):
         logging.info(prot_pres_check)
         logging.info("****************************")
 
-        if prot_pres_check == self.existing_prot:
+        if int(prot_pres_check) == self.existing_prot:
             prot_pres = self.existing_prot
             risk_analysis = "precalc"
             
