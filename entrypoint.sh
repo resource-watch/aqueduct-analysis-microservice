@@ -12,7 +12,7 @@ case "$1" in
         ;;
     start)
         echo "Running Start"
-        exec gunicorn -c gunicorn.py aqueduct:app
+        exec gunicorn -c gunicorn.py aqueduct:app --timeout=60
         ;;
     worker)
         echo "Running worker"
