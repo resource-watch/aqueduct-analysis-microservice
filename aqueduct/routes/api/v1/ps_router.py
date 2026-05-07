@@ -29,6 +29,7 @@ from aqueduct.serializers import (
     serialize_response_risk,
 )
 from aqueduct.services.carto_service import CartoService
+from aqueduct.services.gadm_service import GADMService
 from aqueduct.services.cba_defaults_service import CBADefaultService
 from aqueduct.services.cba_service import CBAEndService, CBAICache
 from aqueduct.services.food_supply_chain_service import FoodSupplyChainService
@@ -534,3 +535,34 @@ def get_supply_chain_analysis_result(job_token, **kwargs):
         payload = {"tb": tb, "message": message}
         return jsonify(payload), 500, {}
         # return error(status=500, detail=str(e))
+
+
+@aqueduct_analysis_endpoints_v1.route(
+    "/points-outside-land", strict_slashes=False, methods=["POST"]
+)
+def points_outside_land(**kwargs):
+    """Return coordinates that fall outside all land polygons in gadm36_0.
+
+    Expected body:
+        { "locations": [{"lat": 40.7, "lng": -74.0}, ...] }
+    """
+    try:
+        body = request.get_json(force=True)
+        if not body or "locations" not in body:
+            return error(status=400, detail="Missing 'locations' array in request body")
+
+        locations = body["locations"]
+        if not isinstance(locations, list):
+            return error(status=400, detail="'locations' must be an array")
+
+        for i, loc in enumerate(locations):
+            if "lat" not in loc or "lng" not in loc:
+                return error(status=400, detail=f"Location at index {i} is missing 'lat' or 'lng'")
+
+        logging.info(f"[ROUTER]: points-outside-land received {len(locations)} locations")
+
+        outside = GADMService().points_outside_land(locations)
+        return jsonify({"outside": outside}), 200, {}
+    except Exception as e:
+        logging.error("[ROUTER]: " + str(e))
+        return error(status=500, detail=str(e))

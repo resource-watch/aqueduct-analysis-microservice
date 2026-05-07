@@ -24,7 +24,7 @@ services:
       - aqueduct-postgres
 
   aqueduct-postgres:
-    image: postgres:9.6.19
+    image: postgis/postgis:9.6-2.5
     restart: always
     container_name: aqueduct-postgres
     ports:
@@ -34,14 +34,19 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
-      - ${LOCAL_DATABASE}:/var/lib/postgresql/data
+      # - ${LOCAL_DATABASE}:/var/lib/postgresql/data
       - ./data:/docker-entrypoint-initdb.d/
 ## Only if you want to connect to  db and don't have a db inspector 
   pgadmin-aq:
-    image: dpage/pgadmin4
+    image: dpage/pgadmin4:4.30
     container_name: pgadmin-aq
     environment:
       PGADMIN_DEFAULT_EMAIL: "test@vizzuality.com"
       PGADMIN_DEFAULT_PASSWORD: "PgAdmin2019!"
     ports:
       - "16543:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  pgadmin_data:
