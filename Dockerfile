@@ -3,8 +3,10 @@ FROM python:3.11-bullseye
 ENV NAME aqueduct
 ENV USER aqueduct
 
-RUN apt-get update && apt-get install -y bash git gcc \
-  build-essential postgresql postgresql-client postgresql-contrib python3-rtree
+RUN apt-get update && apt-get install -y --no-install-recommends bash git gcc \
+  build-essential postgresql postgresql-client postgresql-contrib python3-rtree \
+  libgdal-dev gdal-bin \
+  && rm -rf /var/lib/apt/lists/*
 RUN addgroup $USER && useradd -ms /bin/bash $USER -g $USER
 RUN pip install --upgrade pip
 
