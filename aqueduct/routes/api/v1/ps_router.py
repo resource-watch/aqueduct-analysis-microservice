@@ -34,7 +34,11 @@ from aqueduct.services.cba_defaults_service import CBADefaultService
 from aqueduct.services.cba_service import CBAEndService, CBAICache
 from aqueduct.services.food_supply_chain_service import FoodSupplyChainService
 from aqueduct.services.risk_service import RiskService
+from aqueduct.services.supply_chain_locations_service import (
+    SupplyChainLocationsService,
+)
 from aqueduct.validators import (
+    validate_food_supply_chain_locations,
     validate_params_cba,
     validate_params_cba_def,
     validate_params_risk,
@@ -535,6 +539,69 @@ def get_supply_chain_analysis_result(job_token, **kwargs):
         payload = {"tb": tb, "message": message}
         return jsonify(payload), 500, {}
         # return error(status=500, detail=str(e))
+
+
+@aqueduct_analysis_endpoints_v1.route(
+    "/food-supply-chain/locations", strict_slashes=False, methods=["POST"]
+)
+@validate_food_supply_chain_locations
+def food_supply_chain_locations(**kwargs):
+    """Synchronous supply-chain analysis (point / state / country).
+
+    Mirrors `AqFoodSupplyChainAnalyzer2026v2.ipynb`: for each input,
+    select the matching set of Aqueduct basins (point + radius via
+    spatial join, or `country`/`state` admin name match), enrich with
+    SBTN (`sbtn_son_v2`) and crop production (`crop_production_pfaf`),
+    and allocate `total_volume` proportionally across the matched
+    basins.
+
+    Query params:
+        ?buffer=planar      (default; matches notebook's km/111 degrees)
+        ?buffer=geodesic    (uses ST_Buffer over geography in meters,
+                             more accurate at high latitudes)
+
+    Body:
+        {
+          "locations": [
+            { "unique_id": "site-1",
+              "lat": -23.55, "lng": -46.63,
+              "radius": 50, "radius_units": "km",
+              "commodity_code": "SOYB", "irrigation": "All",
+              "total_volume": 12000, "volume_units": "MT" },
+            { "unique_id": "site-2",
+              "country": "Brazil", "state": "Mato Grosso",
+              "commodity_code": "SOYB", "irrigation": "Irrigated",
+              "total_volume": 8000 },
+            { "unique_id": "site-3",
+              "country": "United States", "iso_code": "USA",
+              "commodity_code": "MAIZ", "irrigation": "All",
+              "total_volume": 5000 }
+          ]
+        }
+
+    Response:
+        {
+          "results": [ <one row per (unique_id, pfaf_id)> ],
+          "errors":  [ <inputs that produced no rows or were malformed> ]
+        }
+    """
+    try:
+        locations = kwargs["locations"]
+        buffer_mode = kwargs.get("buffer_mode", "planar")
+        logging.info(
+            "[ROUTER]: food-supply-chain/locations received %d locations "
+            "(buffer=%s)",
+            len(locations),
+            buffer_mode,
+        )
+        payload = SupplyChainLocationsService().analyze(
+            locations, buffer_mode=buffer_mode
+        )
+        return jsonify(payload), 200, {}
+    except Exception as e:
+        logging.error("[ROUTER]: " + str(e))
+        tb = "".join(traceback.format_tb(e.__traceback__))
+        return jsonify({"tb": tb, "message": str(e)}), 500, {}
 
 
 @aqueduct_analysis_endpoints_v1.route(

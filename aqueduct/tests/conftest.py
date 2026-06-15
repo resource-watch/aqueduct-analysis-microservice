@@ -2,6 +2,16 @@ import os
 import pytest
 from moto import mock_logs
 
+# Shim: Flask 2.2.x reads `werkzeug.__version__` but Werkzeug 3.x dropped
+# that attribute. Restore it via importlib.metadata so `app.test_client()`
+# can build the test environ. No-op on older Werkzeug that already has it.
+import werkzeug
+
+if not hasattr(werkzeug, "__version__"):
+    import importlib.metadata as _md
+
+    werkzeug.__version__ = _md.version("werkzeug")
+
 
 @pytest.fixture(scope="package")
 def client():
