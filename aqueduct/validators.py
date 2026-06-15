@@ -7,6 +7,10 @@ from cerberus import Validator
 from flask import request
 
 from aqueduct.routes.api import error
+from aqueduct.services.supply_chain_locations_service import (
+    ALLOWED_IRRIGATION,
+    ALLOWED_RADIUS_UNITS,
+)
 
 
 def myCoerc(n):
@@ -268,6 +272,163 @@ def validate_params_cba_def(func):
 
         kwargs["sanitized_params"] = validator.normalized(kwargs["params"])
         logging.debug(f"[VALIDATOR - cba_def_params]: {kwargs['sanitized_params']}")
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def validate_food_supply_chain_locations(func):
+    """Validator for POST /food-supply-chain/locations request body.
+
+    Each location supports three modes (auto-inferred from supplied
+    fields, or pinned via an explicit `select_by`):
+
+      - point:   lat, lng, radius, radius_units
+      - state:   country and state (+/- iso_code)
+      - country: country (+/- iso_code)
+
+    `commodity_code` and `irrigation` are always required. Mode-specific
+    field requirements are checked further downstream in the service so
+    we can return per-location reasons rather than aborting the batch.
+
+    The sanitized list is placed on `kwargs["locations"]` and the
+    optional `?buffer=planar|geodesic` query parameter on
+    `kwargs["buffer_mode"]`.
+    """
+
+    location_schema = {
+        "unique_id": {
+            "type": "string",
+            "required": False,
+            "nullable": True,
+            "coerce": (lambda v: None if v is None else str(v)),
+        },
+        "select_by": {
+            "type": "string",
+            "required": False,
+            "nullable": True,
+            "coerce": (lambda v: None if v is None else str(v).lower()),
+            "allowed": ["point", "state", "country"],
+        },
+        "lat": {
+            "type": "float",
+            "required": False,
+            "nullable": True,
+            "coerce": (lambda v: None if v is None else float(v)),
+            "min": -90.0,
+            "max": 90.0,
+        },
+        "lng": {
+            "type": "float",
+            "required": False,
+            "nullable": True,
+            "coerce": (lambda v: None if v is None else float(v)),
+            "min": -180.0,
+            "max": 180.0,
+        },
+        "radius": {
+            "type": "float",
+            "required": False,
+            "nullable": True,
+            "coerce": (lambda v: None if v is None else float(v)),
+            "min": 0.0001,
+        },
+        "radius_units": {
+            "type": "string",
+            "required": False,
+            "nullable": True,
+            "coerce": (lambda v: None if v is None else str(v).lower()),
+            "allowed": ALLOWED_RADIUS_UNITS,
+        },
+        "iso_code": {
+            "type": "string",
+            "required": False,
+            "nullable": True,
+            "regex": r"^[A-Za-z]{2,3}$",
+            "coerce": (lambda v: None if v is None else str(v).upper()),
+        },
+        "country": {
+            "type": "string",
+            "required": False,
+            "nullable": True,
+        },
+        "state": {
+            "type": "string",
+            "required": False,
+            "nullable": True,
+        },
+        "commodity_code": {
+            "type": "string",
+            "required": True,
+            "coerce": (lambda v: str(v).upper()),
+            "regex": r"^[A-Z]{3,4}$",
+        },
+        "irrigation": {
+            "type": "string",
+            "required": True,
+            "allowed": ALLOWED_IRRIGATION,
+        },
+        "total_volume": {
+            "type": "float",
+            "required": False,
+            "nullable": True,
+            "coerce": (lambda v: None if v is None else float(v)),
+            "default": None,
+        },
+        "volume_units": {
+            "type": "string",
+            "required": False,
+            "nullable": True,
+            "default": None,
+        },
+        "business_unit": {
+            "type": "string",
+            "required": False,
+            "nullable": True,
+            "default": None,
+        },
+    }
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        body = request.get_json(silent=True) or {}
+        locations = body.get("locations")
+
+        if not isinstance(locations, list) or not locations:
+            return error(
+                status=400,
+                detail="Request body must include a non-empty 'locations' array",
+            )
+        if len(locations) > 500:
+            return error(
+                status=413,
+                detail="Too many locations (max 500 per request)",
+            )
+
+        validator = Validator(location_schema, allow_unknown=True)
+        sanitized = []
+        errors = {}
+        for idx, loc in enumerate(locations):
+            if not isinstance(loc, dict):
+                errors[idx] = "must be an object"
+                continue
+            if not validator.validate(loc):
+                errors[idx] = validator.errors
+                continue
+            sanitized.append(validator.normalized(loc))
+
+        if errors:
+            return error(status=400, detail={"locations": errors})
+
+        buffer_mode = (request.args.get("buffer") or "planar").lower()
+        if buffer_mode not in ("planar", "geodesic"):
+            return error(
+                status=400,
+                detail="buffer must be 'planar' or 'geodesic'",
+            )
+
+        kwargs["locations"] = sanitized
+        kwargs["buffer_mode"] = buffer_mode
         return func(*args, **kwargs)
 
     return wrapper
