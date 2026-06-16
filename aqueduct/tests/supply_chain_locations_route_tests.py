@@ -334,3 +334,104 @@ def test_endpoint_admin_no_match_reports_admin_reason(client):
     assert body["results"] == []
     assert body["errors"][0]["unique_id"] == "atlantis"
     assert "admin" in body["errors"][0]["reason"]
+
+
+# ---------------------------------------------------------------------------
+# geometry output (?geometry=true)
+# ---------------------------------------------------------------------------
+
+
+def _point_body(unique_id="p1"):
+    return json.dumps(
+        {
+            "locations": [
+                {
+                    "unique_id": unique_id,
+                    "lat": -23.55,
+                    "lng": -46.63,
+                    "radius": 50,
+                    "radius_units": "km",
+                    "commodity_code": "SOYB",
+                    "irrigation": "All",
+                    "total_volume": 12000,
+                }
+            ]
+        }
+    )
+
+
+def test_endpoint_no_geojson_key_by_default(client):
+    rows = [_basin_row("p1", 111111, 100.0, 12000, summed=100.0, sourced=12000.0)]
+    pg_patch, ev_patch = _patch_psycopg2(rows)
+    with pg_patch, ev_patch:
+        resp = client.post(
+            ENDPOINT, data=_point_body(), content_type="application/json"
+        )
+    body = json.loads(resp.data)
+    assert resp.status_code == 200
+    assert "geojson" not in body
+
+
+def test_endpoint_geometry_true_returns_feature_collection(client):
+    # Rows include a `geometry` key (GeoJSON string) like ST_AsGeoJSON emits.
+    row_a = _basin_row("p1", 111111, 100.0, 12000, summed=400.0, sourced=3000.0)
+    row_a["geometry"] = json.dumps(
+        {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]}
+    )
+    row_b = _basin_row("p1", 222222, 300.0, 12000, summed=400.0, sourced=9000.0)
+    row_b["geometry"] = json.dumps(
+        {"type": "Polygon", "coordinates": [[[2, 2], [3, 2], [3, 3], [2, 2]]]}
+    )
+    pg_patch, ev_patch = _patch_psycopg2([row_a, row_b])
+    with pg_patch, ev_patch:
+        resp = client.post(
+            ENDPOINT + "?geometry=true",
+            data=_point_body(),
+            content_type="application/json",
+        )
+    assert resp.status_code == 200
+    body = json.loads(resp.data)
+
+    # tabular results stay clean (no geometry leaked into the rows)
+    assert len(body["results"]) == 2
+    assert all("geometry" not in r for r in body["results"])
+
+    fc = body["geojson"]
+    assert fc["type"] == "FeatureCollection"
+    assert len(fc["features"]) == 2
+
+    feat = fc["features"][0]
+    assert feat["type"] == "Feature"
+    assert feat["geometry"]["type"] == "Polygon"
+    # properties carry the full analysis row, including pfaf_id
+    assert feat["properties"]["pfaf_id"] == 111111
+    assert feat["properties"]["unique_id"] == "p1"
+    assert "production_sourced_from_basin" in feat["properties"]
+
+
+def test_endpoint_geometry_null_geometry_becomes_none(client):
+    # A row whose geometry came back NULL should yield feature.geometry = None.
+    row = _basin_row("p1", 111111, 100.0, 12000, summed=100.0, sourced=12000.0)
+    row["geometry"] = None
+    pg_patch, ev_patch = _patch_psycopg2([row])
+    with pg_patch, ev_patch:
+        resp = client.post(
+            ENDPOINT + "?geometry=true",
+            data=_point_body(),
+            content_type="application/json",
+        )
+    body = json.loads(resp.data)
+    assert resp.status_code == 200
+    assert body["geojson"]["features"][0]["geometry"] is None
+
+
+def test_endpoint_rejects_non_numeric_simplify(client):
+    pg_patch, ev_patch = _patch_psycopg2([])
+    with pg_patch, ev_patch:
+        resp = client.post(
+            ENDPOINT + "?geometry=true&simplify=abc",
+            data=_point_body(),
+            content_type="application/json",
+        )
+    assert resp.status_code == 400
+    assert "simplify" in json.loads(resp.data)["errors"][0]["detail"]
