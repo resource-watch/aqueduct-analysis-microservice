@@ -16,6 +16,12 @@ services:
       REDIS_URL: redis://supply-chain-redis-test
       AWS_REGION: "us-east-1"
       REQUIRE_API_KEY: "True"
+      # Tests must not hit real CloudWatch — Jenkins runs under an EKS role
+      # without logs:CreateLogGroup, and importing aqueduct/__init__.py would
+      # otherwise call RWAPIMicroservicePython.register() → AccessDenied at
+      # collection time. conftest.py also activates moto's mock_logs as a
+      # belt-and-suspenders safeguard.
+      AWS_CLOUD_WATCH_LOGGING_ENABLED: "False"
     command: test
     depends_on:
       - postgres
