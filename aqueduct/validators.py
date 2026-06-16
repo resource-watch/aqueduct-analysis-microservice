@@ -427,8 +427,28 @@ def validate_food_supply_chain_locations(func):
                 detail="buffer must be 'planar' or 'geodesic'",
             )
 
+        include_geometry = (request.args.get("geometry") or "false").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+
+        simplify = None
+        simplify_raw = request.args.get("simplify")
+        if simplify_raw not in (None, ""):
+            try:
+                simplify = float(simplify_raw)
+            except (TypeError, ValueError):
+                return error(
+                    status=400, detail="simplify must be a number (degrees)"
+                )
+            if simplify < 0:
+                return error(status=400, detail="simplify must be >= 0")
+
         kwargs["locations"] = sanitized
         kwargs["buffer_mode"] = buffer_mode
+        kwargs["include_geometry"] = include_geometry
+        kwargs["simplify"] = simplify
         return func(*args, **kwargs)
 
     return wrapper
