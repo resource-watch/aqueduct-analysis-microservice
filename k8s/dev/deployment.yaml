@@ -83,6 +83,13 @@ spec:
                 secretKeyRef:
                   key: REQUIRE_API_KEY
                   name: mssecrets
+            # GKE has no AWS credentials, so RWAPIMicroservicePython.register()
+            # crashes at startup when it tries to create the CloudWatch log
+            # group (NoCredentialsError), which prevents the service from
+            # registering its routes with the gateway. Keep CloudWatch logging
+            # off here (mirrors docker-compose-develop.yml).
+            - name: AWS_CLOUD_WATCH_LOGGING_ENABLED
+              value: "False"
           image: gfwdockerhub/aqueduct-analysis
           imagePullPolicy: Always
           name: aqueduct-analysis
