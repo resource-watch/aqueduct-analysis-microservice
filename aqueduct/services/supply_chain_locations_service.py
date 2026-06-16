@@ -25,6 +25,7 @@ The whole pipeline is one PostGIS query — no GeoPandas at request time.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from typing import Any, Iterable
@@ -138,7 +139,7 @@ point_hits AS (
         MAX(ar.bws_raw)   AS bws_raw,
         MAX(ar.bws_score) AS bws_score,
         MAX(ar.bws_cat)   AS bws_cat,
-        MAX(ar.bws_label) AS bws_label
+        MAX(ar.bws_label) AS bws_label{geom_agg}
     FROM point_buffers b
     JOIN aq_basins_raw ar ON ST_Intersects(ar.geom, b.geom)
     WHERE ar.pfaf_id <> -9999
@@ -159,7 +160,7 @@ admin_hits AS (
         MAX(ar.bws_raw)   AS bws_raw,
         MAX(ar.bws_score) AS bws_score,
         MAX(ar.bws_cat)   AS bws_cat,
-        MAX(ar.bws_label) AS bws_label
+        MAX(ar.bws_label) AS bws_label{geom_agg}
     FROM inputs i
     JOIN aq_basins_raw ar ON
         ar.pfaf_id <> -9999
@@ -223,7 +224,7 @@ SELECT e.unique_id,
                 AND e.basin_production IS NOT NULL
            THEN e.total_volume * (e.basin_production / s.summed_production)
            ELSE NULL
-       END AS production_sourced_from_basin
+       END AS production_sourced_from_basin{geom_final}
 FROM enriched e
 LEFT JOIN sums s USING (unique_id)
 ORDER BY e.unique_id, e.pfaf_id
@@ -259,6 +260,8 @@ class SupplyChainLocationsService:
         self,
         locations: Iterable[dict],
         buffer_mode: str = BUFFER_PLANAR,
+        include_geometry: bool = False,
+        simplify: float | None = None,
     ) -> dict[str, Any]:
         """Run the full analysis for a batch of input locations.
 
@@ -272,6 +275,15 @@ class SupplyChainLocationsService:
             decimal degrees. "geodesic" buffers on the spheroid in
             meters — more accurate at high latitudes but diverges from
             notebook output.
+        include_geometry:
+            When True, the response gains a `geojson` FeatureCollection
+            whose features carry the dissolved basin polygon (one per
+            `(unique_id, pfaf_id)`) and the full analysis row as
+            `properties`. Off by default to keep payloads small.
+        simplify:
+            Optional Douglas-Peucker tolerance in degrees applied to the
+            returned geometry (ST_SimplifyPreserveTopology). Only used
+            when `include_geometry` is True. Smaller = more detail.
         """
         if buffer_mode not in ALLOWED_BUFFER_MODES:
             raise ValueError(
@@ -282,21 +294,51 @@ class SupplyChainLocationsService:
         prepared, prep_errors = self._prepare_inputs(list(locations))
 
         if not prepared:
-            return {"results": [], "errors": prep_errors}
+            response: dict[str, Any] = {"results": [], "errors": prep_errors}
+            if include_geometry:
+                response["geojson"] = {
+                    "type": "FeatureCollection",
+                    "features": [],
+                }
+            return response
 
         buffer_expr = (
             _BUFFER_GEODESIC_EXPR
             if buffer_mode == BUFFER_GEODESIC
             else _BUFFER_PLANAR_EXPR
         )
-        sql = _ANALYSIS_SQL_TEMPLATE.format(buffer_expr=buffer_expr)
+
+        if include_geometry:
+            # Dissolve the basin's admin slices into one polygon per
+            # pfaf_id, then emit it as GeoJSON at 6-decimal precision
+            # (~0.11 m), optionally simplified to shrink the payload.
+            geom_agg = ",\n        ST_Union(ar.geom) AS geom"
+            if simplify is not None and simplify > 0:
+                geom_src = (
+                    "COALESCE("
+                    f"ST_SimplifyPreserveTopology(e.geom, {float(simplify)}), "
+                    "e.geom)"
+                )
+            else:
+                geom_src = "e.geom"
+            geom_final = f",\n       ST_AsGeoJSON({geom_src}, 6) AS geometry"
+        else:
+            geom_agg = ""
+            geom_final = ""
+
+        sql = _ANALYSIS_SQL_TEMPLATE.format(
+            buffer_expr=buffer_expr,
+            geom_agg=geom_agg,
+            geom_final=geom_final,
+        )
 
         with psycopg2.connect(self._dsn) as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 LOG.debug(
                     "[supply_chain_locations] running analysis "
-                    "(mode=%s) for %d inputs",
+                    "(mode=%s, geometry=%s) for %d inputs",
                     buffer_mode,
+                    include_geometry,
                     len(prepared),
                 )
                 execute_values(
@@ -307,7 +349,20 @@ class SupplyChainLocationsService:
                 )
                 rows = cur.fetchall()
 
-        results = [self._format_row(r) for r in rows]
+        results = []
+        features = []
+        for row in rows:
+            geom_json = row.pop("geometry", None) if include_geometry else None
+            formatted = self._format_row(row)
+            results.append(formatted)
+            if include_geometry:
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": json.loads(geom_json) if geom_json else None,
+                        "properties": formatted,
+                    }
+                )
 
         seen = {r["unique_id"] for r in results}
         miss_errors = [
@@ -323,7 +378,13 @@ class SupplyChainLocationsService:
             if p["values"][0] not in seen
         ]
 
-        return {"results": results, "errors": prep_errors + miss_errors}
+        response = {"results": results, "errors": prep_errors + miss_errors}
+        if include_geometry:
+            response["geojson"] = {
+                "type": "FeatureCollection",
+                "features": features,
+            }
+        return response
 
     @staticmethod
     def _prepare_inputs(

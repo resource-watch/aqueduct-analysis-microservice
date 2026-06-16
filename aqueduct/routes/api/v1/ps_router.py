@@ -559,6 +559,12 @@ def food_supply_chain_locations(**kwargs):
         ?buffer=planar      (default; matches notebook's km/111 degrees)
         ?buffer=geodesic    (uses ST_Buffer over geography in meters,
                              more accurate at high latitudes)
+        ?geometry=true      (adds a `geojson` FeatureCollection of the
+                             matched basin polygons, one feature per
+                             (unique_id, pfaf_id), with the analysis row
+                             as feature properties)
+        ?simplify=<degrees> (optional Douglas-Peucker tolerance applied
+                             to the returned geometry to shrink payloads)
 
     Body:
         {
@@ -588,14 +594,21 @@ def food_supply_chain_locations(**kwargs):
     try:
         locations = kwargs["locations"]
         buffer_mode = kwargs.get("buffer_mode", "planar")
+        include_geometry = kwargs.get("include_geometry", False)
+        simplify = kwargs.get("simplify")
         logging.info(
             "[ROUTER]: food-supply-chain/locations received %d locations "
-            "(buffer=%s)",
+            "(buffer=%s, geometry=%s, simplify=%s)",
             len(locations),
             buffer_mode,
+            include_geometry,
+            simplify,
         )
         payload = SupplyChainLocationsService().analyze(
-            locations, buffer_mode=buffer_mode
+            locations,
+            buffer_mode=buffer_mode,
+            include_geometry=include_geometry,
+            simplify=simplify,
         )
         return jsonify(payload), 200, {}
     except Exception as e:
