@@ -12,13 +12,18 @@ location is one of three modes (auto-inferred from the fields supplied):
   - "country": country (+/- iso_code). Selects every basin row whose
                `gid_0`/`name_0` match (cells 14-15).
 
-After collecting hits we dedupe by `(unique_id, pfaf_id)` (notebook's
-`dissolve(by=['UniqueID','pfaf_id'])`), enrich with SBTN
+After collecting hits we dissolve by `(unique_id, pfaf_id, gid_1)` — v2
+granularity that keeps separate admin-1 slices within multi-state basins
+(notebook `dissolve(by=['UniqueID','pfaf_id','gid_1'])`), enrich with SBTN
 (`sbtn_son_v2`) + production (`crop_production_pfaf`), and allocate
 `total_volume` proportionally:
 
     production_sourced_from_basin =
         total_volume * (basin_production / sum(basin_production))
+
+Rows with null or zero `production_sourced_from_basin` are dropped (v2).
+Sentinel `pfaf_id = -9999` and `gid_1 = '-9999'` rows are excluded.
+`irrigation = "Unknown"` is normalized to `"All"` before the prod join.
 
 The whole pipeline is one PostGIS query — no GeoPandas at request time.
 """
@@ -55,6 +60,9 @@ ALLOWED_RADIUS_UNITS = sorted(_KM_PER_UNIT.keys())
 
 # Irrigation values present in `crop_production_pfaf.irrigation`.
 ALLOWED_IRRIGATION = ["All", "Irrigated", "Rainfed"]
+
+# Notebook v2 maps template placeholder irrigation values before the prod join.
+_IRRIGATION_ALIASES = {"Unknown": "All"}
 
 # Buffer modes
 BUFFER_PLANAR = "planar"
@@ -99,6 +107,11 @@ def infer_select_by(loc: dict) -> str | None:
     return None
 
 
+def normalize_irrigation(value: str) -> str:
+    """Map notebook template placeholders to production lookup keys (v2)."""
+    return _IRRIGATION_ALIASES.get(value, value)
+
+
 # Buffer expressions used inside the CTE. Selected by `buffer_mode`.
 _BUFFER_PLANAR_EXPR = (
     "ST_Buffer(ST_SetSRID(ST_MakePoint(lng, lat), 4326), radius_deg)"
@@ -132,6 +145,7 @@ point_hits AS (
     SELECT
         b.unique_id,
         ar.pfaf_id,
+        ar.gid_1,
         b.commodity_code, b.irrigation, b.total_volume,
         MAX(ar.gid_0)     AS iso_code,
         MAX(ar.name_0)    AS country,
@@ -143,7 +157,10 @@ point_hits AS (
     FROM point_buffers b
     JOIN aq_basins_raw ar ON ST_Intersects(ar.geom, b.geom)
     WHERE ar.pfaf_id <> -9999
-    GROUP BY b.unique_id, ar.pfaf_id, b.commodity_code, b.irrigation, b.total_volume
+      AND ar.gid_1 IS NOT NULL
+      AND ar.gid_1::text <> '-9999'
+    GROUP BY b.unique_id, ar.pfaf_id, ar.gid_1,
+             b.commodity_code, b.irrigation, b.total_volume
 ),
 admin_hits AS (
     -- `country` is matched permissively against either `name_0` (full
@@ -153,6 +170,7 @@ admin_hits AS (
     SELECT
         i.unique_id,
         ar.pfaf_id,
+        ar.gid_1,
         i.commodity_code, i.irrigation, i.total_volume,
         MAX(ar.gid_0)     AS iso_code,
         MAX(ar.name_0)    AS country,
@@ -164,6 +182,8 @@ admin_hits AS (
     FROM inputs i
     JOIN aq_basins_raw ar ON
         ar.pfaf_id <> -9999
+        AND ar.gid_1 IS NOT NULL
+        AND ar.gid_1::text <> '-9999'
         AND (i.iso_code IS NULL OR LOWER(ar.gid_0) = LOWER(i.iso_code))
         AND (
             i.country IS NULL
@@ -175,7 +195,8 @@ admin_hits AS (
             OR LOWER(ar.name_1) = LOWER(i.state)
         )
     WHERE i.select_by IN ('state', 'country')
-    GROUP BY i.unique_id, ar.pfaf_id, i.commodity_code, i.irrigation, i.total_volume
+    GROUP BY i.unique_id, ar.pfaf_id, ar.gid_1,
+             i.commodity_code, i.irrigation, i.total_volume
 ),
 hits AS (
     SELECT * FROM point_hits
@@ -200,34 +221,41 @@ sums AS (
            SUM(basin_production) AS summed_production
     FROM enriched
     GROUP BY unique_id
+),
+allocated AS (
+    SELECT e.unique_id,
+           e.pfaf_id,
+           e.gid_1,
+           e.iso_code,
+           e.country,
+           e.state,
+           e.commodity_code,
+           e.irrigation,
+           e.total_volume,
+           e.bws_raw,
+           e.bws_score,
+           e.bws_cat,
+           e.bws_label,
+           e.sbtn_quant_max,
+           e.sbtn_qual_max,
+           e.basin_production,
+           s.summed_production,
+           CASE
+               WHEN s.summed_production IS NOT NULL
+                    AND s.summed_production > 0
+                    AND e.total_volume IS NOT NULL
+                    AND e.basin_production IS NOT NULL
+               THEN e.total_volume * (e.basin_production / s.summed_production)
+               ELSE NULL
+           END AS production_sourced_from_basin{geom_final}
+    FROM enriched e
+    LEFT JOIN sums s USING (unique_id)
 )
-SELECT e.unique_id,
-       e.pfaf_id,
-       e.iso_code,
-       e.country,
-       e.state,
-       e.commodity_code,
-       e.irrigation,
-       e.total_volume,
-       e.bws_raw,
-       e.bws_score,
-       e.bws_cat,
-       e.bws_label,
-       e.sbtn_quant_max,
-       e.sbtn_qual_max,
-       e.basin_production,
-       s.summed_production,
-       CASE
-           WHEN s.summed_production IS NOT NULL
-                AND s.summed_production > 0
-                AND e.total_volume IS NOT NULL
-                AND e.basin_production IS NOT NULL
-           THEN e.total_volume * (e.basin_production / s.summed_production)
-           ELSE NULL
-       END AS production_sourced_from_basin{geom_final}
-FROM enriched e
-LEFT JOIN sums s USING (unique_id)
-ORDER BY e.unique_id, e.pfaf_id
+SELECT *
+FROM allocated
+WHERE production_sourced_from_basin IS NOT NULL
+  AND production_sourced_from_basin <> 0
+ORDER BY unique_id, pfaf_id, gid_1
 """
 
 _VALUES_TEMPLATE = (
@@ -278,7 +306,7 @@ class SupplyChainLocationsService:
         include_geometry:
             When True, the response gains a `geojson` FeatureCollection
             whose features carry the dissolved basin polygon (one per
-            `(unique_id, pfaf_id)`) and the full analysis row as
+            `(unique_id, pfaf_id, gid_1)`) and the full analysis row as
             `properties`. Off by default to keep payloads small.
         simplify:
             Optional Douglas-Peucker tolerance in degrees applied to the
@@ -309,9 +337,9 @@ class SupplyChainLocationsService:
         )
 
         if include_geometry:
-            # Dissolve the basin's admin slices into one polygon per
-            # pfaf_id, then emit it as GeoJSON at 6-decimal precision
-            # (~0.11 m), optionally simplified to shrink the payload.
+            # Dissolve admin slices into one polygon per (pfaf_id, gid_1),
+            # then emit as GeoJSON at 6-decimal precision (~0.11 m),
+            # optionally simplified to shrink the payload.
             geom_agg = ",\n        ST_Union(ar.geom) AS geom"
             if simplify is not None and simplify > 0:
                 geom_src = (
@@ -474,7 +502,7 @@ class SupplyChainLocationsService:
                         loc.get("country"),
                         loc.get("state"),
                         str(loc["commodity_code"]).upper(),
-                        str(loc["irrigation"]),
+                        normalize_irrigation(str(loc["irrigation"])),
                         (
                             float(loc["total_volume"])
                             if loc.get("total_volume") is not None
