@@ -16,6 +16,7 @@ from aqueduct.services.supply_chain_locations_service import (
     ALLOWED_RADIUS_UNITS,
     SupplyChainLocationsService,
     infer_select_by,
+    normalize_irrigation,
     radius_to_degrees,
     radius_to_km,
 )
@@ -97,6 +98,24 @@ def test_allowed_constants_are_sorted_and_complete():
 )
 def test_infer_select_by(loc, expected):
     assert infer_select_by(loc) == expected
+
+
+def test_normalize_irrigation_maps_unknown_to_all():
+    assert normalize_irrigation("Unknown") == "All"
+    assert normalize_irrigation("All") == "All"
+
+
+def test_prepare_inputs_normalizes_unknown_irrigation():
+    locs = [
+        {
+            "country": "Brazil",
+            "commodity_code": "SOYB",
+            "irrigation": "Unknown",
+        }
+    ]
+    prepared, errors = SupplyChainLocationsService._prepare_inputs(locs)
+    assert errors == []
+    assert prepared[0]["values"][10] == "All"
 
 
 # ---------------------------------------------------------------------------

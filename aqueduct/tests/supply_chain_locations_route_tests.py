@@ -51,11 +51,12 @@ def _patch_psycopg2(rows):
 
 
 def _basin_row(unique_id, pfaf_id, basin_production, total_volume,
-               summed=None, sourced=None, country="Brazil"):
+               summed=None, sourced=None, country="Brazil", gid_1="BRA.25_1"):
     """Convenience: produce a fake DB row matching what the SQL returns."""
     return {
         "unique_id": unique_id,
         "pfaf_id": pfaf_id,
+        "gid_1": gid_1,
         "iso_code": "BRA",
         "country": country,
         "state": "São Paulo",
