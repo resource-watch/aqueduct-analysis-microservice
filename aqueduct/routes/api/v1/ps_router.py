@@ -561,7 +561,7 @@ def food_supply_chain_locations(**kwargs):
                              more accurate at high latitudes)
         ?geometry=true      (adds a `geojson` FeatureCollection of the
                              matched basin polygons, one feature per
-                             (unique_id, pfaf_id), with the analysis row
+                             (unique_id, pfaf_id, gid_1), with the analysis row
                              as feature properties)
         ?simplify=<degrees> (optional Douglas-Peucker tolerance applied
                              to the returned geometry to shrink payloads)
@@ -587,7 +587,7 @@ def food_supply_chain_locations(**kwargs):
 
     Response:
         {
-          "results": [ <one row per (unique_id, pfaf_id)> ],
+          "results": [ <one row per (unique_id, pfaf_id, gid_1)> ],
           "errors":  [ <inputs that produced no rows or were malformed> ]
         }
     """
