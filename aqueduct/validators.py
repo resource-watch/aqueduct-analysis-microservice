@@ -10,6 +10,8 @@ from aqueduct.routes.api import error
 from aqueduct.services.supply_chain_locations_service import (
     ALLOWED_IRRIGATION,
     ALLOWED_RADIUS_UNITS,
+    _IRRIGATION_ALIASES,
+    normalize_irrigation,
 )
 
 
@@ -366,6 +368,11 @@ def validate_food_supply_chain_locations(func):
         "irrigation": {
             "type": "string",
             "required": True,
+            "coerce": (
+                lambda v: normalize_irrigation(str(v))
+                if str(v) in _IRRIGATION_ALIASES
+                else str(v)
+            ),
             "allowed": ALLOWED_IRRIGATION,
         },
         "total_volume": {
