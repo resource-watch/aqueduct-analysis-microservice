@@ -60,7 +60,7 @@ def _basin_row(unique_id, pfaf_id, basin_production, total_volume,
         "iso_code": "BRA",
         "country": country,
         "state": "São Paulo",
-        "commodity_code": "SOYB",
+        "commodity": "Soybean",
         "irrigation": "All",
         "total_volume": total_volume,
         "bws_raw": 0.1,
@@ -98,7 +98,7 @@ def test_endpoint_happy_path_returns_results(client):
                             "lng": -46.63,
                             "radius": 50,
                             "radius_units": "km",
-                            "commodity_code": "SOYB",
+                            "commodity": "Soybean",
                             "irrigation": "All",
                             "total_volume": 12000,
                         }
@@ -152,7 +152,7 @@ def test_endpoint_rejects_invalid_radius_units(client):
                             "lng": 0,
                             "radius": 1,
                             "radius_units": "furlongs",
-                            "commodity_code": "SOYB",
+                            "commodity": "Soybean",
                             "irrigation": "All",
                         }
                     ]
@@ -176,7 +176,7 @@ def test_endpoint_rejects_invalid_irrigation(client):
                     "locations": [
                         {
                             "country": "Brazil",
-                            "commodity_code": "SOYB",
+                            "commodity": "Soybean",
                             "irrigation": "Sometimes",
                         }
                     ]
@@ -200,7 +200,7 @@ def test_endpoint_rejects_unknown_buffer_query(client):
                             "lng": 0,
                             "radius": 1,
                             "radius_units": "km",
-                            "commodity_code": "SOYB",
+                            "commodity": "Soybean",
                             "irrigation": "All",
                         }
                     ]
@@ -226,7 +226,7 @@ def test_endpoint_too_many_locations(client):
                             "lng": 0,
                             "radius": 1,
                             "radius_units": "km",
-                            "commodity_code": "SOYB",
+                            "commodity": "Soybean",
                             "irrigation": "All",
                         }
                     ]
@@ -257,7 +257,7 @@ def test_endpoint_no_intersecting_basins_reported_in_errors(client):
                             "lng": -150,
                             "radius": 50,
                             "radius_units": "km",
-                            "commodity_code": "SOYB",
+                            "commodity": "Soybean",
                             "irrigation": "All",
                             "total_volume": 1000,
                         }
@@ -296,7 +296,7 @@ def test_endpoint_country_field_accepts_iso_code_alongside_iso_code(client):
                             "iso_code": "KEN",
                             "country": "KEN",  # caller sent ISO instead of name
                             "state": "Nairobi",
-                            "commodity_code": "MAIZ",
+                            "commodity": "Maize",
                             "irrigation": "Rainfed",
                         }
                     ]
@@ -322,7 +322,7 @@ def test_endpoint_admin_no_match_reports_admin_reason(client):
                         {
                             "unique_id": "atlantis",
                             "country": "Atlantis",
-                            "commodity_code": "SOYB",
+                            "commodity": "Soybean",
                             "irrigation": "All",
                         }
                     ]
@@ -352,7 +352,7 @@ def _point_body(unique_id="p1"):
                     "lng": -46.63,
                     "radius": 50,
                     "radius_units": "km",
-                    "commodity_code": "SOYB",
+                    "commodity": "Soybean",
                     "irrigation": "All",
                     "total_volume": 12000,
                 }

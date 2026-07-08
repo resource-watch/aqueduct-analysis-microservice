@@ -572,15 +572,15 @@ def food_supply_chain_locations(**kwargs):
             { "unique_id": "site-1",
               "lat": -23.55, "lng": -46.63,
               "radius": 50, "radius_units": "km",
-              "commodity_code": "SOYB", "irrigation": "All",
+              "commodity": "Soybean", "irrigation": "All",
               "total_volume": 12000, "volume_units": "MT" },
             { "unique_id": "site-2",
               "country": "Brazil", "state": "Mato Grosso",
-              "commodity_code": "SOYB", "irrigation": "Irrigated",
+              "commodity": "Soybean", "irrigation": "Irrigated",
               "total_volume": 8000 },
             { "unique_id": "site-3",
               "country": "United States", "iso_code": "USA",
-              "commodity_code": "MAIZ", "irrigation": "All",
+              "commodity": "Maize", "irrigation": "All",
               "total_volume": 5000 }
           ]
         }

@@ -7,12 +7,23 @@ from cerberus import Validator
 from flask import request
 
 from aqueduct.routes.api import error
+from aqueduct.services.supply_chain_data.commodities import (
+    ALLOWED_COMMODITIES,
+    normalize_commodity,
+)
 from aqueduct.services.supply_chain_locations_service import (
     ALLOWED_IRRIGATION,
     ALLOWED_RADIUS_UNITS,
     _IRRIGATION_ALIASES,
     normalize_irrigation,
 )
+
+
+def _coerce_commodity(value):
+    name = normalize_commodity(str(value))
+    if name is None:
+        raise ValueError(f"unknown commodity: {value!r}")
+    return name
 
 
 def myCoerc(n):
@@ -289,7 +300,7 @@ def validate_food_supply_chain_locations(func):
       - state:   country and state (+/- iso_code)
       - country: country (+/- iso_code)
 
-    `commodity_code` and `irrigation` are always required. Mode-specific
+    `commodity` and `irrigation` are always required. Mode-specific
     field requirements are checked further downstream in the service so
     we can return per-location reasons rather than aborting the batch.
 
@@ -359,11 +370,17 @@ def validate_food_supply_chain_locations(func):
             "required": False,
             "nullable": True,
         },
-        "commodity_code": {
+        "commodity": {
             "type": "string",
             "required": True,
-            "coerce": (lambda v: str(v).upper()),
-            "regex": r"^[A-Z]{3,4}$",
+            "coerce": _coerce_commodity,
+            "allowed": ALLOWED_COMMODITIES,
+        },
+        "commodity_code": {
+            "type": "string",
+            "required": False,
+            "nullable": True,
+            "coerce": (lambda v: None if v is None else str(v)),
         },
         "irrigation": {
             "type": "string",
@@ -419,6 +436,9 @@ def validate_food_supply_chain_locations(func):
             if not isinstance(loc, dict):
                 errors[idx] = "must be an object"
                 continue
+            loc = dict(loc)
+            if not loc.get("commodity") and loc.get("commodity_code"):
+                loc["commodity"] = loc["commodity_code"]
             if not validator.validate(loc):
                 errors[idx] = validator.errors
                 continue

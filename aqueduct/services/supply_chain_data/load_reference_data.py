@@ -7,7 +7,7 @@ Tables:
                             This is the table the analysis endpoint queries
                             via ST_Intersects + GROUP BY pfaf_id.
   - sbtn_son_v2           : SBTN sustainability indicators by pfaf_id.
-  - crop_production_pfaf  : production per (pfaf_id, commodity_code, irrigation).
+  - crop_production_pfaf  : production per (pfaf_id, commodity, irrigation).
   - gadm36_0              : GADM country polygons (geometry col `the_geom`).
 
 Two modes:
@@ -48,6 +48,8 @@ from urllib.parse import urlparse
 
 import psycopg2
 from psycopg2 import sql
+
+from aqueduct.services.supply_chain_data.commodities import code_to_name_case_sql
 
 LOG = logging.getLogger("supply-chain-loader")
 
@@ -299,6 +301,7 @@ def load_crops(conn, csv_path: Path, data_only: bool = False) -> None:
         raise SystemExit(f"missing CSV: {csv_path}")
     LOG.info("Loading crop production -> crop_production_pfaf")
     t0 = time.time()
+    commodity_expr = code_to_name_case_sql("commodity_code")
     with conn.cursor() as cur:
         if data_only:
             cur.execute("TRUNCATE TABLE crop_production_pfaf")
@@ -308,10 +311,10 @@ def load_crops(conn, csv_path: Path, data_only: bool = False) -> None:
                 """
                 CREATE TABLE crop_production_pfaf (
                     pfaf_id          BIGINT NOT NULL,
-                    commodity_code   TEXT   NOT NULL,
+                    commodity        TEXT   NOT NULL,
                     basin_production DOUBLE PRECISION,
                     irrigation       TEXT   NOT NULL,
-                    PRIMARY KEY (pfaf_id, commodity_code, irrigation)
+                    PRIMARY KEY (pfaf_id, commodity, irrigation)
                 )
                 """
             )
@@ -332,18 +335,18 @@ def load_crops(conn, csv_path: Path, data_only: bool = False) -> None:
                 f,
             )
         cur.execute(
-            """
+            f"""
             INSERT INTO crop_production_pfaf
-                (pfaf_id, commodity_code, basin_production, irrigation)
-            SELECT pfaf_id, commodity_code, basin_production, irrigation
+                (pfaf_id, commodity, basin_production, irrigation)
+            SELECT pfaf_id, {commodity_expr}, basin_production, irrigation
             FROM _crops_stage
-            ON CONFLICT (pfaf_id, commodity_code, irrigation) DO NOTHING
+            ON CONFLICT (pfaf_id, commodity, irrigation) DO NOTHING
             """
         )
         if not data_only:
             cur.execute(
                 "CREATE INDEX IF NOT EXISTS crop_prod_lookup_idx "
-                "ON crop_production_pfaf (commodity_code, irrigation, pfaf_id)"
+                "ON crop_production_pfaf (commodity, irrigation, pfaf_id)"
             )
     conn.commit()
     LOG.info("crop_production_pfaf loaded in %.1fs", time.time() - t0)

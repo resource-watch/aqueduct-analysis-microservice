@@ -93,7 +93,7 @@ def test_allowed_constants_are_sorted_and_complete():
         ({"iso_code": "BRA"}, "country"),
         ({"select_by": "country", "iso_code": "USA"}, "country"),
         ({"select_by": "STATE", "country": "Foo", "state": "Bar"}, "state"),
-        ({"commodity_code": "SOYB"}, None),
+        ({"commodity": "Soybean"}, None),
     ],
 )
 def test_infer_select_by(loc, expected):
@@ -109,7 +109,7 @@ def test_prepare_inputs_normalizes_unknown_irrigation():
     locs = [
         {
             "country": "Brazil",
-            "commodity_code": "SOYB",
+            "commodity": "Soybean",
             "irrigation": "Unknown",
         }
     ]
@@ -136,7 +136,7 @@ def test_prepare_inputs_point_happy_path():
             "lng": -46.63,
             "radius": 50,
             "radius_units": "km",
-            "commodity_code": "soyb",  # lower-case ok, gets uppercased
+            "commodity_code": "soyb",  # legacy code still accepted
             "irrigation": "All",
             "total_volume": 12000,
         }
@@ -165,7 +165,7 @@ def test_prepare_inputs_point_happy_path():
     assert math.isclose(radius_deg, 50.0 / 111.0)
     assert math.isclose(radius_m, 50_000.0)
     assert (iso, country, state) == (None, None, None)
-    assert commodity == "SOYB"
+    assert commodity == "Soybean"
     assert irrig == "All"
     assert vol == 12000.0
 
@@ -176,12 +176,12 @@ def test_prepare_inputs_state_and_country_modes():
             "unique_id": "s1",
             "country": "Brazil",
             "state": "São Paulo",
-            "commodity_code": "SOYB",
+            "commodity": "Soybean",
             "irrigation": "All",
         },
         {
             "iso_code": "USA",
-            "commodity_code": "MAIZ",
+            "commodity": "Maize",
             "irrigation": "Rainfed",
             "total_volume": 5000,
         },
@@ -198,13 +198,13 @@ def test_prepare_inputs_state_and_country_modes():
 
 def test_prepare_inputs_collects_per_location_errors():
     locs = [
-        {"commodity_code": "SOYB", "irrigation": "All"},  # no location info
+        {"commodity": "Soybean", "irrigation": "All"},  # no location info
         {
             "lat": 0,
             "lng": 0,
             "radius": 0,  # invalid
             "radius_units": "km",
-            "commodity_code": "SOYB",
+            "commodity": "Soybean",
             "irrigation": "All",
         },
         {
@@ -212,12 +212,12 @@ def test_prepare_inputs_collects_per_location_errors():
             "lng": 0,
             "radius": 1,
             "radius_units": "furlongs",  # invalid
-            "commodity_code": "SOYB",
+            "commodity": "Soybean",
             "irrigation": "All",
         },
         {  # state mode but no country and no iso_code
             "state": "São Paulo",
-            "commodity_code": "SOYB",
+            "commodity": "Soybean",
             "irrigation": "All",
         },
     ]
@@ -230,6 +230,19 @@ def test_prepare_inputs_collects_per_location_errors():
     assert any("'country' or 'iso_code'" in r for r in reasons)
 
 
+def test_prepare_inputs_accepts_legacy_commodity_code():
+    locs = [
+        {
+            "country": "Brazil",
+            "commodity_code": "BANA",
+            "irrigation": "All",
+        }
+    ]
+    prepared, errors = SupplyChainLocationsService._prepare_inputs(locs)
+    assert errors == []
+    assert prepared[0]["values"][9] == "Banana"
+
+
 def test_prepare_inputs_explicit_select_by_pins_mode():
     """Explicit select_by='country' should ignore stray lat/lng."""
     locs = [
@@ -238,7 +251,7 @@ def test_prepare_inputs_explicit_select_by_pins_mode():
             "lat": 0,
             "lng": 0,
             "country": "Brazil",
-            "commodity_code": "SOYB",
+            "commodity": "Soybean",
             "irrigation": "All",
         }
     ]

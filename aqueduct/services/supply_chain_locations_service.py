@@ -35,6 +35,7 @@ import logging
 import os
 from typing import Any, Iterable
 
+from aqueduct.services.supply_chain_data.commodities import resolve_commodity
 import psycopg2
 from psycopg2.extras import RealDictCursor, execute_values
 
@@ -129,14 +130,14 @@ _ANALYSIS_SQL_TEMPLATE = """
 WITH inputs(
         unique_id, select_by, lat, lng, radius_deg, radius_m,
         iso_code, country, state,
-        commodity_code, irrigation, total_volume
+        commodity, irrigation, total_volume
     ) AS (
     VALUES %s
 ),
 point_buffers AS (
     SELECT
         unique_id,
-        commodity_code, irrigation, total_volume,
+        commodity, irrigation, total_volume,
         {buffer_expr} AS geom
     FROM inputs
     WHERE select_by = 'point'
@@ -146,7 +147,7 @@ point_hits AS (
         b.unique_id,
         ar.pfaf_id,
         ar.gid_1,
-        b.commodity_code, b.irrigation, b.total_volume,
+        b.commodity, b.irrigation, b.total_volume,
         MAX(ar.gid_0)     AS iso_code,
         MAX(ar.name_0)    AS country,
         MAX(ar.name_1)    AS state,
@@ -160,7 +161,7 @@ point_hits AS (
       AND ar.gid_1 IS NOT NULL
       AND ar.gid_1::text <> '-9999'
     GROUP BY b.unique_id, ar.pfaf_id, ar.gid_1,
-             b.commodity_code, b.irrigation, b.total_volume
+             b.commodity, b.irrigation, b.total_volume
 ),
 admin_hits AS (
     -- `country` is matched permissively against either `name_0` (full
@@ -171,7 +172,7 @@ admin_hits AS (
         i.unique_id,
         ar.pfaf_id,
         ar.gid_1,
-        i.commodity_code, i.irrigation, i.total_volume,
+        i.commodity, i.irrigation, i.total_volume,
         MAX(ar.gid_0)     AS iso_code,
         MAX(ar.name_0)    AS country,
         MAX(ar.name_1)    AS state,
@@ -196,7 +197,7 @@ admin_hits AS (
         )
     WHERE i.select_by IN ('state', 'country')
     GROUP BY i.unique_id, ar.pfaf_id, ar.gid_1,
-             i.commodity_code, i.irrigation, i.total_volume
+             i.commodity, i.irrigation, i.total_volume
 ),
 hits AS (
     SELECT * FROM point_hits
@@ -212,7 +213,7 @@ enriched AS (
     FROM hits h
     LEFT JOIN crop_production_pfaf p
            ON p.pfaf_id        = h.pfaf_id
-          AND p.commodity_code = h.commodity_code
+          AND p.commodity     = h.commodity
           AND p.irrigation     = h.irrigation
     LEFT JOIN sbtn_son_v2 s ON s.pfaf_id = h.pfaf_id
 ),
@@ -229,7 +230,7 @@ allocated AS (
            e.iso_code,
            e.country,
            e.state,
-           e.commodity_code,
+           e.commodity,
            e.irrigation,
            e.total_volume,
            e.bws_raw,
@@ -440,6 +441,16 @@ class SupplyChainLocationsService:
                 )
                 continue
 
+            commodity = resolve_commodity(loc)
+            if not commodity:
+                errors.append(
+                    {
+                        "unique_id": unique_id,
+                        "reason": "unknown or missing commodity",
+                    }
+                )
+                continue
+
             lat = lng = radius_deg = radius_m = None
             if select_by == "point":
                 if (
@@ -501,7 +512,7 @@ class SupplyChainLocationsService:
                         loc.get("iso_code"),
                         loc.get("country"),
                         loc.get("state"),
-                        str(loc["commodity_code"]).upper(),
+                        commodity,
                         normalize_irrigation(str(loc["irrigation"])),
                         (
                             float(loc["total_volume"])
