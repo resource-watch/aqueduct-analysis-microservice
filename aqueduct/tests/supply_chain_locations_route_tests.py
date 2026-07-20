@@ -436,3 +436,111 @@ def test_endpoint_rejects_non_numeric_simplify(client):
         )
     assert resp.status_code == 400
     assert "simplify" in json.loads(resp.data)["errors"][0]["detail"]
+
+
+# ---------------------------------------------------------------------------
+# frontend contract: every result row carries the full field set, and the
+# basin GeoJSON carries the BWS category (Kim & Liz "Sourced from Basin" review)
+# ---------------------------------------------------------------------------
+
+# Fields the frontend expects on every results[] row, regardless of indicator.
+# `business_unit` is intentionally excluded: it is re-joined client-side by
+# unique_id and does not need to be echoed by the API.
+_REQUIRED_ROW_FIELDS = {
+    "unique_id",
+    "pfaf_id",
+    "iso_code",
+    "country",
+    "state",
+    "commodity",
+    "irrigation",
+    "total_volume",
+    "basin_production",
+    "summed_production",
+    "production_sourced_from_basin",
+    "bws_raw",
+    "bws_score",
+    "bws_cat",
+    "bws_label",
+    "sbtn_quant_max",
+    "sbtn_qual_max",
+}
+
+
+def test_result_rows_include_full_field_set_for_every_indicator(client):
+    rows = [
+        _basin_row("p1", 111111, 100.0, 12000, summed=400.0, sourced=3000.0),
+        _basin_row("p1", 222222, 300.0, 12000, summed=400.0, sourced=9000.0),
+    ]
+    pg_patch, ev_patch = _patch_psycopg2(rows)
+    with pg_patch, ev_patch:
+        resp = client.post(
+            ENDPOINT, data=_point_body(), content_type="application/json"
+        )
+    assert resp.status_code == 200
+    body = json.loads(resp.data)
+    assert body["results"]
+    for row in body["results"]:
+        missing = _REQUIRED_ROW_FIELDS - set(row)
+        assert not missing, f"row missing fields: {missing}"
+        # Sourcing metric must be present for water-stress rows too, not just SBTN.
+        assert row["production_sourced_from_basin"] is not None
+
+
+def test_geojson_feature_properties_include_bws_category(client):
+    row = _basin_row("p1", 111111, 100.0, 12000, summed=100.0, sourced=12000.0)
+    row["geometry"] = json.dumps(
+        {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]}
+    )
+    pg_patch, ev_patch = _patch_psycopg2([row])
+    with pg_patch, ev_patch:
+        resp = client.post(
+            ENDPOINT + "?geometry=true",
+            data=_point_body(),
+            content_type="application/json",
+        )
+    assert resp.status_code == 200
+    props = json.loads(resp.data)["geojson"]["features"][0]["properties"]
+    # Map coloring keys off bws_cat (preferred) / bws_score (fallback).
+    assert props["bws_cat"] == 1.0
+    assert "bws_score" in props
+    assert "bws_label" in props
+    # Basin popup stays complete with the sourcing metric.
+    assert "production_sourced_from_basin" in props
+
+
+def test_endpoint_accepts_lowercase_irrigation_and_legacy_commodity_code(client):
+    # Exactly the payload shape documented in the frontend template (section 6).
+    pg_patch, ev_patch = _patch_psycopg2([])
+    with pg_patch, ev_patch:
+        resp = client.post(
+            ENDPOINT,
+            data=json.dumps(
+                {
+                    "locations": [
+                        {
+                            "unique_id": "tmpl-1",
+                            "lat": 38.9,
+                            "lng": -77.0,
+                            "radius": 100,
+                            "radius_units": "km",
+                            "commodity": "WHEA",
+                            "irrigation": "rainfed",
+                            "total_volume": 450,
+                        },
+                        {
+                            "unique_id": "tmpl-2",
+                            "iso_code": "USA",
+                            "country": "United States",
+                            "state": "California",
+                            "commodity": "MAIZ",
+                            "irrigation": "irrigated",
+                            "total_volume": 500,
+                        },
+                    ]
+                }
+            ),
+            content_type="application/json",
+        )
+    # Validation must pass (no 400) for the documented lower-case payloads.
+    assert resp.status_code == 200, json.loads(resp.data)

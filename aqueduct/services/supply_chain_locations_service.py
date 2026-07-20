@@ -62,8 +62,17 @@ ALLOWED_RADIUS_UNITS = sorted(_KM_PER_UNIT.keys())
 # Irrigation values present in `crop_production_pfaf.irrigation`.
 ALLOWED_IRRIGATION = ["All", "Irrigated", "Rainfed"]
 
-# Notebook v2 maps template placeholder irrigation values before the prod join.
-_IRRIGATION_ALIASES = {"Unknown": "All"}
+# Map any-case irrigation input (and the notebook "Unknown" placeholder) to the
+# canonical values stored in `crop_production_pfaf.irrigation`. The frontend
+# template sends lower-case values ("rainfed", "irrigated"), so normalization
+# must be case-insensitive. Values not present here are returned unchanged so
+# the request validator's `allowed` check can still reject genuine garbage.
+_IRRIGATION_ALIASES = {
+    "all": "All",
+    "irrigated": "Irrigated",
+    "rainfed": "Rainfed",
+    "unknown": "All",
+}
 
 # Buffer modes
 BUFFER_PLANAR = "planar"
@@ -108,9 +117,16 @@ def infer_select_by(loc: dict) -> str | None:
     return None
 
 
-def normalize_irrigation(value: str) -> str:
-    """Map notebook template placeholders to production lookup keys (v2)."""
-    return _IRRIGATION_ALIASES.get(value, value)
+def normalize_irrigation(value):
+    """Canonicalize an irrigation value to match `crop_production_pfaf`.
+
+    Case-insensitive ("rainfed" -> "Rainfed") and maps the notebook "Unknown"
+    placeholder to "All". Unrecognized values are returned unchanged (as a
+    string) so the request validator can reject them via its `allowed` list.
+    """
+    if value is None:
+        return value
+    return _IRRIGATION_ALIASES.get(str(value).strip().lower(), str(value))
 
 
 # Buffer expressions used inside the CTE. Selected by `buffer_mode`.

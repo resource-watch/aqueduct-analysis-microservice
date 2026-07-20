@@ -105,6 +105,43 @@ def test_normalize_irrigation_maps_unknown_to_all():
     assert normalize_irrigation("All") == "All"
 
 
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        # Frontend template sends lower-case irrigation values.
+        ("rainfed", "Rainfed"),
+        ("irrigated", "Irrigated"),
+        ("all", "All"),
+        ("RAINFED", "Rainfed"),
+        (" Irrigated ", "Irrigated"),
+        ("unknown", "All"),
+        # Canonical values are preserved.
+        ("Rainfed", "Rainfed"),
+        ("Irrigated", "Irrigated"),
+    ],
+)
+def test_normalize_irrigation_is_case_insensitive(value, expected):
+    assert normalize_irrigation(value) == expected
+
+
+def test_normalize_irrigation_passes_through_unknown_values():
+    # Garbage stays unchanged so the request validator's `allowed` check rejects it.
+    assert normalize_irrigation("Sometimes") == "Sometimes"
+
+
+def test_prepare_inputs_normalizes_lowercase_irrigation():
+    locs = [
+        {
+            "country": "Brazil",
+            "commodity": "Maize",
+            "irrigation": "rainfed",
+        }
+    ]
+    prepared, errors = SupplyChainLocationsService._prepare_inputs(locs)
+    assert errors == []
+    assert prepared[0]["values"][10] == "Rainfed"
+
+
 def test_prepare_inputs_normalizes_unknown_irrigation():
     locs = [
         {
