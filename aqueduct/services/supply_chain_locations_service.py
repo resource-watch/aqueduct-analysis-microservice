@@ -184,14 +184,21 @@ admin_hits AS (
     -- country name like "Kenya") or `gid_0` (ISO3 like "KEN"), so callers
     -- can send whichever they have. `iso_code` always goes against
     -- `gid_0` (validator guarantees it's a 2-3 letter code).
+    --
+    -- Dissolve granularity depends on the selection mode: `state` searches
+    -- keep the admin-1 (`gid_1`) split, but `country` searches dissolve each
+    -- basin (`pfaf_id`) into a single feature spanning the whole country.
+    -- Keeping the `gid_1` split for country mode would both fragment the
+    -- geometry and double-count `basin_production` (which is keyed by
+    -- `pfaf_id`), inflating `summed_production` and skewing the allocation.
     SELECT
         i.unique_id,
         ar.pfaf_id,
-        ar.gid_1,
+        CASE WHEN i.select_by = 'country' THEN NULL ELSE ar.gid_1 END AS gid_1,
         i.commodity, i.irrigation, i.total_volume,
         MAX(ar.gid_0)     AS iso_code,
         MAX(ar.name_0)    AS country,
-        MAX(ar.name_1)    AS state,
+        MAX(CASE WHEN i.select_by = 'country' THEN NULL ELSE ar.name_1 END) AS state,
         MAX(ar.bws_raw)   AS bws_raw,
         MAX(ar.bws_score) AS bws_score,
         MAX(ar.bws_cat)   AS bws_cat,
@@ -212,8 +219,9 @@ admin_hits AS (
             OR LOWER(ar.name_1) = LOWER(i.state)
         )
     WHERE i.select_by IN ('state', 'country')
-    GROUP BY i.unique_id, ar.pfaf_id, ar.gid_1,
-             i.commodity, i.irrigation, i.total_volume
+    GROUP BY i.unique_id, ar.pfaf_id,
+             CASE WHEN i.select_by = 'country' THEN NULL ELSE ar.gid_1 END,
+             i.commodity, i.irrigation, i.total_volume, i.select_by
 ),
 hits AS (
     SELECT * FROM point_hits
