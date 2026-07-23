@@ -39,6 +39,7 @@ from aqueduct.services.supply_chain_locations_service import (
 )
 from aqueduct.validators import (
     validate_food_supply_chain_locations,
+    validate_gid1_lookup,
     validate_params_cba,
     validate_params_cba_def,
     validate_params_risk,
@@ -539,6 +540,45 @@ def get_supply_chain_analysis_result(job_token, **kwargs):
         payload = {"tb": tb, "message": message}
         return jsonify(payload), 500, {}
         # return error(status=500, detail=str(e))
+
+
+@aqueduct_analysis_endpoints_v1.route(
+    "/food-supply-chain/gid1", strict_slashes=False, methods=["GET"]
+)
+@validate_gid1_lookup
+def food_supply_chain_gid1(**kwargs):
+    """List GID_1 (admin-1 / state) subdivisions for a country.
+
+    Used by the frontend to populate a state picker after a country is
+    selected. Matching is the same permissive rule as the locations
+    analysis: `country` may be a full name (`name_0`) or an ISO/`gid_0`
+    code; optional `iso_code` is constrained to `gid_0`.
+
+    Query params:
+        ?country=Colombia
+        ?country=COL
+        ?iso_code=COL
+
+    Response:
+        {
+          "country": "Colombia",
+          "iso_code": "COL",
+          "states": [
+            { "gid_1": "COL.1_1", "state": "Amazonas" },
+            ...
+          ]
+        }
+    """
+    try:
+        payload = SupplyChainLocationsService().list_gid1(
+            country=kwargs.get("country"),
+            iso_code=kwargs.get("iso_code"),
+        )
+        return jsonify(payload), 200, {}
+    except Exception as e:
+        logging.error("[ROUTER]: " + str(e))
+        tb = "".join(traceback.format_tb(e.__traceback__))
+        return jsonify({"tb": tb, "message": str(e)}), 500, {}
 
 
 @aqueduct_analysis_endpoints_v1.route(

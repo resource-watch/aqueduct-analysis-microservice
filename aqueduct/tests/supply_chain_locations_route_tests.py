@@ -544,3 +544,84 @@ def test_endpoint_accepts_lowercase_irrigation_and_legacy_commodity_code(client)
         )
     # Validation must pass (no 400) for the documented lower-case payloads.
     assert resp.status_code == 200, json.loads(resp.data)
+
+
+# ---------------------------------------------------------------------------
+# GET /food-supply-chain/gid1
+# ---------------------------------------------------------------------------
+
+
+GID1_ENDPOINT = "/api/v1/aqueduct/analysis/food-supply-chain/gid1"
+
+
+def test_gid1_returns_states_for_country(client):
+    rows = [
+        {
+            "gid_1": "COL.1_1",
+            "state": "Amazonas",
+            "iso_code": "COL",
+            "country": "Colombia",
+        },
+        {
+            "gid_1": "COL.2_1",
+            "state": "Antioquia",
+            "iso_code": "COL",
+            "country": "Colombia",
+        },
+    ]
+    pg_patch, ev_patch = _patch_psycopg2(rows)
+    with pg_patch, ev_patch:
+        resp = client.get(f"{GID1_ENDPOINT}?country=Colombia")
+
+    assert resp.status_code == 200
+    body = json.loads(resp.data)
+    assert body["country"] == "Colombia"
+    assert body["iso_code"] == "COL"
+    assert body["states"] == [
+        {"gid_1": "COL.1_1", "state": "Amazonas"},
+        {"gid_1": "COL.2_1", "state": "Antioquia"},
+    ]
+
+
+def test_gid1_accepts_iso_code(client):
+    rows = [
+        {
+            "gid_1": "COL.1_1",
+            "state": "Amazonas",
+            "iso_code": "COL",
+            "country": "Colombia",
+        },
+    ]
+    pg_patch, ev_patch = _patch_psycopg2(rows)
+    with pg_patch, ev_patch:
+        resp = client.get(f"{GID1_ENDPOINT}?iso_code=col")
+
+    assert resp.status_code == 200
+    body = json.loads(resp.data)
+    assert body["iso_code"] == "COL"
+    assert len(body["states"]) == 1
+
+
+def test_gid1_requires_country_or_iso_code(client):
+    resp = client.get(GID1_ENDPOINT)
+    assert resp.status_code == 400
+    body = json.loads(resp.data)
+    assert "country" in body["errors"][0]["detail"]
+
+
+def test_gid1_rejects_invalid_iso_code(client):
+    resp = client.get(f"{GID1_ENDPOINT}?iso_code=COLOMBIA")
+    assert resp.status_code == 400
+    body = json.loads(resp.data)
+    assert "iso_code" in body["errors"][0]["detail"]
+
+
+def test_gid1_unknown_country_returns_empty_states(client):
+    pg_patch, ev_patch = _patch_psycopg2([])
+    with pg_patch, ev_patch:
+        resp = client.get(f"{GID1_ENDPOINT}?country=Atlantis")
+
+    assert resp.status_code == 200
+    body = json.loads(resp.data)
+    assert body["states"] == []
+    assert body["country"] == "Atlantis"

@@ -290,6 +290,31 @@ _VALUES_TEMPLATE = (
     "%s::text, %s::text, %s::float8)"             # commodity, irrigation, vol
 )
 
+# Distinct admin-1 subdivisions for a country lookup. `country` matches
+# either `name_0` or `gid_0` (same permissive rule as the analysis query);
+# `iso_code`, when supplied, is constrained to `gid_0`.
+_GID1_SQL = """
+SELECT DISTINCT
+    ar.gid_1,
+    ar.name_1 AS state,
+    ar.gid_0  AS iso_code,
+    ar.name_0 AS country
+FROM aq_basins_raw ar
+WHERE ar.pfaf_id <> -9999
+  AND ar.gid_1 IS NOT NULL
+  AND ar.gid_1::text <> '-9999'
+  AND (
+      %(iso_code)s IS NULL
+      OR LOWER(ar.gid_0) = LOWER(%(iso_code)s)
+  )
+  AND (
+      %(country)s IS NULL
+      OR LOWER(ar.name_0) = LOWER(%(country)s)
+      OR LOWER(ar.gid_0)  = LOWER(%(country)s)
+  )
+ORDER BY ar.name_1
+"""
+
 
 class SupplyChainLocationsService:
     """Service object for the supply-chain analysis (point/state/country)."""
@@ -308,6 +333,42 @@ class SupplyChainLocationsService:
         if url.startswith("postgresql+psycopg2://"):
             return "postgresql://" + url[len("postgresql+psycopg2://") :]
         return url
+
+    def list_gid1(
+        self,
+        country: str | None = None,
+        iso_code: str | None = None,
+    ) -> dict[str, Any]:
+        """Return distinct GID_1 (admin-1) subdivisions for a country.
+
+        Parameters
+        ----------
+        country:
+            Country name (`name_0`) or ISO/`gid_0` code. Matched
+            case-insensitively against either column.
+        iso_code:
+            Optional ISO2/ISO3 code constrained to `gid_0`.
+
+        At least one of `country` / `iso_code` must be provided (enforced
+        by the validator). Unknown countries yield an empty `states`
+        list rather than an error.
+        """
+        with psycopg2.connect(self._dsn) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    _GID1_SQL,
+                    {"country": country, "iso_code": iso_code},
+                )
+                rows = cur.fetchall()
+
+        states = [
+            {"gid_1": row["gid_1"], "state": row["state"]} for row in rows
+        ]
+        return {
+            "country": rows[0]["country"] if rows else country,
+            "iso_code": rows[0]["iso_code"] if rows else iso_code,
+            "states": states,
+        }
 
     def analyze(
         self,

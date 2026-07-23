@@ -1,6 +1,7 @@
 """VALIDATORS"""
 import json
 import logging
+import re
 from functools import wraps
 
 from cerberus import Validator
@@ -471,6 +472,43 @@ def validate_food_supply_chain_locations(func):
         kwargs["buffer_mode"] = buffer_mode
         kwargs["include_geometry"] = include_geometry
         kwargs["simplify"] = simplify
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def validate_gid1_lookup(func):
+    """Validator for GET /food-supply-chain/gid1 query parameters.
+
+    Requires at least one of `country` or `iso_code`. `iso_code` follows
+    the same 2–3 letter rule used by the locations endpoint.
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        country = request.args.get("country")
+        if country is not None:
+            country = country.strip() or None
+
+        iso_code = request.args.get("iso_code")
+        if iso_code is not None:
+            iso_code = iso_code.strip() or None
+            if iso_code is not None:
+                if not re.fullmatch(r"[A-Za-z]{2,3}", iso_code):
+                    return error(
+                        status=400,
+                        detail="iso_code must be a 2–3 letter country code",
+                    )
+                iso_code = iso_code.upper()
+
+        if not country and not iso_code:
+            return error(
+                status=400,
+                detail="Query must include 'country' or 'iso_code'",
+            )
+
+        kwargs["country"] = country
+        kwargs["iso_code"] = iso_code
         return func(*args, **kwargs)
 
     return wrapper
