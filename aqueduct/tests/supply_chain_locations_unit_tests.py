@@ -15,6 +15,7 @@ from aqueduct.services.supply_chain_locations_service import (
     ALLOWED_IRRIGATION,
     ALLOWED_RADIUS_UNITS,
     SupplyChainLocationsService,
+    _ANALYSIS_SQL_TEMPLATE,
     infer_select_by,
     normalize_irrigation,
     radius_to_degrees,
@@ -76,6 +77,20 @@ def test_allowed_constants_are_sorted_and_complete():
     assert "meters" in ALLOWED_RADIUS_UNITS
     assert ALLOWED_IRRIGATION == ["All", "Irrigated", "Rainfed"]
     assert set(ALLOWED_BUFFER_MODES) == {"planar", "geodesic"}
+
+
+def test_analysis_sql_area_weights_basin_production_for_gid1_slices():
+    """State/point hits must scale production by area_km2 share of the basin."""
+    sql = _ANALYSIS_SQL_TEMPLATE
+    assert "slice_areas AS" in sql
+    assert "basin_areas AS" in sql
+    assert "area_km2" in sql
+    assert "sa.slice_area / ba.total_area" in sql
+    assert "ba.total_area AS basin_area" in sql
+    assert "AS basin_area_within_state" in sql
+    assert "AS basin_production_within_business_unit" in sql
+    # Country-mode dissolved hits keep the full basin total.
+    assert "WHEN h.gid_1 IS NULL THEN p.basin_production" in sql
 
 
 # ---------------------------------------------------------------------------

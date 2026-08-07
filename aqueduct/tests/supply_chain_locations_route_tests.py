@@ -50,8 +50,10 @@ def _patch_psycopg2(rows):
     )
 
 
-def _basin_row(unique_id, pfaf_id, basin_production, total_volume,
-               summed=None, sourced=None, country="Brazil", gid_1="BRA.25_1"):
+def _basin_row(unique_id, pfaf_id, basin_production_within_business_unit,
+               total_volume, summed=None, sourced=None, country="Brazil",
+               gid_1="BRA.25_1", basin_area=1000.0,
+               basin_area_within_state=400.0):
     """Convenience: produce a fake DB row matching what the SQL returns."""
     return {
         "unique_id": unique_id,
@@ -69,7 +71,11 @@ def _basin_row(unique_id, pfaf_id, basin_production, total_volume,
         "bws_label": "Low (<10%)",
         "sbtn_quant_max": 5.0,
         "sbtn_qual_max": 3.0,
-        "basin_production": basin_production,
+        "basin_area": basin_area,
+        "basin_area_within_state": basin_area_within_state,
+        "basin_production_within_business_unit": (
+            basin_production_within_business_unit
+        ),
         "summed_production": summed,
         "production_sourced_from_basin": sourced,
     }
@@ -455,7 +461,9 @@ _REQUIRED_ROW_FIELDS = {
     "commodity",
     "irrigation",
     "total_volume",
-    "basin_production",
+    "basin_area",
+    "basin_area_within_state",
+    "basin_production_within_business_unit",
     "summed_production",
     "production_sourced_from_basin",
     "bws_raw",

@@ -19,7 +19,25 @@ granularity that keeps separate admin-1 slices within multi-state basins
 `total_volume` proportionally:
 
     production_sourced_from_basin =
-        total_volume * (basin_production / sum(basin_production))
+        total_volume
+        * (basin_production_within_business_unit
+           / sum(basin_production_within_business_unit))
+
+Crop production is stored at basin grain (`pfaf_id` only). For point/state
+hits that keep a `gid_1` slice, we approximate production within the
+business unit's admin by area-weighting the full-basin total:
+
+    basin_production_within_business_unit =
+        basin_production_full
+        * (area_km2(slice) / area_km2(all slices of pfaf_id))
+
+The denominator uses the full basin across all states (not just the
+selected admin), so a Virginia slice of a DE/MD/VA basin only gets its
+area share. Country-mode hits dissolve to `gid_1 IS NULL` and keep the
+full basin total.
+
+This is an approximation until true basin-state production rasters are
+loaded; area share ≠ crop share.
 
 Rows with null or zero `production_sourced_from_basin` are dropped (v2).
 Sentinel `pfaf_id = -9999` and `gid_1 = '-9999'` rows are excluded.
@@ -189,8 +207,8 @@ admin_hits AS (
     -- keep the admin-1 (`gid_1`) split, but `country` searches dissolve each
     -- basin (`pfaf_id`) into a single feature spanning the whole country.
     -- Keeping the `gid_1` split for country mode would both fragment the
-    -- geometry and double-count `basin_production` (which is keyed by
-    -- `pfaf_id`), inflating `summed_production` and skewing the allocation.
+    -- geometry and double-count production (keyed by `pfaf_id`), inflating
+    -- `summed_production` and skewing the allocation.
     SELECT
         i.unique_id,
         ar.pfaf_id,
@@ -228,22 +246,71 @@ hits AS (
     UNION ALL
     SELECT * FROM admin_hits
 ),
+-- Area shares for every admin-1 slice of basins that appear in `hits`.
+-- Computed from the full `aq_basins_raw` table (all states), so a state
+-- search only attributes its geographic share of basin production.
+slice_areas AS (
+    SELECT ar.pfaf_id,
+           ar.gid_1,
+           SUM(ar.area_km2) AS slice_area
+    FROM aq_basins_raw ar
+    WHERE ar.pfaf_id <> -9999
+      AND ar.gid_1 IS NOT NULL
+      AND ar.gid_1::text <> '-9999'
+      AND ar.pfaf_id IN (SELECT DISTINCT pfaf_id FROM hits)
+    GROUP BY ar.pfaf_id, ar.gid_1
+),
+basin_areas AS (
+    SELECT pfaf_id,
+           SUM(slice_area) AS total_area
+    FROM slice_areas
+    GROUP BY pfaf_id
+),
 enriched AS (
     SELECT
-        h.*,
-        p.basin_production,
+        h.unique_id,
+        h.pfaf_id,
+        h.gid_1,
+        h.commodity,
+        h.irrigation,
+        h.total_volume,
+        h.iso_code,
+        h.country,
+        h.state,
+        h.bws_raw,
+        h.bws_score,
+        h.bws_cat,
+        h.bws_label,
+        ba.total_area AS basin_area,
+        -- Null in country mode (no single state slice).
+        CASE WHEN h.gid_1 IS NULL THEN NULL ELSE sa.slice_area END
+            AS basin_area_within_state,
+        CASE
+            -- Country mode: dissolved to whole basin → keep full production.
+            WHEN h.gid_1 IS NULL THEN p.basin_production
+            WHEN p.basin_production IS NULL THEN NULL
+            WHEN ba.total_area IS NOT NULL
+                 AND ba.total_area > 0
+                 AND sa.slice_area IS NOT NULL
+            THEN p.basin_production * (sa.slice_area / ba.total_area)
+            ELSE p.basin_production
+        END AS basin_production_within_business_unit,
         s.sbtn_quant_max,
-        s.sbtn_qual_max
+        s.sbtn_qual_max{geom_enriched}
     FROM hits h
     LEFT JOIN crop_production_pfaf p
-           ON p.pfaf_id        = h.pfaf_id
+           ON p.pfaf_id       = h.pfaf_id
           AND p.commodity     = h.commodity
-          AND p.irrigation     = h.irrigation
+          AND p.irrigation    = h.irrigation
+    LEFT JOIN slice_areas sa
+           ON sa.pfaf_id = h.pfaf_id
+          AND sa.gid_1   = h.gid_1
+    LEFT JOIN basin_areas ba ON ba.pfaf_id = h.pfaf_id
     LEFT JOIN sbtn_son_v2 s ON s.pfaf_id = h.pfaf_id
 ),
 sums AS (
     SELECT unique_id,
-           SUM(basin_production) AS summed_production
+           SUM(basin_production_within_business_unit) AS summed_production
     FROM enriched
     GROUP BY unique_id
 ),
@@ -263,14 +330,18 @@ allocated AS (
            e.bws_label,
            e.sbtn_quant_max,
            e.sbtn_qual_max,
-           e.basin_production,
+           e.basin_area,
+           e.basin_area_within_state,
+           e.basin_production_within_business_unit,
            s.summed_production,
            CASE
                WHEN s.summed_production IS NOT NULL
                     AND s.summed_production > 0
                     AND e.total_volume IS NOT NULL
-                    AND e.basin_production IS NOT NULL
-               THEN e.total_volume * (e.basin_production / s.summed_production)
+                    AND e.basin_production_within_business_unit IS NOT NULL
+               THEN e.total_volume
+                    * (e.basin_production_within_business_unit
+                       / s.summed_production)
                ELSE NULL
            END AS production_sourced_from_basin{geom_final}
     FROM enriched e
@@ -427,6 +498,7 @@ class SupplyChainLocationsService:
             # then emit as GeoJSON at 6-decimal precision (~0.11 m),
             # optionally simplified to shrink the payload.
             geom_agg = ",\n        ST_Union(ar.geom) AS geom"
+            geom_enriched = ",\n        h.geom"
             if simplify is not None and simplify > 0:
                 geom_src = (
                     "COALESCE("
@@ -438,11 +510,13 @@ class SupplyChainLocationsService:
             geom_final = f",\n       ST_AsGeoJSON({geom_src}, 6) AS geometry"
         else:
             geom_agg = ""
+            geom_enriched = ""
             geom_final = ""
 
         sql = _ANALYSIS_SQL_TEMPLATE.format(
             buffer_expr=buffer_expr,
             geom_agg=geom_agg,
+            geom_enriched=geom_enriched,
             geom_final=geom_final,
         )
 
@@ -618,7 +692,9 @@ class SupplyChainLocationsService:
             "bws_cat",
             "sbtn_quant_max",
             "sbtn_qual_max",
-            "basin_production",
+            "basin_area",
+            "basin_area_within_state",
+            "basin_production_within_business_unit",
             "summed_production",
             "production_sourced_from_basin",
             "total_volume",
