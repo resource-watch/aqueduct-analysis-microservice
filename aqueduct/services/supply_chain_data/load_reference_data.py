@@ -8,6 +8,11 @@ Tables:
                             via ST_Intersects + GROUP BY pfaf_id.
   - sbtn_son_v2           : SBTN sustainability indicators by pfaf_id.
   - crop_production_pfaf  : production per (pfaf_id, commodity, irrigation).
+  - crop_production_pfaf_gid1
+                          : production per (pfaf_id, gid_1, commodity,
+                            irrigation) — the basin-state grain the analysis
+                            endpoint joins so state searches need no
+                            area-weighting.
   - gadm36_0              : GADM country polygons (geometry col `the_geom`).
 
 Two modes:
@@ -57,6 +62,7 @@ DEFAULT_DATA_DIR = Path("/data")
 GEOJSON_FILE = "aq_data_supplychain.geojson"
 SBTN_FILE = "SBTN_SON_V2.csv"
 CROPS_FILE = "all_crops_pfaf_melt.csv"
+CROPS_GID1_FILE = "all_crops_pfaf_melt_gid.csv"
 GADM_FILE = "gadm36_0.gpkg"
 
 
@@ -75,6 +81,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--skip-basins", action="store_true")
     p.add_argument("--skip-sbtn", action="store_true")
     p.add_argument("--skip-crops", action="store_true")
+    p.add_argument("--skip-crops-gid1", action="store_true")
     p.add_argument("--skip-gadm", action="store_true")
     p.add_argument(
         "--data-only",
@@ -89,7 +96,7 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--only",
-        choices=["basins", "sbtn", "crops", "gadm"],
+        choices=["basins", "sbtn", "crops", "crops-gid1", "gadm"],
         action="append",
         help=(
             "Limit the run to one or more datasets (repeatable). When set, "
@@ -352,6 +359,105 @@ def load_crops(conn, csv_path: Path, data_only: bool = False) -> None:
     LOG.info("crop_production_pfaf loaded in %.1fs", time.time() - t0)
 
 
+def load_crops_gid1(conn, csv_path: Path, data_only: bool = False) -> None:
+    """Load per-basin-state production -> crop_production_pfaf_gid1.
+
+    This is the table the analysis endpoint joins for state/point searches;
+    it removes the need to area-weight the basin total.
+    """
+    if not csv_path.exists():
+        raise SystemExit(f"missing CSV: {csv_path}")
+    LOG.info("Loading basin-state crop production -> crop_production_pfaf_gid1")
+    t0 = time.time()
+    commodity_expr = code_to_name_case_sql("commodity_code")
+    with conn.cursor() as cur:
+        if data_only:
+            cur.execute("TRUNCATE TABLE crop_production_pfaf_gid1")
+        else:
+            cur.execute("DROP TABLE IF EXISTS crop_production_pfaf_gid1")
+            cur.execute(
+                """
+                CREATE TABLE crop_production_pfaf_gid1 (
+                    pfaf_id          BIGINT NOT NULL,
+                    gid_1            TEXT   NOT NULL,
+                    commodity        TEXT   NOT NULL,
+                    basin_production DOUBLE PRECISION,
+                    irrigation       TEXT   NOT NULL,
+                    PRIMARY KEY (pfaf_id, gid_1, commodity, irrigation)
+                )
+                """
+            )
+        # CSV ships a leading unnamed pandas index column, then:
+        # pfaf_id, gid_1, commodity_code, Basin Production, Irrigation
+        cur.execute(
+            """
+            CREATE TEMP TABLE _crops_gid1_stage (
+                row_index        BIGINT,
+                pfaf_id          BIGINT,
+                gid_1            TEXT,
+                commodity_code   TEXT,
+                basin_production DOUBLE PRECISION,
+                irrigation       TEXT
+            ) ON COMMIT DROP
+            """
+        )
+        with open(csv_path, "r", encoding="utf-8") as f:
+            cur.copy_expert(
+                "COPY _crops_gid1_stage FROM STDIN WITH (FORMAT csv, HEADER true)",
+                f,
+            )
+        cur.execute(
+            """
+            SELECT COUNT(*) FROM _crops_gid1_stage
+            WHERE gid_1 IS NOT NULL AND gid_1 <> '-9999'
+            """
+        )
+        (staged,) = cur.fetchone()
+        cur.execute(
+            f"""
+            INSERT INTO crop_production_pfaf_gid1
+                (pfaf_id, gid_1, commodity, basin_production, irrigation)
+            SELECT pfaf_id, gid_1, {commodity_expr}, basin_production, irrigation
+            FROM _crops_gid1_stage
+            WHERE gid_1 IS NOT NULL
+              AND gid_1 <> '-9999'
+            ON CONFLICT (pfaf_id, gid_1, commodity, irrigation) DO NOTHING
+            """
+        )
+        inserted = cur.rowcount
+        if not data_only:
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS crop_prod_gid1_lookup_idx "
+                "ON crop_production_pfaf_gid1 "
+                "(commodity, irrigation, pfaf_id, gid_1)"
+            )
+        cur.execute(
+            "SELECT COUNT(DISTINCT commodity) FROM crop_production_pfaf_gid1"
+        )
+        (n_commodities,) = cur.fetchone()
+        cur.execute("SELECT COUNT(DISTINCT commodity_code) FROM _crops_gid1_stage")
+        (n_codes,) = cur.fetchone()
+    conn.commit()
+    LOG.info(
+        "crop_production_pfaf_gid1 loaded in %.1fs (%d rows, %d commodities)",
+        time.time() - t0,
+        inserted,
+        n_commodities,
+    )
+    # Two IFPRI codes mapping to the same display name collide on the primary
+    # key and are dropped silently by ON CONFLICT; that hid the COFF/RCOF bug.
+    if inserted < staged:
+        LOG.warning(
+            "dropped %d of %d staged rows on primary-key conflict — two "
+            "commodity codes likely map to the same display name in "
+            "commodities.py (%d codes in, %d names out).",
+            staged - inserted,
+            staged,
+            n_codes,
+            n_commodities,
+        )
+
+
 def report_counts(conn) -> None:
     LOG.info("Final row counts:")
     with conn.cursor() as cur:
@@ -359,6 +465,7 @@ def report_counts(conn) -> None:
             "aq_basins_raw",
             "sbtn_son_v2",
             "crop_production_pfaf",
+            "crop_production_pfaf_gid1",
             "gadm36_0",
         ):
             cur.execute("SELECT to_regclass(%s)", (f"public.{tbl}",))
@@ -393,11 +500,13 @@ def main() -> None:
         run_basins = "basins" in only
         run_sbtn = "sbtn" in only
         run_crops = "crops" in only
+        run_crops_gid1 = "crops-gid1" in only
         run_gadm = "gadm" in only
     else:
         run_basins = not args.skip_basins
         run_sbtn = not args.skip_sbtn
         run_crops = not args.skip_crops
+        run_crops_gid1 = not args.skip_crops_gid1
         run_gadm = not args.skip_gadm
 
     if args.data_only:
@@ -411,6 +520,7 @@ def main() -> None:
                     "aq_basins_raw",
                     "sbtn_son_v2",
                     "crop_production_pfaf",
+                    "crop_production_pfaf_gid1",
                     "gadm36_0",
                 ):
                     cur.execute("SELECT to_regclass(%s)", (f"public.{tbl}",))
@@ -443,6 +553,10 @@ def main() -> None:
             load_sbtn(conn, data_dir / SBTN_FILE, data_only=args.data_only)
         if run_crops:
             load_crops(conn, data_dir / CROPS_FILE, data_only=args.data_only)
+        if run_crops_gid1:
+            load_crops_gid1(
+                conn, data_dir / CROPS_GID1_FILE, data_only=args.data_only
+            )
         report_counts(conn)
     finally:
         conn.close()

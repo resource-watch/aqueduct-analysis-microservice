@@ -79,18 +79,30 @@ def test_allowed_constants_are_sorted_and_complete():
     assert set(ALLOWED_BUFFER_MODES) == {"planar", "geodesic"}
 
 
-def test_analysis_sql_area_weights_basin_production_for_gid1_slices():
-    """State/point hits must scale production by area_km2 share of the basin."""
+def test_analysis_sql_joins_production_at_basin_state_grain():
+    """Production must come from the gid_1 table, not be area-weighted."""
     sql = _ANALYSIS_SQL_TEMPLATE
-    assert "slice_areas AS" in sql
-    assert "basin_areas AS" in sql
-    assert "area_km2" in sql
-    assert "sa.slice_area / ba.total_area" in sql
-    assert "ba.total_area AS basin_area" in sql
+    assert "crop_production_pfaf_gid1" in sql
+    # Joined on the basin-state key.
+    assert "p.pfaf_id    = h.pfaf_id" in sql
+    assert "p.gid_1      = h.gid_1" in sql
+    # Area weighting must be gone.
+    assert "slice_area / ba.total_area" not in sql
+    assert "crop_production_pfaf p" not in sql
+    # Areas are still reported, just not used for production.
+    assert "ba.total_area   AS basin_area" in sql
     assert "AS basin_area_within_state" in sql
-    assert "AS basin_production_within_business_unit" in sql
-    # Country-mode dissolved hits keep the full basin total.
-    assert "WHEN h.gid_1 IS NULL THEN p.basin_production" in sql
+    assert "SUM(hp.slice_production) AS basin_production_within_business_unit" in sql
+
+
+def test_analysis_sql_dissolves_country_mode_by_pfaf_id():
+    """Country searches collapse gid_1 and sum slices within the country."""
+    sql = _ANALYSIS_SQL_TEMPLATE
+    assert (
+        "CASE WHEN hp.select_by = 'country' THEN NULL ELSE hp.gid_1 END AS gid_1"
+        in sql
+    )
+    assert "dissolved AS" in sql
 
 
 # ---------------------------------------------------------------------------

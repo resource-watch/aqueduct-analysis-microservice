@@ -94,7 +94,11 @@ _COMMODITY_DEFINITIONS: tuple[tuple[str, str, ...], ...] = (
     ("OFIB", "Other fibres", "other fibres", "other fibre crops", "flaxseed"),
     ("ACOF", "Arabica coffee", "arabica coffee", "acof"),
     ("RCOF", "Robusta coffee", "robusta coffee", "rcof"),
-    ("COFF", "Robusta coffee", "coff", "coffee"),
+    # The reference CSVs ship `COFF` (not `ACOF`) as the counterpart to
+    # `RCOF`, so it is the arabica series. Mapping it to "Robusta coffee"
+    # collided with RCOF on the production primary key and silently dropped
+    # every arabica row.
+    ("COFF", "Arabica coffee", "coff", "coffee"),
     ("COCO", "Cocoa", "cocoa"),
     ("TEAS", "Tea", "tea"),
     ("TOBA", "Tobacco", "tobacco"),

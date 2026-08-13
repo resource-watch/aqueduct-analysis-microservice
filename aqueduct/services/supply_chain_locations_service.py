@@ -23,21 +23,17 @@ granularity that keeps separate admin-1 slices within multi-state basins
         * (basin_production_within_business_unit
            / sum(basin_production_within_business_unit))
 
-Crop production is stored at basin grain (`pfaf_id` only). For point/state
-hits that keep a `gid_1` slice, we approximate production within the
-business unit's admin by area-weighting the full-basin total:
+Production comes from `crop_production_pfaf_gid1`, which is keyed at
+basin-state grain `(pfaf_id, gid_1, commodity, irrigation)`. Hits are
+therefore joined directly on `(pfaf_id, gid_1)` — no area weighting. A
+Virginia slice of a DE/MD/VA basin gets Virginia's own production value.
 
-    basin_production_within_business_unit =
-        basin_production_full
-        * (area_km2(slice) / area_km2(all slices of pfaf_id))
+Country mode dissolves each basin to one row (`gid_1 IS NULL`) and sums
+the slices inside the selected country, so cross-border production is
+excluded too.
 
-The denominator uses the full basin across all states (not just the
-selected admin), so a Virginia slice of a DE/MD/VA basin only gets its
-area share. Country-mode hits dissolve to `gid_1 IS NULL` and keep the
-full basin total.
-
-This is an approximation until true basin-state production rasters are
-loaded; area share ≠ crop share.
+`basin_area` (whole basin, all states) and `basin_area_within_state` are
+reported for transparency but no longer feed the calculation.
 
 Rows with null or zero `production_sourced_from_basin` are dropped (v2).
 Sentinel `pfaf_id = -9999` and `gid_1 = '-9999'` rows are excluded.
@@ -176,9 +172,13 @@ point_buffers AS (
     FROM inputs
     WHERE select_by = 'point'
 ),
+-- Both `*_hits` CTEs stay at basin-state (`pfaf_id`, `gid_1`) grain so
+-- production can be joined per slice. Output granularity is applied later
+-- in `dissolved`.
 point_hits AS (
     SELECT
         b.unique_id,
+        'point'::text     AS select_by,
         ar.pfaf_id,
         ar.gid_1,
         b.commodity, b.irrigation, b.total_volume,
@@ -188,7 +188,8 @@ point_hits AS (
         MAX(ar.bws_raw)   AS bws_raw,
         MAX(ar.bws_score) AS bws_score,
         MAX(ar.bws_cat)   AS bws_cat,
-        MAX(ar.bws_label) AS bws_label{geom_agg}
+        MAX(ar.bws_label) AS bws_label,
+        SUM(ar.area_km2)  AS slice_area{geom_agg}
     FROM point_buffers b
     JOIN aq_basins_raw ar ON ST_Intersects(ar.geom, b.geom)
     WHERE ar.pfaf_id <> -9999
@@ -202,25 +203,20 @@ admin_hits AS (
     -- country name like "Kenya") or `gid_0` (ISO3 like "KEN"), so callers
     -- can send whichever they have. `iso_code` always goes against
     -- `gid_0` (validator guarantees it's a 2-3 letter code).
-    --
-    -- Dissolve granularity depends on the selection mode: `state` searches
-    -- keep the admin-1 (`gid_1`) split, but `country` searches dissolve each
-    -- basin (`pfaf_id`) into a single feature spanning the whole country.
-    -- Keeping the `gid_1` split for country mode would both fragment the
-    -- geometry and double-count production (keyed by `pfaf_id`), inflating
-    -- `summed_production` and skewing the allocation.
     SELECT
         i.unique_id,
+        i.select_by,
         ar.pfaf_id,
-        CASE WHEN i.select_by = 'country' THEN NULL ELSE ar.gid_1 END AS gid_1,
+        ar.gid_1,
         i.commodity, i.irrigation, i.total_volume,
         MAX(ar.gid_0)     AS iso_code,
         MAX(ar.name_0)    AS country,
-        MAX(CASE WHEN i.select_by = 'country' THEN NULL ELSE ar.name_1 END) AS state,
+        MAX(ar.name_1)    AS state,
         MAX(ar.bws_raw)   AS bws_raw,
         MAX(ar.bws_score) AS bws_score,
         MAX(ar.bws_cat)   AS bws_cat,
-        MAX(ar.bws_label) AS bws_label{geom_agg}
+        MAX(ar.bws_label) AS bws_label,
+        SUM(ar.area_km2)  AS slice_area{geom_agg}
     FROM inputs i
     JOIN aq_basins_raw ar ON
         ar.pfaf_id <> -9999
@@ -237,76 +233,75 @@ admin_hits AS (
             OR LOWER(ar.name_1) = LOWER(i.state)
         )
     WHERE i.select_by IN ('state', 'country')
-    GROUP BY i.unique_id, ar.pfaf_id,
-             CASE WHEN i.select_by = 'country' THEN NULL ELSE ar.gid_1 END,
-             i.commodity, i.irrigation, i.total_volume, i.select_by
+    GROUP BY i.unique_id, i.select_by, ar.pfaf_id, ar.gid_1,
+             i.commodity, i.irrigation, i.total_volume
 ),
 hits AS (
     SELECT * FROM point_hits
     UNION ALL
     SELECT * FROM admin_hits
 ),
--- Area shares for every admin-1 slice of basins that appear in `hits`.
--- Computed from the full `aq_basins_raw` table (all states), so a state
--- search only attributes its geographic share of basin production.
-slice_areas AS (
+-- Production is looked up directly at basin-state grain: no area weighting.
+hit_production AS (
+    SELECT h.*,
+           p.basin_production AS slice_production
+    FROM hits h
+    LEFT JOIN crop_production_pfaf_gid1 p
+           ON p.pfaf_id    = h.pfaf_id
+          AND p.gid_1      = h.gid_1
+          AND p.commodity  = h.commodity
+          AND p.irrigation = h.irrigation
+),
+-- Total basin area across every admin-1 slice (all states/countries), used
+-- only to report `basin_area`; it no longer affects production.
+basin_areas AS (
     SELECT ar.pfaf_id,
-           ar.gid_1,
-           SUM(ar.area_km2) AS slice_area
+           SUM(ar.area_km2) AS total_area
     FROM aq_basins_raw ar
     WHERE ar.pfaf_id <> -9999
       AND ar.gid_1 IS NOT NULL
       AND ar.gid_1::text <> '-9999'
       AND ar.pfaf_id IN (SELECT DISTINCT pfaf_id FROM hits)
-    GROUP BY ar.pfaf_id, ar.gid_1
+    GROUP BY ar.pfaf_id
 ),
-basin_areas AS (
-    SELECT pfaf_id,
-           SUM(slice_area) AS total_area
-    FROM slice_areas
-    GROUP BY pfaf_id
+-- Apply output granularity: `state`/`point` keep the admin-1 split, while
+-- `country` dissolves each basin into one feature and sums the production
+-- of the slices that fall inside the selected country.
+dissolved AS (
+    SELECT
+        hp.unique_id,
+        hp.pfaf_id,
+        CASE WHEN hp.select_by = 'country' THEN NULL ELSE hp.gid_1 END AS gid_1,
+        hp.commodity,
+        hp.irrigation,
+        hp.total_volume,
+        MAX(hp.iso_code)  AS iso_code,
+        MAX(hp.country)   AS country,
+        MAX(CASE WHEN hp.select_by = 'country' THEN NULL ELSE hp.state END)
+            AS state,
+        MAX(hp.bws_raw)   AS bws_raw,
+        MAX(hp.bws_score) AS bws_score,
+        MAX(hp.bws_cat)   AS bws_cat,
+        MAX(hp.bws_label) AS bws_label,
+        CASE
+            WHEN hp.select_by = 'country' THEN NULL
+            ELSE SUM(hp.slice_area)
+        END AS basin_area_within_state,
+        SUM(hp.slice_production) AS basin_production_within_business_unit
+        {geom_dissolved}
+    FROM hit_production hp
+    GROUP BY hp.unique_id, hp.pfaf_id,
+             CASE WHEN hp.select_by = 'country' THEN NULL ELSE hp.gid_1 END,
+             hp.commodity, hp.irrigation, hp.total_volume, hp.select_by
 ),
 enriched AS (
-    SELECT
-        h.unique_id,
-        h.pfaf_id,
-        h.gid_1,
-        h.commodity,
-        h.irrigation,
-        h.total_volume,
-        h.iso_code,
-        h.country,
-        h.state,
-        h.bws_raw,
-        h.bws_score,
-        h.bws_cat,
-        h.bws_label,
-        ba.total_area AS basin_area,
-        -- Null in country mode (no single state slice).
-        CASE WHEN h.gid_1 IS NULL THEN NULL ELSE sa.slice_area END
-            AS basin_area_within_state,
-        CASE
-            -- Country mode: dissolved to whole basin → keep full production.
-            WHEN h.gid_1 IS NULL THEN p.basin_production
-            WHEN p.basin_production IS NULL THEN NULL
-            WHEN ba.total_area IS NOT NULL
-                 AND ba.total_area > 0
-                 AND sa.slice_area IS NOT NULL
-            THEN p.basin_production * (sa.slice_area / ba.total_area)
-            ELSE p.basin_production
-        END AS basin_production_within_business_unit,
-        s.sbtn_quant_max,
-        s.sbtn_qual_max{geom_enriched}
-    FROM hits h
-    LEFT JOIN crop_production_pfaf p
-           ON p.pfaf_id       = h.pfaf_id
-          AND p.commodity     = h.commodity
-          AND p.irrigation    = h.irrigation
-    LEFT JOIN slice_areas sa
-           ON sa.pfaf_id = h.pfaf_id
-          AND sa.gid_1   = h.gid_1
-    LEFT JOIN basin_areas ba ON ba.pfaf_id = h.pfaf_id
-    LEFT JOIN sbtn_son_v2 s ON s.pfaf_id = h.pfaf_id
+    SELECT d.*,
+           ba.total_area   AS basin_area,
+           s.sbtn_quant_max,
+           s.sbtn_qual_max
+    FROM dissolved d
+    LEFT JOIN basin_areas ba ON ba.pfaf_id = d.pfaf_id
+    LEFT JOIN sbtn_son_v2 s ON s.pfaf_id = d.pfaf_id
 ),
 sums AS (
     SELECT unique_id,
@@ -498,7 +493,7 @@ class SupplyChainLocationsService:
             # then emit as GeoJSON at 6-decimal precision (~0.11 m),
             # optionally simplified to shrink the payload.
             geom_agg = ",\n        ST_Union(ar.geom) AS geom"
-            geom_enriched = ",\n        h.geom"
+            geom_dissolved = ",\n        ST_Union(hp.geom) AS geom"
             if simplify is not None and simplify > 0:
                 geom_src = (
                     "COALESCE("
@@ -510,13 +505,13 @@ class SupplyChainLocationsService:
             geom_final = f",\n       ST_AsGeoJSON({geom_src}, 6) AS geometry"
         else:
             geom_agg = ""
-            geom_enriched = ""
+            geom_dissolved = ""
             geom_final = ""
 
         sql = _ANALYSIS_SQL_TEMPLATE.format(
             buffer_expr=buffer_expr,
             geom_agg=geom_agg,
-            geom_enriched=geom_enriched,
+            geom_dissolved=geom_dissolved,
             geom_final=geom_final,
         )
 
