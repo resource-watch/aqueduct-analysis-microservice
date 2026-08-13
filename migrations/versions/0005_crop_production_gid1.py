@@ -9,11 +9,17 @@ The basin-level table is left in place: summing this table over `gid_1`
 reproduces it, and keeping both allows verifying the new data before the
 old one is retired.
 
+Like 0002, this runs as the Aurora superuser, so ownership is handed to the
+application role afterwards (see 0003): `load_reference_data --data-only`
+issues TRUNCATE, which requires ownership rather than plain privileges.
+
 Revision ID: 0005
 Revises: 0004
 Create Date: 2026-08-13
 
 """
+import os
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -21,6 +27,22 @@ revision = "0005"
 down_revision = "0004"
 branch_labels = None
 depends_on = None
+
+APP_ROLE = os.environ.get("APP_DB_ROLE", "aqueduct_flood")
+
+
+def _transfer_ownership(role: str) -> str:
+    """Hand the new table to `role`, no-op when the role does not exist
+    (local dev connects as `postgres` and has no app role)."""
+    return f"""
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{role}') THEN
+                ALTER TABLE crop_production_pfaf_gid1 OWNER TO "{role}";
+            END IF;
+        END
+        $$;
+        """
 
 
 def upgrade():
@@ -42,6 +64,7 @@ def upgrade():
         "CREATE INDEX IF NOT EXISTS crop_prod_gid1_lookup_idx "
         "ON crop_production_pfaf_gid1 (commodity, irrigation, pfaf_id, gid_1)"
     )
+    op.execute(_transfer_ownership(APP_ROLE.replace("'", "''")))
 
 
 def downgrade():
